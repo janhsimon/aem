@@ -15,7 +15,7 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 
 ## Definitions
 
-- All bytes in *AEM* files are always in big-endian order. 
+- All bytes in *AEM* files are always stored in big-endian order. 
 - All matrices in *AEM* files are always stored in column-major order.
 
 
@@ -30,7 +30,7 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 | 20     | 4    | Number of meshes    | Unsigned integer |
 | 24     | 4    | Number of bones     | Unsigned integer |
 
-The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes the version 1 of the file format.
+The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
 
 ## Vertex Section
@@ -86,7 +86,7 @@ The triangle indices index into the [vertex section](#vertex-section).
 
 (The field above is repeated for each mesh in the model.)
 
-Meshes consist of sequential triangles in the [triangle section](#triangle-section) and are themselves sequential.
+Meshes consist of sequential triangles in the [triangle section](#triangle-section), and are themselves sequential.
 
 
 ## Bone Section
