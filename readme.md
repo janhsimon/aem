@@ -79,15 +79,14 @@ The triangle indices index into the [vertex section](#vertex-section).
 
 ## Mesh Section
 
-| Offset | Size | Description                | Data Type        |
-| ------ | ---- | -------------------------- | ---------------- |
-| 0      | 8    | First triangle index       | Unsigned integer |
-| 8      | 8    | Number of triangle indices | Unsigned integer |
-| ...    | ...  | ...                        | ...              |
+| Offset | Size | Description         | Data Type        |
+| ------ | ---- | ------------------- | ---------------- |
+| 0      | 8    | Number of triangles | Unsigned integer |
+| ...    | ...  | ...                 | ...              |
 
-(The fields above are repeated for each mesh in the model.)
+(The field above is repeated for each mesh in the model.)
 
-The first triangle indices index into the [triangle section](#triangle-section).
+Meshes consist of sequential triangles in the [triangle section](#triangle-section) and are themselves sequential.
 
 
 ## Bone Section
