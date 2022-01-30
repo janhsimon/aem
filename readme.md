@@ -1,6 +1,6 @@
-# What is *aem*?
+# What is *AEM*?
 
-*aem* is ***a**n **e**xcellent **m**odel* file format. :wink:
+*AEM* is ***a**n **e**xcellent **m**odel* file format. :wink:
 
 It describes game-ready 3D models with everything they need:
 - Normals and tangents for lighting and tangent-space normal mapping
@@ -9,21 +9,30 @@ It describes game-ready 3D models with everything they need:
 - Separate meshes with material information
 - Skeletal animation support
 
+This repository contains a Blender add-on that exports your models to *AEM* in a single click.
+
 
 # Specification
 
+## Definitions
+
+- All bytes in *AEM* files are always in big-endian order, regardless of platform. 
+- All matrices in *AEM* files are always stored in column-major order.
+
+
 ## File Header
 
-| Offset | Size | Description                   | Data Type        |
-| ------ | ---- | ----------------------------- | ---------------- |
-| 0      | 3    | Magic number: AEM             | String           |
-| 3      | 1    | File format version number: 1 | Unsigned integer |
-| 4      | 8    | Number of vertices            | Unsigned integer |
-| 12     | 8    | Number of indices             | Unsigned integer |
-| 20     | 4    | Number of meshes              | Unsigned integer |
-| 24     | 4    | Number of bones               | Unsigned integer |
+| Offset | Size | Description        | Data Type        |
+| ------ | ---- | ------------------ | ---------------- |
+| 0      | 3    | Magic number       | String           |
+| 3      | 1    | Version number     | Unsigned integer |
+| 4      | 8    | Number of vertices | Unsigned integer |
+| 12     | 8    | Number of indices  | Unsigned integer |
+| 20     | 4    | Number of meshes   | Unsigned integer |
+| 24     | 4    | Number of bones    | Unsigned integer |
 
-The magic number is always "AEX" in ASCII. This specification describes the file format version number 1.
+The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes the file format version number 1.
+
 
 ## Vertex Section
 
@@ -52,14 +61,14 @@ The magic number is always "AEX" in ASCII. This specification describes the file
 
 The fields above are repeated for each vertex in the model.
 
-The position, normal and tangent vectors are in model-space. The bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1.
+The bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1.
 
 
 ## Index Section
 
 | Offset | Size | Description         | Data Type        |
 | ------ | ---- | ------------------- | ---------------- |
-| 0      | 4    | Index into vertices | Unsigned integer |
+| 0      | 8    | Index into vertices | Unsigned integer |
 | ...    | ...  | ...                 | ...              |
 
 The fields above are repeated for each index in the model.
@@ -69,10 +78,10 @@ The indices index into the [vertex section](#vertex-section) to form triangles.
 
 ## Mesh Section
 
-| Offset | Size | Descripti                 | Data Type        |
+| Offset | Size | Description               | Data Type        |
 | ------ | ---- | ------------------------- | ---------------- |
-| 0      | 4    | Beginning of mesh indices | Unsigned integer |
-| 4      | 4    | Number of mesh indices    | Unsigned integer |
+| 0      | 8    | Beginning of mesh indices | Unsigned integer |
+| 8      | 8    | Number of mesh indices    | Unsigned integer |
 | ...    | ...  | ...                       | ...              |
 
 The fields above are repeated for each mesh in the model.
@@ -82,7 +91,7 @@ The beginning and number of mesh indices index into the [index section](#index-s
 
 ## Bone Section
 
-| Offset | Size | Descripti                | Data Type  |
+| Offset | Size | Description              | Data Type  |
 | ------ | ---- | ------------------------ | ---------- |
 | 0      | 64   | Inverse bind pose matrix | Matrix 4x4 |
 | ...    | ...  | ...                      | ...        |
