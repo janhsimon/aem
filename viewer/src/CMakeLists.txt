@@ -2,7 +2,7 @@ set(TARGET_NAME viewer)
 
 add_executable(${TARGET_NAME})
 target_sources(${TARGET_NAME} PRIVATE "Main.cpp")
-target_link_libraries(${TARGET_NAME} PRIVATE glad glfw)
+target_link_libraries(${TARGET_NAME} PRIVATE glad glfw glm)
 
 if(WIN32)
   set (DLLS "${CMAKE_SOURCE_DIR}/external/glfw/lib/win/glfw3.dll")
