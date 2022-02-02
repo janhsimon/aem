@@ -22,14 +22,51 @@ constexpr std::array<glm::vec3, 4> vertices = { glm::vec3(-1.0f, -1.0f, 0.0f), g
                                                 glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f) };
 constexpr std::array<unsigned int, 6> indices = { 0u, 1u, 2u, 1u, 3u, 2u };
 
+// Color constants
+constexpr glm::vec4 clearColor = { 0.1f, 0.4f, 0.9f, 1.0f };
+constexpr glm::vec4 quadColor = { 0.9f, 0.4f, 0.1f, 1.0f };
+
 // Camera constants
+constexpr float cameraMinDistance = 0.5f;
 constexpr float cameraNear = 0.1f;
 constexpr float cameraFar = 100.0f;
 constexpr float cameraFov = 45.0f; // Vertical field of view in degrees
 
-// Color constants
-constexpr glm::vec4 clearColor = { 0.1f, 0.4f, 0.9f, 1.0f };
-constexpr glm::vec4 quadColor = { 0.9f, 0.4f, 0.1f, 1.0f };
+// Camera variables
+bool mouseDown = false;
+float cameraAngle = glm::radians(45.0f);
+float cameraDistance = 5.0f;
+double lastMouseX;
+
+void cursorPositionCallback(GLFWwindow* window, double x, double y)
+{
+  // Tumble the camera
+  if (mouseDown)
+  {
+    const double deltaX = x - lastMouseX;
+    cameraAngle -= (static_cast<float>(deltaX * glm::pi<double>()) / windowWidth);
+  }
+  lastMouseX = x;
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+  // Store mouse button state
+  if (button == GLFW_MOUSE_BUTTON_LEFT)
+  {
+    mouseDown = (action == GLFW_PRESS);
+  }
+}
+
+void scrollCallback(GLFWwindow* window, double x, double y)
+{
+  // Dolly the camera
+  cameraDistance -= static_cast<float>(y);
+  if (cameraDistance < cameraMinDistance)
+  {
+    cameraDistance = cameraMinDistance;
+  }
+}
 
 } // namespace
 
@@ -55,6 +92,10 @@ int main()
       glfwTerminate();
       return EXIT_FAILURE;
     }
+
+    glfwSetCursorPosCallback(window, cursorPositionCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     glfwMakeContextCurrent(window);
     if (gladLoadGL(glfwGetProcAddress) == 0)
@@ -101,6 +142,7 @@ int main()
   }
 
   // Set up a shader program
+  GLint viewUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -182,18 +224,15 @@ int main()
     {
       glUseProgram(program);
 
-      // Set view matrix uniform
+      // Retrieve view matrix uniform location
       {
-        const GLint location = glGetUniformLocation(program, "view");
-        if (location < 0)
+        viewUniformLocation = glGetUniformLocation(program, "view");
+        if (viewUniformLocation < 0)
         {
           std::cerr << "Failed to get view matrix uniform location";
           glfwTerminate();
           return EXIT_FAILURE;
         }
-
-        glm::mat4 viewMatrix = glm::lookAt(glm::vec3(2.5f, 0.0f, 5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(viewMatrix));
       }
 
       // Set projection matrix uniform
@@ -229,9 +268,20 @@ int main()
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
-    glfwSwapBuffers(window);
+    // Set view matrix uniform
+    {
+      const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), 0.0f, glm::cos(cameraAngle)) * cameraDistance;
+      const glm::mat4 viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      glUniformMatrix4fv(viewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+    }
+
+    // Render
+    {
+      glClear(GL_COLOR_BUFFER_BIT);
+      glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+      glfwSwapBuffers(window);
+    }
+
     glfwPollEvents();
   }
 
