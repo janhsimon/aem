@@ -15,7 +15,7 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 
 ## Definitions
 
-- All bytes in *AEM* files are always stored in big-endian order. 
+- All bytes in *AEM* files are always stored in little-endian order. 
 - All matrices in *AEM* files are always stored in column-major order.
 
 
@@ -25,10 +25,10 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 | ------ | ---- | ------------------- | ---------------- |
 | 0      | 3    | Magic number        | String           |
 | 3      | 1    | Version number      | Unsigned integer |
-| 4      | 8    | Number of vertices  | Unsigned integer |
-| 12     | 8    | Number of triangles | Unsigned integer |
-| 20     | 4    | Number of meshes    | Unsigned integer |
-| 24     | 4    | Number of bones     | Unsigned integer |
+| 4      | 4    | Number of vertices  | Unsigned integer |
+| 8      | 4    | Number of triangles | Unsigned integer |
+| 12     | 4    | Number of meshes    | Unsigned integer |
+| 16     | 4    | Number of bones     | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -67,9 +67,9 @@ The bone indices index into the [bone section](#bone-section). The sum of all bo
 
 | Offset | Size | Description      | Data Type        |
 | ------ | ---- | ---------------- | ---------------- |
-| 0      | 8    | Triangle index 1 | Unsigned integer |
-| 8      | 8    | Triangle index 2 | Unsigned integer |
-| 16     | 8    | Triangle index 3 | Unsigned integer |
+| 0      | 4    | Triangle index 1 | Unsigned integer |
+| 4      | 4    | Triangle index 2 | Unsigned integer |
+| 8      | 4    | Triangle index 3 | Unsigned integer |
 | ...    | ...  | ...              | ...              |
 
 (The fields above are repeated for each triangle in the model.)
@@ -81,7 +81,7 @@ The triangle indices index into the [vertex section](#vertex-section).
 
 | Offset | Size | Description         | Data Type        |
 | ------ | ---- | ------------------- | ---------------- |
-| 0      | 8    | Number of triangles | Unsigned integer |
+| 0      | 4    | Number of triangles | Unsigned integer |
 | ...    | ...  | ...                 | ...              |
 
 (The field above is repeated for each mesh in the model.)

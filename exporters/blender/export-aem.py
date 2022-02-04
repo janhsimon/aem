@@ -42,56 +42,56 @@ class Exporter(bpy.types.Operator, ExportHelper):
 
       # File header
       file.write(b"AEM")               # Magic number
-      file.write(struct.pack(">B", 1)) # Version number
-      file.write(struct.pack(">Q", num_vertices))
-      file.write(struct.pack(">Q", num_triangles))
-      file.write(struct.pack(">I", len(meshes)))
-      file.write(struct.pack(">I", 0))
+      file.write(struct.pack("<B", 1)) # Version number
+      file.write(struct.pack("<I", num_vertices))
+      file.write(struct.pack("<I", num_triangles))
+      file.write(struct.pack("<I", len(meshes)))
+      file.write(struct.pack("<I", 0))
 
       # Vertex section
       for mesh in meshes:
         for vertex in mesh.vertices:
           # Position
-          file.write(struct.pack(">f", vertex.co[0]))
-          file.write(struct.pack(">f", vertex.co[1]))
-          file.write(struct.pack(">f", vertex.co[2]))
+          file.write(struct.pack("<f", vertex.co[0]))
+          file.write(struct.pack("<f", vertex.co[1]))
+          file.write(struct.pack("<f", vertex.co[2]))
 
           # Normal
-          file.write(struct.pack(">f", vertex.normal[0]))
-          file.write(struct.pack(">f", vertex.normal[1]))
-          file.write(struct.pack(">f", vertex.normal[2]))
+          file.write(struct.pack("<f", vertex.normal[0]))
+          file.write(struct.pack("<f", vertex.normal[1]))
+          file.write(struct.pack("<f", vertex.normal[2]))
 
           # Tangent
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
 
           # UV
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
 
           # Bone indices
-          file.write(struct.pack(">I", 0))
-          file.write(struct.pack(">I", 0))
-          file.write(struct.pack(">I", 0))
-          file.write(struct.pack(">I", 0))
+          file.write(struct.pack("<I", 0))
+          file.write(struct.pack("<I", 0))
+          file.write(struct.pack("<I", 0))
+          file.write(struct.pack("<I", 0))
 
           # Bone weights
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
-          file.write(struct.pack(">f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
+          file.write(struct.pack("<f", 0))
 
       # Triangle section
       for mesh in meshes:
         for loop in mesh.loop_triangles:
-          file.write(struct.pack(">Q", loop.vertices[0]))
-          file.write(struct.pack(">Q", loop.vertices[1]))
-          file.write(struct.pack(">Q", loop.vertices[2]))
+          file.write(struct.pack("<I", loop.vertices[0]))
+          file.write(struct.pack("<I", loop.vertices[1]))
+          file.write(struct.pack("<I", loop.vertices[2]))
 
       # Mesh section
       for mesh in meshes:
-        file.write(struct.pack(">Q", len(mesh.loop_triangles)))
+        file.write(struct.pack("<I", len(mesh.loop_triangles)))
 
     return {"FINISHED"}
 

@@ -2,11 +2,27 @@
 #include <glfw/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <array>
+#include <fstream>
 #include <iostream>
+#include <vector>
 
 namespace
 {
+
+// Header definition
+struct Header
+{
+  uint32_t numVertices, numTriangles, numMeshes, numBones;
+};
+
+// Vertex definition
+struct Vertex
+{
+  glm::vec3 position, normal, tangent;
+  glm::vec2 uv;
+  glm::vec<4, uint32_t> boneIds;
+  glm::vec4 boneWeights;
+};
 
 // Window constants
 constexpr char windowTitle[] = "AEM Viewer";
@@ -16,11 +32,6 @@ constexpr float windowAspectRatio = static_cast<float>(windowWidth) / static_cas
 
 // OpenGL constants
 constexpr GLsizei shaderInfoLogLength = 512;
-
-// Geometry constants
-constexpr std::array<glm::vec3, 4> vertices = { glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(-1.0f, 1.0f, 0.0f),
-                                                glm::vec3(1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 0.0f) };
-constexpr std::array<unsigned int, 6> indices = { 0u, 1u, 2u, 1u, 3u, 2u };
 
 // Color constants
 constexpr glm::vec4 clearColor = { 0.1f, 0.4f, 0.9f, 1.0f };
@@ -37,6 +48,10 @@ bool mouseDown = false;
 float cameraAngle = glm::radians(45.0f);
 float cameraDistance = 5.0f;
 double lastMouseX;
+
+// Geometry variables
+std::vector<Vertex> vertices;
+std::vector<uint32_t> indices;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
@@ -70,8 +85,60 @@ void scrollCallback(GLFWwindow* window, double x, double y)
 
 } // namespace
 
-int main()
+int main(int argc, char* argv[])
 {
+  if (argc != 2)
+  {
+    std::cerr << "Missing command line argument: Model filename";
+    return EXIT_FAILURE;
+  }
+
+  // Parse model
+  {
+    std::ifstream file(argv[1], std::ios::in | std::ios::binary);
+    if (file.fail())
+    {
+      std::cerr << "Failed to load model file: File not found";
+      return EXIT_FAILURE;
+    }
+
+    // Read and verify magic number
+    {
+      int data = 0;
+      file.read(reinterpret_cast<char*>(&data), 3);
+      if (data != 0x4D4541)
+      {
+        std::cerr << "Failed to load model file: Wrong file type";
+        return EXIT_FAILURE;
+      }
+    }
+
+    // Read and verify version number
+    if (file.get() != 1)
+    {
+      std::cerr << "Failed to load model file: Wrong file version";
+      return EXIT_FAILURE;
+    }
+
+    // Read header
+    {
+      Header header;
+      file.read(reinterpret_cast<char*>(&header), sizeof(header));
+      std::cout << "Number of vertices: " << header.numVertices << "\n";
+      std::cout << "Number of triangles: " << header.numTriangles << "\n";
+      std::cout << "Number of meshes: " << header.numMeshes << "\n";
+      std::cout << "Number of bones: " << header.numBones << "\n";
+      vertices.resize(header.numVertices);
+      indices.resize(static_cast<size_t>(header.numTriangles) * 3u);
+    }
+
+    // Read vertices and indices
+    file.read(reinterpret_cast<char*>(vertices.data()), sizeof(vertices.at(0u)) * vertices.size());
+    file.read(reinterpret_cast<char*>(indices.data()), sizeof(indices.at(0u)) * indices.size());
+
+    file.close();
+  }
+
   // Create window and load OpenGL
   GLFWwindow* window;
   {
@@ -136,8 +203,32 @@ int main()
 
     // Apply the vertex definition
     {
+      constexpr GLsizei vertexSize = sizeof(vertices.at(0u));
+
+      // Position
       glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices.at(0u)), 0);
+      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, position)));
+
+      // Normal
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, normal)));
+
+      // Tangent
+      glEnableVertexAttribArray(2);
+      glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, tangent)));
+
+      // UV
+      glEnableVertexAttribArray(3);
+      glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, uv)));
+
+      // Bone IDs
+      glEnableVertexAttribArray(4);
+      glVertexAttribIPointer(4, 4, GL_UNSIGNED_INT, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, boneIds)));
+
+      // Bone weights
+      glEnableVertexAttribArray(5);
+      glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, vertexSize,
+                            reinterpret_cast<void*>(offsetof(Vertex, boneWeights)));
     }
   }
 
