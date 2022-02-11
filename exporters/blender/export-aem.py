@@ -70,13 +70,13 @@ class Exporter(bpy.types.Operator, ExportHelper):
       for position, normal in vertices:
         # Position
         file.write(struct.pack("<f", position.x))
-        file.write(struct.pack("<f", position.y))
         file.write(struct.pack("<f", position.z))
+        file.write(struct.pack("<f", position.y))
 
         # Normal
         file.write(struct.pack("<f", normal.x))
-        file.write(struct.pack("<f", normal.y))
         file.write(struct.pack("<f", normal.z))
+        file.write(struct.pack("<f", normal.y))
 
         # Tangent
         file.write(struct.pack("<f", 0))
