@@ -104,7 +104,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
         file.write(struct.pack("<I", index))
 
       # Mesh section
-      for mesh in meshes:
+      for obj, mesh in meshes:
         file.write(struct.pack("<I", len(mesh.loop_triangles)))
 
     self.report({'INFO'}, "AEM export successful.")
