@@ -172,6 +172,7 @@ int main(int argc, char* argv[])
     }
 
     glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+    glEnable(GL_DEPTH_TEST);
   }
 
   // Set up geometry
@@ -244,7 +245,13 @@ int main(int argc, char* argv[])
                                 uniform mat4 view;
                                 uniform mat4 projection;
                                 layout(location = 0) in vec3 inPosition;
-                                void main() { gl_Position = projection * view * vec4(inPosition, 1.0); })";
+                                layout(location = 1) in vec3 inNormal;
+                                out vec3 normal;
+                                void main()
+                                {
+                                  gl_Position = projection * view * vec4(inPosition, 1.0);
+                                  normal = inNormal;
+                                })";
 
       glShaderSource(vertexShader, 1, &source, nullptr);
       glCompileShader(vertexShader);
@@ -268,8 +275,13 @@ int main(int argc, char* argv[])
 
       const GLchar* source = R"(#version 330 core
                                 uniform vec4 color;
+                                in vec3 normal;
                                 out vec4 outColor;
-                                void main() { outColor = color; })";
+                                void main()
+                                {
+                                  float diffuse = dot(normal, normalize(vec3(0.4, 1.0, 0.85)));
+                                  outColor = vec4(color.rgb * diffuse, color.a);
+                                })";
 
       glShaderSource(fragmentShader, 1, &source, nullptr);
       glCompileShader(fragmentShader);
@@ -368,7 +380,7 @@ int main(int argc, char* argv[])
 
     // Render
     {
-      glClear(GL_COLOR_BUFFER_BIT);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
       glfwSwapBuffers(window);
     }
