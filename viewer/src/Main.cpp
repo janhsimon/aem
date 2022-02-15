@@ -15,14 +15,22 @@ struct Header
   uint32_t numVertices, numTriangles, numMeshes, numBones;
 };
 
-// Vertex definition
-struct Vertex
+// Vertex definitions
+struct MeshVertex
 {
   glm::vec3 position, normal, tangent;
   glm::vec2 uv;
   glm::vec<4, uint32_t> boneIds;
   glm::vec4 boneWeights;
 };
+
+struct DebugVertex
+{
+  glm::vec3 position;
+};
+
+// Debug constants
+constexpr bool overlayBones = true;
 
 // Window constants
 constexpr char windowTitle[] = "AEM Viewer";
@@ -35,9 +43,11 @@ constexpr GLsizei shaderInfoLogLength = 512;
 
 // Color constants
 constexpr glm::vec4 clearColor = { 0.1f, 0.4f, 0.9f, 1.0f };
-constexpr glm::vec4 quadColor = { 0.9f, 0.4f, 0.1f, 1.0f };
+constexpr glm::vec4 geometryColor = { 0.9f, 0.4f, 0.1f, 1.0f };
+constexpr glm::vec4 boneOverlayColor = { 0.9f, 0.95f, 0.99f, 1.0f };
 
 // Camera constants
+constexpr float cameraHeight = 0.4f;
 constexpr float cameraMinDistance = 0.5f;
 constexpr float cameraNear = 0.1f;
 constexpr float cameraFar = 100.0f;
@@ -45,13 +55,16 @@ constexpr float cameraFov = 45.0f; // Vertical field of view in degrees
 
 // Camera variables
 bool mouseDown = false;
-float cameraAngle = glm::radians(45.0f);
+float cameraAngle = glm::radians(25.0f);
 float cameraDistance = 5.0f;
 double lastMouseX;
 
 // Geometry variables
-std::vector<Vertex> vertices;
+std::vector<MeshVertex> meshVertices;
 std::vector<uint32_t> indices;
+std::vector<uint32_t> meshLengths;
+std::vector<glm::mat4> boneInverseBindMatrices;
+std::vector<DebugVertex> debugVertices;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
@@ -124,17 +137,32 @@ int main(int argc, char* argv[])
     {
       Header header;
       file.read(reinterpret_cast<char*>(&header), sizeof(header));
+
       std::cout << "Number of vertices: " << header.numVertices << "\n";
       std::cout << "Number of triangles: " << header.numTriangles << "\n";
       std::cout << "Number of meshes: " << header.numMeshes << "\n";
       std::cout << "Number of bones: " << header.numBones << "\n";
-      vertices.resize(header.numVertices);
+
+      meshVertices.resize(header.numVertices);
       indices.resize(static_cast<size_t>(header.numTriangles) * 3u);
+      meshLengths.resize(header.numMeshes);
+      boneInverseBindMatrices.resize(header.numBones);
     }
 
-    // Read vertices and indices
-    file.read(reinterpret_cast<char*>(vertices.data()), sizeof(vertices.at(0u)) * vertices.size());
+    // Read data
+    file.read(reinterpret_cast<char*>(meshVertices.data()), sizeof(meshVertices.at(0u)) * meshVertices.size());
     file.read(reinterpret_cast<char*>(indices.data()), sizeof(indices.at(0u)) * indices.size());
+    file.read(reinterpret_cast<char*>(meshLengths.data()), sizeof(meshLengths.at(0u)) * meshLengths.size());
+    file.read(reinterpret_cast<char*>(boneInverseBindMatrices.data()),
+              sizeof(boneInverseBindMatrices.at(0u)) * boneInverseBindMatrices.size());
+
+    if (overlayBones)
+    {
+      // Create a single vertex at the model space origin. That vertex will be transformed by the non-inverted bind pose
+      // matrix to visualize each bone in bind pose
+      debugVertices.resize(1u);
+      debugVertices.at(0u).position = glm::vec3(0.0f, 0.0f, 0.0f);
+    }
 
     file.close();
   }
@@ -172,69 +200,99 @@ int main(int argc, char* argv[])
     }
 
     glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    glEnable(GL_DEPTH_TEST);
+    glPointSize(3.0f);
   }
 
   // Set up geometry
+  GLuint meshVertexArray, debugVertexArray;
   {
-    // Generate and bind a vertex array to capture the following vertex and index buffer
+    // Generate mesh vertex array
     {
-      GLuint vertexArray;
-      glGenVertexArrays(1, &vertexArray);
-      glBindVertexArray(vertexArray);
+      glGenVertexArrays(1, &meshVertexArray);
+      glBindVertexArray(meshVertexArray);
+
+      // Generate and fill a vertex buffer
+      {
+        GLuint vertexBuffer;
+        glGenBuffers(1, &vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(meshVertices.at(0u)) * meshVertices.size()),
+                     meshVertices.data(), GL_STATIC_DRAW);
+      }
+
+      // Generate and fill an index buffer
+      {
+        GLuint indexBuffer;
+        glGenBuffers(1, &indexBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(indices.at(0)) * indices.size()),
+                     indices.data(), GL_STATIC_DRAW);
+      }
+
+      // Apply the vertex definition
+      {
+        constexpr GLsizei vertexSize = sizeof(meshVertices.at(0u));
+
+        // Position
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(MeshVertex, position)));
+
+        // Normal
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(MeshVertex, normal)));
+
+        // Tangent
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(MeshVertex, tangent)));
+
+        // UV
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(MeshVertex, uv)));
+
+        // Bone IDs
+        glEnableVertexAttribArray(4);
+        glVertexAttribIPointer(4, 4, GL_UNSIGNED_INT, vertexSize,
+                               reinterpret_cast<void*>(offsetof(MeshVertex, boneIds)));
+
+        // Bone weights
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(MeshVertex, boneWeights)));
+      }
     }
 
-    // Generate and fill a vertex buffer
+    // Generate debug vertex array
     {
-      GLuint vertexBuffer;
-      glGenBuffers(1, &vertexBuffer);
-      glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-      glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(vertices.at(0u)) * vertices.size()), vertices.data(),
-                   GL_STATIC_DRAW);
-    }
+      glGenVertexArrays(1, &debugVertexArray);
+      glBindVertexArray(debugVertexArray);
 
-    // Generate and fill an index buffer
-    {
-      GLuint indexBuffer;
-      glGenBuffers(1, &indexBuffer);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(indices.at(0)) * indices.size()),
-                   indices.data(), GL_STATIC_DRAW);
-    }
+      // Generate and fill a vertex buffer
+      {
+        GLuint vertexBuffer;
+        glGenBuffers(1, &vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(debugVertices.at(0u)) * debugVertices.size()),
+                     debugVertices.data(), GL_STATIC_DRAW);
+      }
 
-    // Apply the vertex definition
-    {
-      constexpr GLsizei vertexSize = sizeof(vertices.at(0u));
+      // Apply the vertex definition
+      {
+        constexpr GLsizei vertexSize = sizeof(debugVertices.at(0u));
 
-      // Position
-      glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, position)));
-
-      // Normal
-      glEnableVertexAttribArray(1);
-      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, normal)));
-
-      // Tangent
-      glEnableVertexAttribArray(2);
-      glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, tangent)));
-
-      // UV
-      glEnableVertexAttribArray(3);
-      glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, uv)));
-
-      // Bone IDs
-      glEnableVertexAttribArray(4);
-      glVertexAttribIPointer(4, 4, GL_UNSIGNED_INT, vertexSize, reinterpret_cast<void*>(offsetof(Vertex, boneIds)));
-
-      // Bone weights
-      glEnableVertexAttribArray(5);
-      glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, vertexSize,
-                            reinterpret_cast<void*>(offsetof(Vertex, boneWeights)));
+        // Position
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(DebugVertex, position)));
+      }
     }
   }
 
-  // Set up a shader program
-  GLint viewUniformLocation;
+  // Set up a mesh shader program
+  GLuint meshShaderProgram;
+  GLint meshShaderViewUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -262,7 +320,7 @@ int main(int argc, char* argv[])
       {
         GLchar infoLog[shaderInfoLogLength];
         glGetShaderInfoLog(vertexShader, shaderInfoLogLength, nullptr, infoLog);
-        std::cerr << "Failed to compile vertex shader:\n" << infoLog;
+        std::cerr << "Failed to compile mesh vertex shader:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
@@ -292,29 +350,28 @@ int main(int argc, char* argv[])
       {
         GLchar infoLog[shaderInfoLogLength];
         glGetShaderInfoLog(fragmentShader, shaderInfoLogLength, nullptr, infoLog);
-        std::cerr << "Failed to compile fragment shader:\n" << infoLog;
+        std::cerr << "Failed to compile mesh fragment shader:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
     }
 
     // Link shader program
-    GLuint program;
     {
-      program = glCreateProgram();
+      meshShaderProgram = glCreateProgram();
 
-      glAttachShader(program, vertexShader);
-      glAttachShader(program, fragmentShader);
+      glAttachShader(meshShaderProgram, vertexShader);
+      glAttachShader(meshShaderProgram, fragmentShader);
 
-      glLinkProgram(program);
+      glLinkProgram(meshShaderProgram);
 
       GLint success;
-      glGetProgramiv(program, GL_LINK_STATUS, &success);
+      glGetProgramiv(meshShaderProgram, GL_LINK_STATUS, &success);
       if (!success)
       {
         GLchar infoLog[shaderInfoLogLength];
-        glGetProgramInfoLog(program, shaderInfoLogLength, nullptr, infoLog);
-        std::cerr << "Failed to link shader program:\n" << infoLog;
+        glGetProgramInfoLog(meshShaderProgram, shaderInfoLogLength, nullptr, infoLog);
+        std::cerr << "Failed to link mesh shader program:\n" << infoLog;
         glfwTerminate();
         return EXIT_FAILURE;
       }
@@ -325,14 +382,14 @@ int main(int argc, char* argv[])
 
     // Use shader program, retrieve uniform locations and set constant uniform values
     {
-      glUseProgram(program);
+      glUseProgram(meshShaderProgram);
 
       // Retrieve view matrix uniform location
       {
-        viewUniformLocation = glGetUniformLocation(program, "view");
-        if (viewUniformLocation < 0)
+        meshShaderViewUniformLocation = glGetUniformLocation(meshShaderProgram, "view");
+        if (meshShaderViewUniformLocation < 0)
         {
-          std::cerr << "Failed to get view matrix uniform location";
+          std::cerr << "Failed to get view matrix uniform location in mesh shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
@@ -340,10 +397,10 @@ int main(int argc, char* argv[])
 
       // Set projection matrix uniform
       {
-        const GLint location = glGetUniformLocation(program, "projection");
+        const GLint location = glGetUniformLocation(meshShaderProgram, "projection");
         if (location < 0)
         {
-          std::cerr << "Failed to get projection matrix uniform location";
+          std::cerr << "Failed to get projection matrix uniform location in mesh shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
@@ -354,15 +411,158 @@ int main(int argc, char* argv[])
 
       // Set color uniform
       {
-        const GLint location = glGetUniformLocation(program, "color");
+        const GLint location = glGetUniformLocation(meshShaderProgram, "color");
         if (location < 0)
         {
-          std::cerr << "Failed to get color uniform location";
+          std::cerr << "Failed to get color uniform location in mesh shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
 
-        const glm::vec4 color = glm::vec4(quadColor.r, quadColor.g, quadColor.b, quadColor.a);
+        const glm::vec4 color = glm::vec4(geometryColor.r, geometryColor.g, geometryColor.b, geometryColor.a);
+        glUniform4fv(location, 1, glm::value_ptr(color));
+      }
+    }
+  }
+
+  // Set up a debug shader program
+  GLuint debugShaderProgram;
+  GLint debugShaderWorldUniformLocation, debugShaderViewUniformLocation;
+  {
+    // Compile the vertex shader
+    GLuint vertexShader;
+    {
+      vertexShader = glCreateShader(GL_VERTEX_SHADER);
+
+      const GLchar* source = R"(#version 330 core
+                                uniform mat4 world;
+                                uniform mat4 view;
+                                uniform mat4 projection;
+                                layout(location = 0) in vec3 inPosition;
+                                void main()
+                                {
+                                  gl_Position = projection * view * world * vec4(inPosition, 1.0);
+                                })";
+
+      glShaderSource(vertexShader, 1, &source, nullptr);
+      glCompileShader(vertexShader);
+
+      GLint success;
+      glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderInfoLogLength];
+        glGetShaderInfoLog(vertexShader, shaderInfoLogLength, nullptr, infoLog);
+        std::cerr << "Failed to compile debug vertex shader:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+    }
+
+    // Compile the fragment shader
+    GLuint fragmentShader;
+    {
+      fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+      const GLchar* source = R"(#version 330 core
+                                uniform vec4 color;
+                                out vec4 outColor;
+                                void main()
+                                {
+                                  outColor = color;
+                                })";
+
+      glShaderSource(fragmentShader, 1, &source, nullptr);
+      glCompileShader(fragmentShader);
+
+      GLint success;
+      glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderInfoLogLength];
+        glGetShaderInfoLog(fragmentShader, shaderInfoLogLength, nullptr, infoLog);
+        std::cerr << "Failed to compile debug fragment shader:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+    }
+
+    // Link shader program
+    {
+      debugShaderProgram = glCreateProgram();
+
+      glAttachShader(debugShaderProgram, vertexShader);
+      glAttachShader(debugShaderProgram, fragmentShader);
+
+      glLinkProgram(debugShaderProgram);
+
+      GLint success;
+      glGetProgramiv(debugShaderProgram, GL_LINK_STATUS, &success);
+      if (!success)
+      {
+        GLchar infoLog[shaderInfoLogLength];
+        glGetProgramInfoLog(debugShaderProgram, shaderInfoLogLength, nullptr, infoLog);
+        std::cerr << "Failed to link debug shader program:\n" << infoLog;
+        glfwTerminate();
+        return EXIT_FAILURE;
+      }
+
+      glDeleteShader(vertexShader);
+      glDeleteShader(fragmentShader);
+    }
+
+    // Use shader program, retrieve uniform locations and set constant uniform values
+    {
+      glUseProgram(debugShaderProgram);
+
+      // Retrieve world matrix uniform location
+      {
+        debugShaderWorldUniformLocation = glGetUniformLocation(debugShaderProgram, "world");
+        if (debugShaderWorldUniformLocation < 0)
+        {
+          std::cerr << "Failed to get world matrix uniform location in debug shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
+      }
+
+      // Retrieve view matrix uniform location
+      {
+        debugShaderViewUniformLocation = glGetUniformLocation(debugShaderProgram, "view");
+        if (debugShaderViewUniformLocation < 0)
+        {
+          std::cerr << "Failed to get view matrix uniform location in debug shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
+      }
+
+      // Set projection matrix uniform
+      {
+        const GLint location = glGetUniformLocation(debugShaderProgram, "projection");
+        if (location < 0)
+        {
+          std::cerr << "Failed to get projection matrix uniform location in debug shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
+
+        const glm::mat4 projectionMatrix = glm::perspective(cameraFov, windowAspectRatio, cameraNear, cameraFar);
+        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+      }
+
+      // Set color uniform
+      {
+        const GLint location = glGetUniformLocation(debugShaderProgram, "color");
+        if (location < 0)
+        {
+          std::cerr << "Failed to get color uniform location in debug shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
+
+        const glm::vec4 color =
+          glm::vec4(boneOverlayColor.r, boneOverlayColor.g, boneOverlayColor.b, boneOverlayColor.a);
         glUniform4fv(location, 1, glm::value_ptr(color));
       }
     }
@@ -371,17 +571,57 @@ int main(int argc, char* argv[])
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
-    // Set view matrix uniform
-    {
-      const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), 0.0f, glm::cos(cameraAngle)) * cameraDistance;
-      const glm::mat4 viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      glUniformMatrix4fv(viewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-    }
-
     // Render
     {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+
+      // Render mesh
+      {
+        glEnable(GL_DEPTH_TEST);
+
+        glBindVertexArray(meshVertexArray);
+        glUseProgram(meshShaderProgram);
+
+        // Set view matrix uniform
+        {
+          const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), cameraHeight, glm::cos(cameraAngle)) * cameraDistance;
+          const glm::mat4 viewMatrix =
+            glm::lookAt(eye, glm::vec3(0.0f, cameraHeight, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+          glUniformMatrix4fv(meshShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        }
+
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+      }
+
+      // Render bone overlay
+      if (overlayBones)
+      {
+        glDisable(GL_DEPTH_TEST);
+
+        glBindVertexArray(debugVertexArray);
+        glUseProgram(debugShaderProgram);
+
+        // Set view matrix uniform
+        {
+          const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), cameraHeight, glm::cos(cameraAngle)) * cameraDistance;
+          const glm::mat4 viewMatrix =
+            glm::lookAt(eye, glm::vec3(0.0f, cameraHeight, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+          glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+        }
+
+        for (size_t i = 0; i < boneInverseBindMatrices.size(); ++i)
+        {
+          // Set world matrix uniform
+          {
+            // Use the non-inverted bone matrix to transform the origin vertex to the bone position in bind pose
+            glm::mat4 worldMatrix = glm::inverse(boneInverseBindMatrices.at(i));
+            glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
+          }
+
+          glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(debugVertices.size()));
+        }
+      }
+
       glfwSwapBuffers(window);
     }
 
