@@ -29,6 +29,13 @@ struct DebugVertex
   glm::vec3 position;
 };
 
+// Bone definition
+struct Bone
+{
+  glm::mat4 inverseBindPoseMatrix;
+  int parentIndex;
+};
+
 // Debug constants
 constexpr bool overlayBones = true;
 
@@ -61,10 +68,10 @@ double lastMouseX;
 
 // Geometry variables
 std::vector<MeshVertex> meshVertices;
+std::vector<DebugVertex> debugVertices;
 std::vector<uint32_t> indices;
 std::vector<uint32_t> meshLengths;
-std::vector<glm::mat4> boneInverseBindMatrices;
-std::vector<DebugVertex> debugVertices;
+std::vector<Bone> bones;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
@@ -146,15 +153,14 @@ int main(int argc, char* argv[])
       meshVertices.resize(header.numVertices);
       indices.resize(static_cast<size_t>(header.numTriangles) * 3u);
       meshLengths.resize(header.numMeshes);
-      boneInverseBindMatrices.resize(header.numBones);
+      bones.resize(header.numBones);
     }
 
     // Read data
     file.read(reinterpret_cast<char*>(meshVertices.data()), sizeof(meshVertices.at(0u)) * meshVertices.size());
     file.read(reinterpret_cast<char*>(indices.data()), sizeof(indices.at(0u)) * indices.size());
     file.read(reinterpret_cast<char*>(meshLengths.data()), sizeof(meshLengths.at(0u)) * meshLengths.size());
-    file.read(reinterpret_cast<char*>(boneInverseBindMatrices.data()),
-              sizeof(boneInverseBindMatrices.at(0u)) * boneInverseBindMatrices.size());
+    file.read(reinterpret_cast<char*>(bones.data()), sizeof(bones.at(0u)) * bones.size());
 
     if (overlayBones)
     {
@@ -609,12 +615,12 @@ int main(int argc, char* argv[])
           glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
         }
 
-        for (size_t i = 0; i < boneInverseBindMatrices.size(); ++i)
+        for (const Bone &bone : bones)
         {
           // Set world matrix uniform
           {
             // Use the non-inverted bone matrix to transform the origin vertex to the bone position in bind pose
-            glm::mat4 worldMatrix = glm::inverse(boneInverseBindMatrices.at(i));
+            glm::mat4 worldMatrix = glm::inverse(bone.inverseBindPoseMatrix);
             glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
           }
 

@@ -8,15 +8,16 @@ It describes game-ready 3D models with everything they need:
 - Separate meshes with material information
 - Skeletal animation support
 
-This repository contains a Blender add-on that exports your models to *AEM* in a single click.
+This repository contains a Blender add-on that exports your models to *AEM* in a single click. It also comes with a simple viewer application written in C++ that shows how to load and render *AEM* models with modern OpenGL.
 
 
 # Specification
 
 ## Definitions
 
-- All bytes in *AEM* files are always stored in little-endian order. 
-- All matrices in *AEM* files are always stored in column-major order.
+- All offsets and sizes in this specification are given in bytes.
+- All bytes in *AEM* files are stored in little-endian order.
+- All matrices in *AEM* files are stored in column-major order.
 
 
 ## File Header
@@ -60,7 +61,7 @@ The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification des
 
 (The fields above are repeated for each vertex in the model.)
 
-The bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1.
+The bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1. If a vertex is affected by less than 4 bones, the additional bone weights are 0.0, and the corresponding bone indices are undefined.
 
 
 ## Triangle Section
@@ -91,9 +92,12 @@ Meshes consist of sequential triangles in the [triangle section](#triangle-secti
 
 ## Bone Section
 
-| Offset | Size | Description              | Data Type  |
-| ------ | ---- | ------------------------ | ---------- |
-| 0      | 64   | Inverse bind pose matrix | Matrix 4x4 |
-| ...    | ...  | ...                      | ...        |
+| Offset | Size | Description              | Data Type      |
+| ------ | ---- | ------------------------ | -------------- |
+| 0      | 64   | Inverse bind pose matrix | 4x4 Matrix     |
+| 64     | 4    | Parent bone index        | Signed integer |
+| ...    | ...  | ...                      | ...            |
 
-(The field above is repeated for each bone in the model.)
+(The fields above are repeated for each bone in the model.)
+
+The parent bone indices index into this same bone section, and will be -1 for root bones without parent.

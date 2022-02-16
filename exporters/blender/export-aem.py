@@ -157,12 +157,26 @@ class Exporter(bpy.types.Operator, ExportHelper):
 
       # Bone section
       for obj, bone in bones:
+        # Inverse bind pose matrix
         # Transform from bone in bind pose to armature space, then to mesh and then to model space
         inverse_bind_pose_matrix = obj.matrix_world @ armature_transform @ bone.matrix_local
         inverse_bind_pose_matrix.invert()
         for x in range(4):
           for y in range(4):
             file.write(struct.pack("<f", inverse_bind_pose_matrix[y][x])) # Column-major
+
+        # Parent bone index
+        if bone.parent:
+          parent_found = False
+          for parent_index, (parent_obj, parent_bone) in enumerate(bones):
+            if parent_bone.name == bone.parent.name:
+              parent_found = True
+              file.write(struct.pack("<i", parent_index))
+              break
+          if parent_found == False:
+            file.write(struct.pack("<i", -1))
+        else:
+          file.write(struct.pack("<i", -1))
 
     self.report({"INFO"}, "AEM export successful.")
 
