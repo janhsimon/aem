@@ -9,13 +9,11 @@
 namespace
 {
 
-// Header definition
 struct Header
 {
-  uint32_t numVertices, numTriangles, numMeshes, numBones;
+  uint32_t numVertices, numTriangles, numMeshes, numBones, numAnimations;
 };
 
-// Vertex definitions
 struct MeshVertex
 {
   glm::vec3 position, normal, tangent;
@@ -29,15 +27,28 @@ struct DebugVertex
   glm::vec3 position;
 };
 
-// Bone definition
 struct Bone
 {
   glm::mat4 inverseBindPoseMatrix;
   int parentIndex;
 };
 
+struct Keyframe
+{
+  float time;
+  std::vector<glm::mat4> matrices;
+};
+
+struct Animation
+{
+  uint32_t numKeyframes;
+  std::vector<Keyframe> keyframes;
+};
+
 // Debug constants
-constexpr bool overlayBones = true;
+constexpr bool overlayBones = true;                // Show bone overlay
+constexpr bool forceBoneOverlayToBindPose = false; // Show bind instead of animated pose overlay
+constexpr float bonePointSize = 3.0f;
 
 // Window constants
 constexpr char windowTitle[] = "AEM Viewer";
@@ -72,6 +83,12 @@ std::vector<DebugVertex> debugVertices;
 std::vector<uint32_t> indices;
 std::vector<uint32_t> meshLengths;
 std::vector<Bone> bones;
+std::vector<glm::mat4> boneTransforms;
+std::vector<Animation> animations;
+
+// Animation variables
+size_t currentAnimation = 0u;
+size_t currentFrame = 0u;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
@@ -149,11 +166,13 @@ int main(int argc, char* argv[])
       std::cout << "Number of triangles: " << header.numTriangles << "\n";
       std::cout << "Number of meshes: " << header.numMeshes << "\n";
       std::cout << "Number of bones: " << header.numBones << "\n";
+      std::cout << "Number of animations: " << header.numAnimations << "\n";
 
       meshVertices.resize(header.numVertices);
       indices.resize(static_cast<size_t>(header.numTriangles) * 3u);
       meshLengths.resize(header.numMeshes);
       bones.resize(header.numBones);
+      animations.resize(header.numAnimations);
     }
 
     // Read data
@@ -162,6 +181,27 @@ int main(int argc, char* argv[])
     file.read(reinterpret_cast<char*>(meshLengths.data()), sizeof(meshLengths.at(0u)) * meshLengths.size());
     file.read(reinterpret_cast<char*>(bones.data()), sizeof(bones.at(0u)) * bones.size());
 
+    for (size_t i = 0u; i < animations.size(); ++i)
+    {
+      // Read number of keyframes
+      Animation& animation = animations.at(i);
+      file.read(reinterpret_cast<char*>(&animation.numKeyframes), sizeof(animation.numKeyframes));
+
+      std::cout << "Animation #" << i << ": Number of keyframes: " << animation.numKeyframes << "\n";
+
+      animation.keyframes.resize(animation.numKeyframes);
+      for (Keyframe& keyframe : animation.keyframes)
+      {
+        // Read keyframe time
+        file.read(reinterpret_cast<char*>(&keyframe.time), sizeof(keyframe.time));
+
+        // Read animated bone matrices at the keyframe
+        keyframe.matrices.resize(bones.size());
+        file.read(reinterpret_cast<char*>(keyframe.matrices.data()),
+                  sizeof(keyframe.matrices.at(0u)) * keyframe.matrices.size());
+      }
+    }
+
     if (overlayBones)
     {
       // Create a single vertex at the model space origin. That vertex will be transformed by the non-inverted bind pose
@@ -169,6 +209,8 @@ int main(int argc, char* argv[])
       debugVertices.resize(1u);
       debugVertices.at(0u).position = glm::vec3(0.0f, 0.0f, 0.0f);
     }
+
+    boneTransforms.resize(bones.size());
 
     file.close();
   }
@@ -206,7 +248,7 @@ int main(int argc, char* argv[])
     }
 
     glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    glPointSize(3.0f);
+    glPointSize(bonePointSize);
   }
 
   // Set up geometry
@@ -298,7 +340,7 @@ int main(int argc, char* argv[])
 
   // Set up a mesh shader program
   GLuint meshShaderProgram;
-  GLint meshShaderViewUniformLocation;
+  GLint meshShaderViewUniformLocation, meshShaderBoneTransformsUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -308,13 +350,23 @@ int main(int argc, char* argv[])
       const GLchar* source = R"(#version 330 core
                                 uniform mat4 view;
                                 uniform mat4 projection;
+                                uniform mat4 boneTransforms[100];
                                 layout(location = 0) in vec3 inPosition;
                                 layout(location = 1) in vec3 inNormal;
+                                layout(location = 2) in vec3 inTangent;
+                                layout(location = 3) in vec2 inUV;
+                                layout(location = 4) in ivec4 inBoneIds;
+                                layout(location = 5) in vec4 inBoneWeights;
                                 out vec3 normal;
                                 void main()
                                 {
-                                  gl_Position = projection * view * vec4(inPosition, 1.0);
-                                  normal = inNormal;
+                                  mat4 boneTransform = mat4(0.0);
+                                  for (int i = 0; i < 4; ++i)
+                                  {
+                                    boneTransform += boneTransforms[inBoneIds[i]] * inBoneWeights[i];
+                                  }
+                                  gl_Position = projection * view * boneTransform * vec4(inPosition, 1.0);
+                                  normal = normalize((boneTransform * vec4(inNormal, 0.0)).xyz);
                                 })";
 
       glShaderSource(vertexShader, 1, &source, nullptr);
@@ -343,7 +395,7 @@ int main(int argc, char* argv[])
                                 out vec4 outColor;
                                 void main()
                                 {
-                                  float diffuse = dot(normal, normalize(vec3(0.4, 1.0, 0.85)));
+                                  float diffuse = dot(normal, normalize(vec3(0.4, 1.0, -0.85)));
                                   outColor = vec4(color.rgb * diffuse, color.a);
                                 })";
 
@@ -413,6 +465,17 @@ int main(int argc, char* argv[])
 
         const glm::mat4 projectionMatrix = glm::perspective(cameraFov, windowAspectRatio, cameraNear, cameraFar);
         glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+      }
+
+      // Retrieve bone transforms uniform location
+      {
+        meshShaderBoneTransformsUniformLocation = glGetUniformLocation(meshShaderProgram, "boneTransforms");
+        if (meshShaderBoneTransformsUniformLocation < 0)
+        {
+          std::cerr << "Failed to get bone transforms uniform location in mesh shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
       }
 
       // Set color uniform
@@ -577,6 +640,30 @@ int main(int argc, char* argv[])
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
+    // Update
+    {
+      ++currentFrame;
+
+      // Recalculate bone transforms for the new frame
+      const Animation& animation = animations.at(currentAnimation % animations.size());
+      const Keyframe& keyframe = animation.keyframes.at(currentFrame % animation.keyframes.size());
+
+      for (size_t i = 0u; i < bones.size(); ++i)
+      {
+        Bone& bone = bones.at(i);
+
+        glm::mat4 posedTransform = keyframe.matrices.at(i);
+        int index = bone.parentIndex;
+        while (index > -1)
+        {
+          posedTransform *= keyframe.matrices.at(index);
+          index = bones.at(index).parentIndex;
+        }
+
+        boneTransforms.at(i) = posedTransform * bone.inverseBindPoseMatrix;
+      }
+    }
+
     // Render
     {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -595,6 +682,10 @@ int main(int argc, char* argv[])
             glm::lookAt(eye, glm::vec3(0.0f, cameraHeight, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
           glUniformMatrix4fv(meshShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
         }
+
+        // Set bone transforms uniform
+        glUniformMatrix4fv(meshShaderBoneTransformsUniformLocation, static_cast<GLsizei>(boneTransforms.size()),
+                           GL_FALSE, glm::value_ptr(boneTransforms.at(0)));
 
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
       }
@@ -615,14 +706,21 @@ int main(int argc, char* argv[])
           glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
         }
 
-        for (const Bone &bone : bones)
+        for (size_t i = 0u; i < bones.size(); ++i)
         {
-          // Set world matrix uniform
+          const Bone& bone = bones.at(i);
+
+          // The non-invertex bind pose matrix transforms from the model space origin to the bind pose of the bone
+          glm::mat4 bindPoseMatrix = glm::inverse(bone.inverseBindPoseMatrix);
+
+          // Transform it further to the animated pose of the bone if desired
+          if (!forceBoneOverlayToBindPose)
           {
-            // Use the non-inverted bone matrix to transform the origin vertex to the bone position in bind pose
-            glm::mat4 worldMatrix = glm::inverse(bone.inverseBindPoseMatrix);
-            glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
+            bindPoseMatrix = boneTransforms.at(i) * bindPoseMatrix;
           }
+
+          // Set world matrix uniform
+          glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(bindPoseMatrix));
 
           glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(debugVertices.size()));
         }

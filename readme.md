@@ -22,14 +22,15 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 
 ## File Header
 
-| Offset | Size | Description         | Data Type        |
-| ------ | ---- | ------------------- | ---------------- |
-| 0      | 3    | Magic number        | String           |
-| 3      | 1    | Version number      | Unsigned integer |
-| 4      | 4    | Number of vertices  | Unsigned integer |
-| 8      | 4    | Number of triangles | Unsigned integer |
-| 12     | 4    | Number of meshes    | Unsigned integer |
-| 16     | 4    | Number of bones     | Unsigned integer |
+| Offset | Size | Description          | Data Type        |
+| ------ | ---- | -------------------- | ---------------- |
+| 0      | 3    | Magic number         | String           |
+| 3      | 1    | Version number       | Unsigned integer |
+| 4      | 4    | Number of vertices   | Unsigned integer |
+| 8      | 4    | Number of triangles  | Unsigned integer |
+| 12     | 4    | Number of meshes     | Unsigned integer |
+| 16     | 4    | Number of bones      | Unsigned integer |
+| 20     | 4    | Number of animations | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -92,12 +93,24 @@ Meshes consist of sequential triangles in the [triangle section](#triangle-secti
 
 ## Bone Section
 
-| Offset | Size | Description              | Data Type      |
-| ------ | ---- | ------------------------ | -------------- |
-| 0      | 64   | Inverse bind pose matrix | 4x4 Matrix     |
-| 64     | 4    | Parent bone index        | Signed integer |
-| ...    | ...  | ...                      | ...            |
+| Offset | Size | Description         | Data Type      |
+| ------ | ---- | ------------------- | -------------- |
+| 0      | 64   | Inverse bind matrix | 4x4 Matrix     |
+| 64     | 4    | Parent bone index   | Signed integer |
+| ...    | ...  | ...                 | ...            |
 
 (The fields above are repeated for each bone in the model.)
 
 The parent bone indices index into this same bone section, and will be -1 for root bones without parent.
+
+
+## Animation Section
+
+| Offset | Size | Description         | Data Type        |
+| ------ | ---- | ------------------- | ---------------- |
+| 0      | 4    | Number of keyframes | Unsigned integer |
+| 4      | 4    | Keyframe time       | Float            |
+| 8      | 64   | Posed bone matrix   | 4x4 Matrix       |
+| ...    | ...  | ...                 | ...              |
+
+(The fields above are repeated for each animation in the model. The fields Keyframe time and Posed bone matrix are repeated for each keyframe. The field Posed bone matrix is repeated for each bone in the model.)
