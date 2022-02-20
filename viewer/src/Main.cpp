@@ -52,9 +52,6 @@ constexpr float bonePointSize = 3.0f;
 
 // Window constants
 constexpr char windowTitle[] = "AEM Viewer";
-constexpr int windowWidth = 640;
-constexpr int windowHeight = 400;
-constexpr float windowAspectRatio = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
 
 // OpenGL constants
 constexpr GLsizei shaderInfoLogLength = 512;
@@ -75,6 +72,11 @@ glm::vec2 lastMousePosition;
 bool leftMouseButtonDown = false, rightMouseButtonDown = false;
 glm::vec3 cameraPosition = { 0.0f, 0.4f, -4.0f }, cameraPivot = { 0.0f, 0.4f, 0.0f };
 glm::mat4 viewMatrix;
+glm::mat4 projectionMatrix;
+
+// Window variables
+int windowWidth = 640;
+int windowHeight = 400;
 
 // Geometry variables
 std::vector<MeshVertex> meshVertices;
@@ -159,6 +161,23 @@ void scrollCallback(GLFWwindow* window, double x, double y)
   const float length = glm::length(cameraVector);
   float newLength = length - static_cast<float>(y) * length / 10.0f;
   cameraPosition = cameraPivot - glm::normalize(cameraVector) * newLength;
+}
+
+void windowResizeCallback(GLFWwindow* window, int width, int height)
+{
+  windowWidth = width;
+  windowHeight = height;
+
+  // Recalculate projection matrix
+  {
+    const float aspectRatio = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
+    projectionMatrix = glm::perspective(cameraFov, aspectRatio, cameraNear, cameraFar);
+  }
+}
+
+void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+  glViewport(0, 0, width, height);
 }
 
 } // namespace
@@ -278,6 +297,8 @@ int main(int argc, char* argv[])
     glfwSetCursorPosCallback(window, cursorPositionCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetScrollCallback(window, scrollCallback);
+    glfwSetWindowSizeCallback(window, windowResizeCallback);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
     glfwMakeContextCurrent(window);
     if (gladLoadGL(glfwGetProcAddress) == 0)
@@ -288,6 +309,12 @@ int main(int argc, char* argv[])
 
     glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
     glPointSize(bonePointSize);
+
+    // Initialize projection matrix
+    {
+      const float aspectRatio = static_cast<float>(windowWidth) / static_cast<float>(windowHeight);
+      projectionMatrix = glm::perspective(cameraFov, aspectRatio, cameraNear, cameraFar);
+    }
   }
 
   // Set up geometry
@@ -379,7 +406,8 @@ int main(int argc, char* argv[])
 
   // Set up a mesh shader program
   GLuint meshShaderProgram;
-  GLint meshShaderWorldUniformLocation, meshShaderViewUniformLocation, meshShaderBoneTransformsUniformLocation;
+  GLint meshShaderWorldUniformLocation, meshShaderViewUniformLocation, meshShaderProjectionUniformLocation,
+    meshShaderBoneTransformsUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -504,18 +532,15 @@ int main(int argc, char* argv[])
         }
       }
 
-      // Set projection matrix uniform
+      // Retrieve projection matrix uniform location
       {
-        const GLint location = glGetUniformLocation(meshShaderProgram, "projection");
-        if (location < 0)
+        meshShaderProjectionUniformLocation = glGetUniformLocation(meshShaderProgram, "projection");
+        if (meshShaderProjectionUniformLocation < 0)
         {
           std::cerr << "Failed to get projection matrix uniform location in mesh shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
-
-        const glm::mat4 projectionMatrix = glm::perspective(cameraFov, windowAspectRatio, cameraNear, cameraFar);
-        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
       }
 
       // Retrieve bone transforms uniform location
@@ -547,7 +572,7 @@ int main(int argc, char* argv[])
 
   // Set up a debug shader program
   GLuint debugShaderProgram;
-  GLint debugShaderWorldUniformLocation, debugShaderViewUniformLocation;
+  GLint debugShaderWorldUniformLocation, debugShaderViewUniformLocation, debugShaderProjectionUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -657,18 +682,15 @@ int main(int argc, char* argv[])
         }
       }
 
-      // Set projection matrix uniform
+      // Retrieve projection matrix uniform location
       {
-        const GLint location = glGetUniformLocation(debugShaderProgram, "projection");
-        if (location < 0)
+        debugShaderProjectionUniformLocation = glGetUniformLocation(debugShaderProgram, "projection");
+        if (debugShaderProjectionUniformLocation < 0)
         {
           std::cerr << "Failed to get projection matrix uniform location in debug shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
-
-        const glm::mat4 projectionMatrix = glm::perspective(cameraFov, windowAspectRatio, cameraNear, cameraFar);
-        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
       }
 
       // Set color uniform
@@ -738,6 +760,9 @@ int main(int argc, char* argv[])
         // Set view matrix uniform
         glUniformMatrix4fv(meshShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
+        // Set projection matrix uniform
+        glUniformMatrix4fv(meshShaderProjectionUniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
         // Set bone transforms uniform
         glUniformMatrix4fv(meshShaderBoneTransformsUniformLocation, static_cast<GLsizei>(boneTransforms.size()),
                            GL_FALSE, glm::value_ptr(boneTransforms.at(0)));
@@ -755,6 +780,9 @@ int main(int argc, char* argv[])
 
         // Set view matrix uniform
         glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+
+        // Set projection matrix uniform
+        glUniformMatrix4fv(debugShaderProjectionUniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 
         for (size_t i = 0u; i < bones.size(); ++i)
         {
