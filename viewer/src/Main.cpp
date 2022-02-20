@@ -65,17 +65,16 @@ constexpr glm::vec4 geometryColor = { 0.9f, 0.4f, 0.1f, 1.0f };
 constexpr glm::vec4 boneOverlayColor = { 0.9f, 0.95f, 0.99f, 1.0f };
 
 // Camera constants
-constexpr float cameraHeight = 0.4f;
 constexpr float cameraMinDistance = 0.5f;
 constexpr float cameraNear = 0.1f;
 constexpr float cameraFar = 100.0f;
-constexpr float cameraFov = 45.0f; // Vertical field of view in degrees
+constexpr float cameraFov = glm::radians(45.0f); // Vertical field of view in radians
 
 // Camera variables
-bool mouseDown = false;
-float cameraAngle = glm::radians(25.0f);
-float cameraDistance = 5.0f;
-double lastMouseX;
+glm::vec2 lastMousePosition;
+bool leftMouseButtonDown = false, rightMouseButtonDown = false;
+glm::vec3 cameraPosition = { 0.0f, 0.4f, -4.0f }, cameraPivot = { 0.0f, 0.4f, 0.0f };
+glm::mat4 viewMatrix;
 
 // Geometry variables
 std::vector<MeshVertex> meshVertices;
@@ -92,13 +91,52 @@ size_t currentFrame = 0u;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
+  const glm::vec2 delta = glm::vec2(static_cast<float>(x), static_cast<float>(y)) - lastMousePosition;
+
+  const glm::vec3 forward = glm::normalize(cameraPivot - cameraPosition);
+  glm::vec3 up = { 0.0f, 1.0f, 0.0f };
+  glm::vec3 right = glm::normalize(glm::cross(up, forward));
+  up = glm::normalize(glm::cross(forward, right));
+
   // Tumble the camera
-  if (mouseDown)
+  if (leftMouseButtonDown && !rightMouseButtonDown)
   {
-    const double deltaX = x - lastMouseX;
-    cameraAngle -= (static_cast<float>(deltaX * glm::pi<double>()) / windowWidth);
+    // Horizontal
+    {
+      const float angle = (delta.x * glm::pi<float>()) / static_cast<float>(windowWidth);
+      const glm::mat3 tumble = glm::rotate(glm::mat4(1.0f), -angle, up);
+      const glm::vec3 cameraVector = cameraPosition - cameraPivot;
+      cameraPosition = cameraPivot + tumble * cameraVector;
+    }
+
+    // Horizontal
+    {
+      const float angle = (delta.y * glm::pi<float>()) / static_cast<float>(windowHeight);
+      const glm::mat3 tumble = glm::rotate(glm::mat4(1.0f), angle, right);
+      const glm::vec3 cameraVector = cameraPosition - cameraPivot;
+      cameraPosition = cameraPivot + tumble * cameraVector;
+    }
   }
-  lastMouseX = x;
+  // Pan the camera
+  else if (rightMouseButtonDown && !leftMouseButtonDown)
+  {
+    // Horizontal
+    {
+      const glm::vec3 pan = (right * delta.x) / static_cast<float>(windowWidth);
+      cameraPosition += pan;
+      cameraPivot += pan;
+    }
+
+    // Vertical
+    {
+      const glm::vec3 pan = (up * delta.y) / static_cast<float>(windowHeight);
+      cameraPosition += pan;
+      cameraPivot += pan;
+    }
+  }
+
+  lastMousePosition.x = static_cast<float>(x);
+  lastMousePosition.y = static_cast<float>(y);
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -106,18 +144,21 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
   // Store mouse button state
   if (button == GLFW_MOUSE_BUTTON_LEFT)
   {
-    mouseDown = (action == GLFW_PRESS);
+    leftMouseButtonDown = (action == GLFW_PRESS);
+  }
+  else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+  {
+    rightMouseButtonDown = (action == GLFW_PRESS);
   }
 }
 
 void scrollCallback(GLFWwindow* window, double x, double y)
 {
   // Dolly the camera
-  cameraDistance -= static_cast<float>(y);
-  if (cameraDistance < cameraMinDistance)
-  {
-    cameraDistance = cameraMinDistance;
-  }
+  const glm::vec3 cameraVector = cameraPivot - cameraPosition;
+  const float length = glm::length(cameraVector);
+  float newLength = length - static_cast<float>(y) * length / 10.0f;
+  cameraPosition = cameraPivot - glm::normalize(cameraVector) * newLength;
 }
 
 } // namespace
@@ -204,10 +245,8 @@ int main(int argc, char* argv[])
 
     if (overlayBones)
     {
-      // Create a single vertex at the model space origin. That vertex will be transformed by the non-inverted bind pose
-      // matrix to visualize each bone in bind pose
       debugVertices.resize(1u);
-      debugVertices.at(0u).position = glm::vec3(0.0f, 0.0f, 0.0f);
+      debugVertices.at(0u).position = glm::vec3(0.0f);
     }
 
     boneTransforms.resize(bones.size());
@@ -340,7 +379,7 @@ int main(int argc, char* argv[])
 
   // Set up a mesh shader program
   GLuint meshShaderProgram;
-  GLint meshShaderViewUniformLocation, meshShaderBoneTransformsUniformLocation;
+  GLint meshShaderWorldUniformLocation, meshShaderViewUniformLocation, meshShaderBoneTransformsUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -348,6 +387,7 @@ int main(int argc, char* argv[])
       vertexShader = glCreateShader(GL_VERTEX_SHADER);
 
       const GLchar* source = R"(#version 330 core
+                                uniform mat4 world;
                                 uniform mat4 view;
                                 uniform mat4 projection;
                                 uniform mat4 boneTransforms[100];
@@ -365,7 +405,7 @@ int main(int argc, char* argv[])
                                   {
                                     boneTransform += boneTransforms[inBoneIds[i]] * inBoneWeights[i];
                                   }
-                                  gl_Position = projection * view * boneTransform * vec4(inPosition, 1.0);
+                                  gl_Position = projection * view * world * boneTransform * vec4(inPosition, 1.0);
                                   normal = normalize((boneTransform * vec4(inNormal, 0.0)).xyz);
                                 })";
 
@@ -441,6 +481,17 @@ int main(int argc, char* argv[])
     // Use shader program, retrieve uniform locations and set constant uniform values
     {
       glUseProgram(meshShaderProgram);
+
+      // Retrieve world matrix uniform location
+      {
+        meshShaderWorldUniformLocation = glGetUniformLocation(meshShaderProgram, "world");
+        if (meshShaderWorldUniformLocation < 0)
+        {
+          std::cerr << "Failed to get world matrix uniform location in mesh shader program";
+          glfwTerminate();
+          return EXIT_FAILURE;
+        }
+      }
 
       // Retrieve view matrix uniform location
       {
@@ -662,6 +713,9 @@ int main(int argc, char* argv[])
 
         boneTransforms.at(i) = posedTransform * bone.inverseBindPoseMatrix;
       }
+
+      // Update camera view matrix
+      viewMatrix = glm::lookAt(cameraPosition, cameraPivot, { 0.0f, 1.0f, 0.0f });
     }
 
     // Render
@@ -675,13 +729,14 @@ int main(int argc, char* argv[])
         glBindVertexArray(meshVertexArray);
         glUseProgram(meshShaderProgram);
 
-        // Set view matrix uniform
+        // Set world matrix uniform
         {
-          const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), cameraHeight, glm::cos(cameraAngle)) * cameraDistance;
-          const glm::mat4 viewMatrix =
-            glm::lookAt(eye, glm::vec3(0.0f, cameraHeight, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-          glUniformMatrix4fv(meshShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+          const glm::mat4 worldMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), { 1.0f, 0.0f, 0.0f });
+          glUniformMatrix4fv(meshShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
         }
+
+        // Set view matrix uniform
+        glUniformMatrix4fv(meshShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
         // Set bone transforms uniform
         glUniformMatrix4fv(meshShaderBoneTransformsUniformLocation, static_cast<GLsizei>(boneTransforms.size()),
@@ -699,12 +754,7 @@ int main(int argc, char* argv[])
         glUseProgram(debugShaderProgram);
 
         // Set view matrix uniform
-        {
-          const glm::vec3 eye = glm::vec3(glm::sin(cameraAngle), cameraHeight, glm::cos(cameraAngle)) * cameraDistance;
-          const glm::mat4 viewMatrix =
-            glm::lookAt(eye, glm::vec3(0.0f, cameraHeight, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-          glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
-        }
+        glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
         for (size_t i = 0u; i < bones.size(); ++i)
         {
@@ -720,7 +770,11 @@ int main(int argc, char* argv[])
           }
 
           // Set world matrix uniform
-          glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(bindPoseMatrix));
+          {
+            const glm::mat4 worldMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), { 1.0f, 0.0f, 0.0f });
+            glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE,
+                               glm::value_ptr(worldMatrix * bindPoseMatrix));
+          }
 
           glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(debugVertices.size()));
         }

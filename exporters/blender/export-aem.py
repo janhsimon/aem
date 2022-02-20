@@ -85,6 +85,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
             # Find the corresponding bone indices for the bone weights
             bone_index_list = []
             for group, weight in bone_weight_list:
+              if group < 0: continue
               for j, (bone_obj, bone) in enumerate(bones):
                 if obj.vertex_groups[group].name == bone.name:
                   bone_index_list.append(j)
@@ -95,13 +96,14 @@ class Exporter(bpy.types.Operator, ExportHelper):
             for j, (group, weight) in enumerate(bone_weight_list):
               bone_weights[j] = weight
             for weight in bone_weights:
-              weight /= bone_weights.length
+              if bone_weights.length > 0.0: weight /= bone_weights.length
 
             # Isolate bone indices
-            bone_index_0 = bone_index_list[0]
-            bone_index_1 = bone_index_list[1]
-            bone_index_2 = bone_index_list[2]
-            bone_index_3 = bone_index_list[3]
+            bone_index_0 = bone_index_1 = bone_index_2 = bone_index_3 = 0
+            if len(bone_index_list) > 0: bone_index_0 = bone_index_list[0]
+            if len(bone_index_list) > 1: bone_index_1 = bone_index_list[1]
+            if len(bone_index_list) > 2: bone_index_2 = bone_index_list[2]
+            if len(bone_index_list) > 3: bone_index_3 = bone_index_list[3]
 
             key = (position.freeze(), normal.copy().freeze(), (bone_index_0, bone_index_1, bone_index_2, bone_index_3), bone_weights.freeze())
             if key in vertices:
