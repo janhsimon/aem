@@ -14,6 +14,58 @@ import struct
 
 from bpy_extras.io_utils import ExportHelper
 
+def generate_keyframe_list(armatures):
+  keyframes = []
+
+  for armature in armatures:
+    anim = armature.animation_data
+    if anim is None or anim.action is None: return
+    for fcurve in anim.action.fcurves:
+      for keyframe in fcurve.keyframe_points:
+        time = keyframe.co.x
+        if time not in keyframes:
+          keyframes.append(time)
+
+  keyframes.sort() # Sort chronologically
+  return keyframes
+
+def find_pose_bone(armature, bone):
+  for pose_bone in armature.pose.bones:
+    if pose_bone.name == bone.name:
+      return pose_bone
+  return None
+
+def find_bone_parent_index(bone, bones):
+  if not bone.parent:
+    return -1
+
+  for parent_index, (parent_armature, parent_bone, parent_pose_bone, unused) in enumerate(bones):
+    if parent_bone.name == bone.parent.name: #TODO: This could fail for multiple armatures
+      return parent_index
+
+  return -1
+
+def generate_bone_list(armatures):
+  bones = []
+
+  # Build list without parent index
+  for armature in armatures:
+    for bone in armature.data.bones:
+      pose_bone = find_pose_bone(armature, bone)
+      bones.append((armature, bone, pose_bone, -1))
+
+  # Fill parent index in
+  for i, (armature, bone, pose_bone, unused) in enumerate(bones):
+    parent_index = find_bone_parent_index(bone, bones)
+    bones[i] = armature, bone, pose_bone, parent_index
+
+  return bones
+
+def write_matrix(file, matrix):
+  for x in range(4):
+    for y in range(4):
+      file.write(struct.pack("<f", matrix[y][x])) # Column-major
+
 class Exporter(bpy.types.Operator, ExportHelper):
   """Export scene as AEM file"""
   bl_idname  = "export_aem.exporter"
@@ -30,40 +82,21 @@ class Exporter(bpy.types.Operator, ExportHelper):
 
   def execute(self, context):
     with open(self.filepath, "wb") as file:
-      # Grab a list of all meshes in the scene
-      meshes = [(obj, obj.original.to_mesh()) for obj in bpy.context.scene.objects if obj.type == "MESH"]
-
-      # Construct a list of bind pose and posed bones and store the armature object
-      bones = []
-      pose_bones = []
-      armature = None
-      for obj, mesh in meshes:
-        for modifier in obj.modifiers:
-          if modifier.type == "ARMATURE":
-            armature = obj
-            for bone in armature.parent.data.bones:
-              bones.append((armature, bone))
-            for pose_bone in armature.parent.pose.bones:
-              pose_bones.append(pose_bone)
-        if armature is not None:
-          break
-
-      # Construct a list of animations
-      animations = []
-      for track in armature.parent.animation_data.nla_tracks:
-        for strip in track.strips:
-          animations.append(strip.action.groups)
+      # Generate lists of keyframes and bones
+      armatures = [armature for armature in bpy.context.scene.objects if armature.type ==  "ARMATURE"]
+      keyframes = generate_keyframe_list(armatures)
+      bones = generate_bone_list(armatures)
 
       # Create custom vertex and index data
-      # This takes vertex/face normals into account for smooth/fat shading respectively
+      # This takes vertex/face normals into account for smooth/flat shading respectively
       counter = 0
       vertices = {}
       indices = []
+      meshes = [(obj, obj.original.to_mesh()) for obj in bpy.context.scene.objects if obj.type == "MESH"]
       for obj, mesh in meshes:
         mesh.calc_loop_triangles() # Each mesh needs to be triangulated first
         for triangle in mesh.loop_triangles:
-          for i in range(3):
-            index = triangle.vertices[i]
+          for index in triangle.vertices:
             vertex = mesh.vertices[index]
 
             # Convert vertex position from mesh to model space
@@ -86,8 +119,8 @@ class Exporter(bpy.types.Operator, ExportHelper):
             bone_index_list = []
             for group, weight in bone_weight_list:
               if group < 0: continue
-              for j, (bone_obj, bone) in enumerate(bones):
-                if obj.vertex_groups[group].name == bone.name:
+              for j, (armature, bone, pose_bone, parent_index) in enumerate(bones):
+                if obj.vertex_groups[group].name == bone.name: #TODO: This could fail for multiple armatures
                   bone_index_list.append(j)
                   break
 
@@ -122,7 +155,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
       file.write(struct.pack("<I", len(indices) // 3))
       file.write(struct.pack("<I", len(meshes)))
       file.write(struct.pack("<I", len(bones)))
-      file.write(struct.pack("<I", len(animations)))
+      file.write(struct.pack("<I", len(keyframes)))
 
       # Vertex section
       for position, normal, (bone_index_0, bone_index_1, bone_index_2, bone_index_3), bone_weight in vertices:
@@ -166,56 +199,26 @@ class Exporter(bpy.types.Operator, ExportHelper):
         file.write(struct.pack("<I", len(mesh.loop_triangles)))
 
       # Bone section
-      for obj, bone in bones:
+      for armature, bone, pose_bone, parent_index in bones:
         # Inverse bind pose matrix
-        # Transform from bone in bind pose to armature space, then to mesh and then to model space
-        inverse_bind_pose_matrix = obj.matrix_world @ armature.matrix_local.inverted() @ bone.matrix_local
-        inverse_bind_pose_matrix.invert()
-        for x in range(4):
-          for y in range(4):
-            file.write(struct.pack("<f", inverse_bind_pose_matrix[y][x])) # Column-major
+        # Transform from bone to armature space, then from armature to model space, then inverse
+        bind_pose_matrix = armature.matrix_world @ bone.matrix_local
+        write_matrix(file, bind_pose_matrix.inverted())
 
-        # Parent bone index
-        if bone.parent:
-          parent_found = False
-          for parent_index, (parent_obj, parent_bone) in enumerate(bones):
-            if parent_bone.name == bone.parent.name:
-              parent_found = True
-              file.write(struct.pack("<i", parent_index))
-              break
-          if parent_found == False:
-            file.write(struct.pack("<i", -1))
-        else:
-          file.write(struct.pack("<i", -1))
+        # Parent index
+        file.write(struct.pack("<i", parent_index))
 
-      # Animation section
-      for animation in animations:
-        # Create a set of keyframe times and turn it into a sorted list
-        keyframes = set()
-        for group in animation:
-          for channel in group.channels:
-              for keyframe in channel.keyframe_points:
-                keyframes.add(keyframe.co.x)
-        file.write(struct.pack("<I", len(keyframes)))
-        keyframes = sorted(keyframes)
-
-        old_frame = bpy.context.scene.frame_current
-
-        for keyframe in keyframes:
-          file.write(struct.pack("<f", keyframe)) # Keyframe time
-          bpy.context.scene.frame_set(keyframe)
-
-          # Posed bones
-          for pose_bone in pose_bones:
-            posed_transform = obj.matrix_world @ armature.matrix_local.inverted() @ pose_bone.matrix
-            if pose_bone.parent:
-              parent_posed_transform = obj.matrix_world @ armature.matrix_local.inverted() @ pose_bone.parent.matrix
-              posed_transform = posed_transform @ parent_posed_transform.inverted()
-            for x in range(4):
-              for y in range(4):
-                file.write(struct.pack("<f", posed_transform[y][x])) # Column-major
-
-        bpy.context.scene.frame_set(old_frame)
+      # Keyframe section
+      old_frame = bpy.context.scene.frame_current
+      for keyframe in keyframes:
+        file.write(struct.pack("<f", keyframe)) # Keyframe time
+        bpy.context.scene.frame_set(keyframe)
+        for armature, bone, pose_bone, parent_index in bones:
+          transform = pose_bone.matrix
+          if pose_bone.parent:
+            transform = transform @ pose_bone.parent.matrix.inverted()
+          write_matrix(file, transform)
+      bpy.context.scene.frame_set(old_frame)
 
     self.report({"INFO"}, "AEM export successful.")
 

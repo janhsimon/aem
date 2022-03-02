@@ -30,7 +30,7 @@ This repository contains a Blender add-on that exports your models to *AEM* in a
 | 8      | 4    | Number of triangles  | Unsigned integer |
 | 12     | 4    | Number of meshes     | Unsigned integer |
 | 16     | 4    | Number of bones      | Unsigned integer |
-| 20     | 4    | Number of animations | Unsigned integer |
+| 20     | 4    | Number of keyframes  | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -104,13 +104,12 @@ Meshes consist of sequential triangles in the [triangle section](#triangle-secti
 The parent bone indices index into this same bone section, and will be -1 for root bones without parent.
 
 
-## Animation Section
+## Keyframe Section
 
 | Offset | Size | Description         | Data Type        |
 | ------ | ---- | ------------------- | ---------------- |
-| 0      | 4    | Number of keyframes | Unsigned integer |
-| 4      | 4    | Keyframe time       | Float            |
-| 8      | 64   | Posed bone matrix   | 4x4 Matrix       |
+| 0      | 4    | Keyframe time       | Float            |
+| 4      | 64   | Posed bone matrix   | 4x4 Matrix       |
 | ...    | ...  | ...                 | ...              |
 
-(The fields above are repeated for each animation in the model. The fields Keyframe time and Posed bone matrix are repeated for each keyframe. The field Posed bone matrix is repeated for each bone in the model.)
+(The fields above are repeated for each keyframe in the model. Additionally, the field Posed bone matrix is repeated for each bone in the model.)

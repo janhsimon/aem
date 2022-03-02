@@ -11,7 +11,7 @@ namespace
 
 struct Header
 {
-  uint32_t numVertices, numTriangles, numMeshes, numBones, numAnimations;
+  uint32_t numVertices, numTriangles, numMeshes, numBones, numKeyframes;
 };
 
 struct MeshVertex
@@ -37,12 +37,6 @@ struct Keyframe
 {
   float time;
   std::vector<glm::mat4> matrices;
-};
-
-struct Animation
-{
-  uint32_t numKeyframes;
-  std::vector<Keyframe> keyframes;
 };
 
 // Debug constants
@@ -85,10 +79,9 @@ std::vector<uint32_t> indices;
 std::vector<uint32_t> meshLengths;
 std::vector<Bone> bones;
 std::vector<glm::mat4> boneTransforms;
-std::vector<Animation> animations;
+std::vector<Keyframe> keyframes;
 
 // Animation variables
-size_t currentAnimation = 0u;
 size_t currentFrame = 0u;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
@@ -226,13 +219,13 @@ int main(int argc, char* argv[])
       std::cout << "Number of triangles: " << header.numTriangles << "\n";
       std::cout << "Number of meshes: " << header.numMeshes << "\n";
       std::cout << "Number of bones: " << header.numBones << "\n";
-      std::cout << "Number of animations: " << header.numAnimations << "\n";
+      std::cout << "Number of keyframes: " << header.numKeyframes << "\n";
 
       meshVertices.resize(header.numVertices);
       indices.resize(static_cast<size_t>(header.numTriangles) * 3u);
       meshLengths.resize(header.numMeshes);
       bones.resize(header.numBones);
-      animations.resize(header.numAnimations);
+      keyframes.resize(header.numKeyframes);
     }
 
     // Read data
@@ -241,25 +234,15 @@ int main(int argc, char* argv[])
     file.read(reinterpret_cast<char*>(meshLengths.data()), sizeof(meshLengths.at(0u)) * meshLengths.size());
     file.read(reinterpret_cast<char*>(bones.data()), sizeof(bones.at(0u)) * bones.size());
 
-    for (size_t i = 0u; i < animations.size(); ++i)
+    for (Keyframe& keyframe : keyframes)
     {
-      // Read number of keyframes
-      Animation& animation = animations.at(i);
-      file.read(reinterpret_cast<char*>(&animation.numKeyframes), sizeof(animation.numKeyframes));
+      // Read keyframe time
+      file.read(reinterpret_cast<char*>(&keyframe.time), sizeof(keyframe.time));
 
-      std::cout << "Animation #" << i << ": Number of keyframes: " << animation.numKeyframes << "\n";
-
-      animation.keyframes.resize(animation.numKeyframes);
-      for (Keyframe& keyframe : animation.keyframes)
-      {
-        // Read keyframe time
-        file.read(reinterpret_cast<char*>(&keyframe.time), sizeof(keyframe.time));
-
-        // Read animated bone matrices at the keyframe
-        keyframe.matrices.resize(bones.size());
-        file.read(reinterpret_cast<char*>(keyframe.matrices.data()),
-                  sizeof(keyframe.matrices.at(0u)) * keyframe.matrices.size());
-      }
+      // Read animated bone matrices at the keyframe
+      keyframe.matrices.resize(bones.size());
+      file.read(reinterpret_cast<char*>(keyframe.matrices.data()),
+                sizeof(keyframe.matrices.at(0u)) * keyframe.matrices.size());
     }
 
     if (overlayBones)
@@ -718,8 +701,7 @@ int main(int argc, char* argv[])
       ++currentFrame;
 
       // Recalculate bone transforms for the new frame
-      const Animation& animation = animations.at(currentAnimation % animations.size());
-      const Keyframe& keyframe = animation.keyframes.at(currentFrame % animation.keyframes.size());
+      const Keyframe& keyframe = keyframes.at(currentFrame % keyframes.size());
 
       for (size_t i = 0u; i < bones.size(); ++i)
       {
