@@ -39,10 +39,15 @@ struct Keyframe
   std::vector<glm::mat4> matrices;
 };
 
-// Debug constants
+// Grid overlay constants
+constexpr bool overlayGrid = true;                                   // Show grid overlay
+constexpr size_t numGridOverlayCells = 10u;                          // The number of cells in a grid quadrant
+constexpr size_t numGridOverlayLines = numGridOverlayCells * 2u + 1; // The number of lines in a grid dimension
+
+// Bone overlay constants
 constexpr bool overlayBones = true;                // Show bone overlay
 constexpr bool forceBoneOverlayToBindPose = false; // Show bind instead of animated pose overlay
-constexpr float bonePointSize = 3.0f;
+constexpr float boneOverlayPointSize = 3.0f;
 
 // Window constants
 constexpr char windowTitle[] = "AEM Viewer";
@@ -51,8 +56,10 @@ constexpr char windowTitle[] = "AEM Viewer";
 constexpr GLsizei shaderInfoLogLength = 512;
 
 // Color constants
-constexpr glm::vec4 clearColor = { 0.1f, 0.4f, 0.9f, 1.0f };
+constexpr glm::vec4 backgroundColor = { 0.25f, 0.25f, 0.25f, 1.0f };
 constexpr glm::vec4 geometryColor = { 0.9f, 0.4f, 0.1f, 1.0f };
+constexpr glm::vec4 gridOverlayMajorColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+constexpr glm::vec4 gridOverlayMinorColor = { 0.35f, 0.35f, 0.35f, 1.0f };
 constexpr glm::vec4 boneOverlayColor = { 0.9f, 0.95f, 0.99f, 1.0f };
 
 // Camera constants
@@ -74,7 +81,7 @@ int windowHeight = 400;
 
 // Geometry variables
 std::vector<MeshVertex> meshVertices;
-std::vector<DebugVertex> debugVertices;
+std::vector<DebugVertex> gridOverlayVertices, boneOverlayVertices;
 std::vector<uint32_t> indices;
 std::vector<uint32_t> meshLengths;
 std::vector<Bone> bones;
@@ -245,15 +252,51 @@ int main(int argc, char* argv[])
                 sizeof(keyframe.matrices.at(0u)) * keyframe.matrices.size());
     }
 
-    if (overlayBones)
-    {
-      debugVertices.resize(1u);
-      debugVertices.at(0u).position = glm::vec3(0.0f);
-    }
-
     boneTransforms.resize(bones.size());
 
     file.close();
+  }
+
+  // Generate debug geometry
+  {
+    if (overlayGrid)
+    {
+      gridOverlayVertices.resize(numGridOverlayLines * 2u * 2u);
+
+      // Minor lines
+      constexpr float length = static_cast<float>(numGridOverlayCells);
+      size_t index = 0u;
+      {
+        for (size_t i = 0; i < numGridOverlayLines; ++i)
+        {
+          if (i == numGridOverlayCells)
+          {
+            continue;
+          }
+
+          const float offset = static_cast<float>(i) - static_cast<float>(numGridOverlayCells);
+          gridOverlayVertices.at(index++).position = glm::vec3(offset, 0.0f, -length);
+          gridOverlayVertices.at(index++).position = glm::vec3(offset, 0.0f, length);
+          gridOverlayVertices.at(index++).position = glm::vec3(-length, 0.0f, offset);
+          gridOverlayVertices.at(index++).position = glm::vec3(length, 0.0f, offset);
+        }
+      }
+
+      // Major lines
+      {
+
+        gridOverlayVertices.at(index++).position = glm::vec3(-length, 0.0f, 0.0f);
+        gridOverlayVertices.at(index++).position = glm::vec3(length, 0.0f, 0.0f);
+        gridOverlayVertices.at(index++).position = glm::vec3(0.0f, 0.0f, -length);
+        gridOverlayVertices.at(index++).position = glm::vec3(0.0f, 0.0f, length);
+      }
+    }
+
+    if (overlayBones)
+    {
+      boneOverlayVertices.resize(1u);
+      boneOverlayVertices.at(0u).position = glm::vec3(0.0f);
+    }
   }
 
   // Create window and load OpenGL
@@ -290,8 +333,13 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    glPointSize(bonePointSize);
+    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glPointSize(boneOverlayPointSize);
 
     // Initialize projection matrix
     {
@@ -301,7 +349,7 @@ int main(int argc, char* argv[])
   }
 
   // Set up geometry
-  GLuint meshVertexArray, debugVertexArray;
+  GLuint meshVertexArray, gridOverlayVertexArray, boneOverlayVertexArray;
   {
     // Generate mesh vertex array
     {
@@ -309,12 +357,13 @@ int main(int argc, char* argv[])
       glBindVertexArray(meshVertexArray);
 
       // Generate and fill a vertex buffer
+      constexpr GLsizei vertexSize = sizeof(meshVertices.at(0u));
       {
         GLuint vertexBuffer;
         glGenBuffers(1, &vertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(meshVertices.at(0u)) * meshVertices.size()),
-                     meshVertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexSize * meshVertices.size()), meshVertices.data(),
+                     GL_STATIC_DRAW);
       }
 
       // Generate and fill an index buffer
@@ -328,7 +377,6 @@ int main(int argc, char* argv[])
 
       // Apply the vertex definition
       {
-        constexpr GLsizei vertexSize = sizeof(meshVertices.at(0u));
 
         // Position
         glEnableVertexAttribArray(0);
@@ -361,24 +409,47 @@ int main(int argc, char* argv[])
       }
     }
 
-    // Generate debug vertex array
+    // Generate grid overlay vertex array
     {
-      glGenVertexArrays(1, &debugVertexArray);
-      glBindVertexArray(debugVertexArray);
+      glGenVertexArrays(1, &gridOverlayVertexArray);
+      glBindVertexArray(gridOverlayVertexArray);
 
       // Generate and fill a vertex buffer
+      constexpr GLsizei vertexSize = sizeof(gridOverlayVertices.at(0u));
       {
         GLuint vertexBuffer;
         glGenBuffers(1, &vertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(sizeof(debugVertices.at(0u)) * debugVertices.size()),
-                     debugVertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexSize * gridOverlayVertices.size()),
+                     gridOverlayVertices.data(), GL_STATIC_DRAW);
       }
 
       // Apply the vertex definition
       {
-        constexpr GLsizei vertexSize = sizeof(debugVertices.at(0u));
+        // Position
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize,
+                              reinterpret_cast<void*>(offsetof(DebugVertex, position)));
+      }
+    }
 
+    // Generate bone overlay vertex array
+    {
+      glGenVertexArrays(1, &boneOverlayVertexArray);
+      glBindVertexArray(boneOverlayVertexArray);
+
+      // Generate and fill a vertex buffer
+      constexpr GLsizei vertexSize = sizeof(boneOverlayVertices.at(0u));
+      {
+        GLuint vertexBuffer;
+        glGenBuffers(1, &vertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertexSize * boneOverlayVertices.size()),
+                     boneOverlayVertices.data(), GL_STATIC_DRAW);
+      }
+
+      // Apply the vertex definition
+      {
         // Position
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize,
@@ -555,7 +626,8 @@ int main(int argc, char* argv[])
 
   // Set up a debug shader program
   GLuint debugShaderProgram;
-  GLint debugShaderWorldUniformLocation, debugShaderViewUniformLocation, debugShaderProjectionUniformLocation;
+  GLint debugShaderWorldUniformLocation, debugShaderViewUniformLocation, debugShaderProjectionUniformLocation,
+    debugShaderColorUniformLocation;
   {
     // Compile the vertex shader
     GLuint vertexShader;
@@ -676,19 +748,15 @@ int main(int argc, char* argv[])
         }
       }
 
-      // Set color uniform
+      // Retrieve color uniform location
       {
-        const GLint location = glGetUniformLocation(debugShaderProgram, "color");
-        if (location < 0)
+        debugShaderColorUniformLocation = glGetUniformLocation(debugShaderProgram, "color");
+        if (debugShaderColorUniformLocation < 0)
         {
           std::cerr << "Failed to get color uniform location in debug shader program";
           glfwTerminate();
           return EXIT_FAILURE;
         }
-
-        const glm::vec4 color =
-          glm::vec4(boneOverlayColor.r, boneOverlayColor.g, boneOverlayColor.b, boneOverlayColor.a);
-        glUniform4fv(location, 1, glm::value_ptr(color));
       }
     }
   }
@@ -728,8 +796,6 @@ int main(int argc, char* argv[])
 
       // Render mesh
       {
-        glEnable(GL_DEPTH_TEST);
-
         glBindVertexArray(meshVertexArray);
         glUseProgram(meshShaderProgram);
 
@@ -752,19 +818,60 @@ int main(int argc, char* argv[])
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
       }
 
-      // Render bone overlay
-      if (overlayBones)
+      // Render grid overlay
+      if (overlayGrid)
       {
-        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
 
-        glBindVertexArray(debugVertexArray);
+        glBindVertexArray(gridOverlayVertexArray);
         glUseProgram(debugShaderProgram);
+
+        // Set world matrix uniform
+        {
+          const glm::mat4 worldMatrix = glm::mat4(1.0f);
+          glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
+        }
 
         // Set view matrix uniform
         glUniformMatrix4fv(debugShaderViewUniformLocation, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
         // Set projection matrix uniform
         glUniformMatrix4fv(debugShaderProjectionUniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+        // Set color uniform
+        {
+          const glm::vec4 color = glm::vec4(gridOverlayMinorColor.r, gridOverlayMinorColor.g, gridOverlayMinorColor.b,
+                                            gridOverlayMinorColor.a);
+          glUniform4fv(debugShaderColorUniformLocation, 1, glm::value_ptr(color));
+        }
+
+        glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(gridOverlayVertices.size() - 4u));
+
+        // Set color uniform
+        {
+          const glm::vec4 color = glm::vec4(gridOverlayMajorColor.r, gridOverlayMajorColor.g, gridOverlayMajorColor.b,
+                                            gridOverlayMajorColor.a);
+          glUniform4fv(debugShaderColorUniformLocation, 1, glm::value_ptr(color));
+        }
+
+        glDrawArrays(GL_LINES, static_cast<GLsizei>(gridOverlayVertices.size() - 4u), 4u);
+
+        glDisable(GL_BLEND);
+      }
+
+      // Render bone overlay
+      if (overlayBones)
+      {
+        glDisable(GL_DEPTH_TEST);
+
+        glBindVertexArray(boneOverlayVertexArray);
+
+        // Set color uniform
+        {
+          const glm::vec4 color =
+            glm::vec4(boneOverlayColor.r, boneOverlayColor.g, boneOverlayColor.b, boneOverlayColor.a);
+          glUniform4fv(debugShaderColorUniformLocation, 1, glm::value_ptr(color));
+        }
 
         for (size_t i = 0u; i < bones.size(); ++i)
         {
@@ -786,8 +893,10 @@ int main(int argc, char* argv[])
                                glm::value_ptr(worldMatrix * bindPoseMatrix));
           }
 
-          glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(debugVertices.size()));
+          glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(boneOverlayVertices.size()));
         }
+
+        glEnable(GL_DEPTH_TEST);
       }
 
       glfwSwapBuffers(window);
