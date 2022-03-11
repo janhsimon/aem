@@ -1,6 +1,7 @@
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -39,6 +40,13 @@ struct Keyframe
   std::vector<glm::mat4> matrices;
 };
 
+struct DecomposedMatrix
+{
+  glm::vec3 position;
+  glm::quat rotation;
+  glm::vec3 scale;
+};
+
 // Grid overlay constants
 constexpr bool overlayGrid = true;                                   // Show grid overlay
 constexpr size_t numGridOverlayCells = 10u;                          // The number of cells in a grid quadrant
@@ -54,6 +62,13 @@ constexpr char windowTitle[] = "AEM Viewer";
 
 // OpenGL constants
 constexpr GLsizei shaderInfoLogLength = 512;
+
+// Model constants
+constexpr float modelRotation = 0.0f; // In degrees
+constexpr float modelScale = 0.01f;
+
+// Animation constants
+constexpr float animationSpeed = 0.5f;
 
 // Color constants
 constexpr glm::vec4 backgroundColor = { 0.25f, 0.25f, 0.25f, 1.0f };
@@ -85,11 +100,11 @@ std::vector<DebugVertex> gridOverlayVertices, boneOverlayVertices;
 std::vector<uint32_t> indices;
 std::vector<uint32_t> meshLengths;
 std::vector<Bone> bones;
-std::vector<glm::mat4> boneTransforms;
 std::vector<Keyframe> keyframes;
 
 // Animation variables
-size_t currentFrame = 0u;
+std::vector<glm::mat4> fromBoneTransforms, toBoneTransforms, finalBoneTransforms;
+float animationTime = 0.0f;
 
 void cursorPositionCallback(GLFWwindow* window, double x, double y)
 {
@@ -182,6 +197,44 @@ void framebufferResizeCallback(GLFWwindow* window, int width, int height)
   glViewport(0, 0, width, height);
 }
 
+void evaluatePose(size_t keyframeIndex, std::vector<glm::mat4>& matrices)
+{
+  const Keyframe& keyframe = keyframes.at(keyframeIndex);
+
+  for (size_t i = 0u; i < bones.size(); ++i)
+  {
+    Bone& bone = bones.at(i);
+
+    glm::mat4 posedTransform = keyframe.matrices.at(i);
+    int index = bone.parentIndex;
+    while (index > -1)
+    {
+      posedTransform *= keyframe.matrices.at(index);
+      index = bones.at(index).parentIndex;
+    }
+
+    matrices.at(i) = posedTransform * bone.inverseBindPoseMatrix;
+  }
+}
+
+DecomposedMatrix decomposeMatrix(const glm::mat4& matrix)
+{
+  DecomposedMatrix decomposedMatrix;
+
+  decomposedMatrix.position = matrix[3];
+
+  glm::mat3 matrix3 = glm::mat3(matrix); // Copy the upper-left 3x3 of the matrix
+  decomposedMatrix.scale = { glm::length(matrix3[0]), glm::length(matrix3[1]), glm::length(matrix3[2]) };
+
+  // Normalize for glm::quat_cast to work properly
+  matrix3[0] /= decomposedMatrix.scale.x;
+  matrix3[1] /= decomposedMatrix.scale.y;
+  matrix3[2] /= decomposedMatrix.scale.z;
+  decomposedMatrix.rotation = glm::quat_cast(matrix3);
+
+  return decomposedMatrix;
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -254,7 +307,9 @@ int main(int argc, char* argv[])
                 sizeof(keyframe.matrices.at(0u)) * keyframe.matrices.size());
     }
 
-    boneTransforms.resize(bones.size());
+    fromBoneTransforms.resize(bones.size());
+    toBoneTransforms.resize(bones.size());
+    finalBoneTransforms.resize(bones.size());
 
     file.close();
   }
@@ -768,24 +823,68 @@ int main(int argc, char* argv[])
   {
     // Update
     {
-      ++currentFrame;
-
-      // Recalculate bone transforms for the new frame
-      const Keyframe& keyframe = keyframes.at(currentFrame % keyframes.size());
-
-      for (size_t i = 0u; i < bones.size(); ++i)
+      // Populate the final bone transforms with a blend of the keyframe before and after our current animation time
       {
-        Bone& bone = bones.at(i);
+        animationTime += animationSpeed;
 
-        glm::mat4 posedTransform = keyframe.matrices.at(i);
-        int index = bone.parentIndex;
-        while (index > -1)
+        // Ensure the animation time is somewhere between the beginning and end of the keyframe times
         {
-          posedTransform *= keyframe.matrices.at(index);
-          index = bones.at(index).parentIndex;
+          const float lastKeyframeTime = keyframes.at(keyframes.size() - 1u).time;
+          while (animationTime > lastKeyframeTime)
+          {
+            animationTime -= lastKeyframeTime;
+          }
         }
 
-        boneTransforms.at(i) = posedTransform * bone.inverseBindPoseMatrix;
+        // Find the keyframe index we are blending from (before our current animation time) and to (after)
+        size_t fromKeyframeIndex = 0u, toKeyframeIndex = 1u;
+        {
+          while (animationTime > keyframes.at(fromKeyframeIndex + 1u).time)
+          {
+            ++fromKeyframeIndex;
+            ++toKeyframeIndex;
+
+            if (toKeyframeIndex >= keyframes.size())
+            {
+              toKeyframeIndex = 0u;
+              break;
+            }
+          }
+        }
+
+        // Find the blend factor between the keyframes
+        float blend;
+        {
+          const float fromTime = keyframes.at(fromKeyframeIndex).time;
+          const float toTime = keyframes.at(toKeyframeIndex).time;
+          blend = (animationTime - fromTime) / (toTime - fromTime);
+
+          if (blend > 1.0f)
+          {
+            blend = 1.0f;
+          }
+          else if (blend < 0.0f)
+          {
+            blend = 0.0f;
+          }
+        }
+
+        // Evaluate the animation at both keyframes and store the results for all bones
+        evaluatePose(toKeyframeIndex, fromBoneTransforms);
+        evaluatePose(toKeyframeIndex, toBoneTransforms);
+
+        for (size_t i = 0u; i < finalBoneTransforms.size(); ++i)
+        {
+          // Decompose the bone transforms so they can be blended together
+          const DecomposedMatrix from = decomposeMatrix(fromBoneTransforms.at(i));
+          const DecomposedMatrix to = decomposeMatrix(toBoneTransforms.at(i));
+
+          // Blend both transforms together and store the result as the final bone transform
+          const glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::mix(from.position, to.position, blend));
+          const glm::mat4 r = glm::toMat4(glm::slerp(from.rotation, to.rotation, blend));
+          const glm::mat4 s = glm::scale(glm::mat4(1.0f), glm::mix(from.scale, to.scale, blend));
+          finalBoneTransforms.at(i) = t * r * s;
+        }
       }
 
       // Update camera view matrix
@@ -803,7 +902,8 @@ int main(int argc, char* argv[])
 
         // Set world matrix uniform
         {
-          const glm::mat4 worldMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), { 1.0f, 0.0f, 0.0f });
+          const glm::mat4 worldMatrix = glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(modelScale)),
+                                                    glm::radians(modelRotation), { 1.0f, 0.0f, 0.0f });
           glUniformMatrix4fv(meshShaderWorldUniformLocation, 1, GL_FALSE, glm::value_ptr(worldMatrix));
         }
 
@@ -814,8 +914,8 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(meshShaderProjectionUniformLocation, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
 
         // Set bone transforms uniform
-        glUniformMatrix4fv(meshShaderBoneTransformsUniformLocation, static_cast<GLsizei>(boneTransforms.size()),
-                           GL_FALSE, glm::value_ptr(boneTransforms.at(0)));
+        glUniformMatrix4fv(meshShaderBoneTransformsUniformLocation, static_cast<GLsizei>(finalBoneTransforms.size()),
+                           GL_FALSE, glm::value_ptr(finalBoneTransforms.at(0)));
 
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
       }
@@ -885,12 +985,13 @@ int main(int argc, char* argv[])
           // Transform it further to the animated pose of the bone if desired
           if (!forceBoneOverlayToBindPose)
           {
-            bindPoseMatrix = boneTransforms.at(i) * bindPoseMatrix;
+            bindPoseMatrix = finalBoneTransforms.at(i) * bindPoseMatrix;
           }
 
           // Set world matrix uniform
           {
-            const glm::mat4 worldMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), { 1.0f, 0.0f, 0.0f });
+            const glm::mat4 worldMatrix = glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(modelScale)),
+                                                      glm::radians(modelRotation), { 1.0f, 0.0f, 0.0f });
             glUniformMatrix4fv(debugShaderWorldUniformLocation, 1, GL_FALSE,
                                glm::value_ptr(worldMatrix * bindPoseMatrix));
           }
