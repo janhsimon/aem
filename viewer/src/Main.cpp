@@ -111,7 +111,7 @@ void cursorPositionCallback(GLFWwindow* window, double x, double y)
       cameraPosition = cameraPivot + tumble * cameraVector;
     }
 
-    // Horizontal
+    // Vertical
     {
       const float angle = (delta.y * glm::pi<float>()) / static_cast<float>(windowHeight);
       const glm::mat3 tumble = glm::rotate(glm::mat4(1.0f), angle, right);
@@ -122,16 +122,18 @@ void cursorPositionCallback(GLFWwindow* window, double x, double y)
   // Pan the camera
   else if (rightMouseButtonDown && !leftMouseButtonDown)
   {
+    const float cameraToPivotLength = glm::length(cameraPivot - cameraPosition);
+
     // Horizontal
     {
-      const glm::vec3 pan = (right * delta.x) / static_cast<float>(windowWidth);
+      const glm::vec3 pan = (right * delta.x) / static_cast<float>(windowWidth) * cameraToPivotLength;
       cameraPosition += pan;
       cameraPivot += pan;
     }
 
     // Vertical
     {
-      const glm::vec3 pan = (up * delta.y) / static_cast<float>(windowHeight);
+      const glm::vec3 pan = (up * delta.y) / static_cast<float>(windowHeight) * cameraToPivotLength;
       cameraPosition += pan;
       cameraPivot += pan;
     }
