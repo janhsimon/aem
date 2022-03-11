@@ -829,10 +829,18 @@ int main(int argc, char* argv[])
 
         // Ensure the animation time is somewhere between the beginning and end of the keyframe times
         {
-          const float lastKeyframeTime = keyframes.at(keyframes.size() - 1u).time;
+          const float firstKeyframeTime = keyframes.front().time;
+          const float lastKeyframeTime = keyframes.back().time;
+          const float animationLength = lastKeyframeTime - firstKeyframeTime;
+
+          while (animationTime < firstKeyframeTime)
+          {
+            animationTime += animationLength;
+          }
+
           while (animationTime > lastKeyframeTime)
           {
-            animationTime -= lastKeyframeTime;
+            animationTime -= animationLength;
           }
         }
 
@@ -858,15 +866,6 @@ int main(int argc, char* argv[])
           const float fromTime = keyframes.at(fromKeyframeIndex).time;
           const float toTime = keyframes.at(toKeyframeIndex).time;
           blend = (animationTime - fromTime) / (toTime - fromTime);
-
-          if (blend > 1.0f)
-          {
-            blend = 1.0f;
-          }
-          else if (blend < 0.0f)
-          {
-            blend = 0.0f;
-          }
         }
 
         // Evaluate the animation at both keyframes and store the results for all bones
