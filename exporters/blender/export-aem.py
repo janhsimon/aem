@@ -104,9 +104,9 @@ class Exporter(bpy.types.Operator, ExportHelper):
             
             # Store the smooth or flat shaded normal
             if (triangle.use_smooth == True):
-              normal = vertex.normal # Use vertex normal when smooth shading
+              normal = obj.matrix_world @ vertex.normal # Use vertex normal when smooth shading
             else:
-              normal = triangle.normal # Use face normal when flat shading
+              normal = obj.matrix_world @ triangle.normal # Use face normal when flat shading
 
             # Create a list of bone weights and ensure it has four elements
             bone_weight_list = [(group.group, group.weight) for group in vertex.groups]
@@ -138,7 +138,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
             if len(bone_index_list) > 2: bone_index_2 = bone_index_list[2]
             if len(bone_index_list) > 3: bone_index_3 = bone_index_list[3]
 
-            key = (position.freeze(), normal.copy().freeze(), (bone_index_0, bone_index_1, bone_index_2, bone_index_3), bone_weights.freeze())
+            key = (position.freeze(), normal.freeze(), (bone_index_0, bone_index_1, bone_index_2, bone_index_3), bone_weights.freeze())
             if key in vertices:
               # Reuse an existing vertex
               indices.append(vertices[key])

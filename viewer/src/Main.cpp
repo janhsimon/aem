@@ -545,7 +545,7 @@ int main(int argc, char* argv[])
                                     boneTransform += boneTransforms[inBoneIds[i]] * inBoneWeights[i];
                                   }
                                   gl_Position = projection * view * world * boneTransform * vec4(inPosition, 1.0);
-                                  normal = normalize((boneTransform * vec4(inNormal, 0.0)).xyz);
+                                  normal = (world * boneTransform * vec4(inNormal, 0.0)).xyz;
                                 })";
 
       glShaderSource(vertexShader, 1, &source, nullptr);
@@ -574,7 +574,7 @@ int main(int argc, char* argv[])
                                 out vec4 outColor;
                                 void main()
                                 {
-                                  float diffuse = dot(normal, normalize(vec3(0.4, 1.0, -0.85)));
+                                  float diffuse = dot(normalize(normal), normalize(vec3(0.4, 1.0, 0.85)));
                                   outColor = vec4(color.rgb * diffuse, color.a);
                                 })";
 
