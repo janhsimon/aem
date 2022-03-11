@@ -870,7 +870,7 @@ int main(int argc, char* argv[])
         }
 
         // Evaluate the animation at both keyframes and store the results for all bones
-        evaluatePose(toKeyframeIndex, fromBoneTransforms);
+        evaluatePose(fromKeyframeIndex, fromBoneTransforms);
         evaluatePose(toKeyframeIndex, toBoneTransforms);
 
         for (size_t i = 0u; i < finalBoneTransforms.size(); ++i)
