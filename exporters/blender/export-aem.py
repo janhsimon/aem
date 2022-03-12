@@ -27,6 +27,11 @@ def generate_keyframe_list(armatures):
           keyframes.append(time)
 
   keyframes.sort() # Sort chronologically
+
+  # Ensure that the animation starts at time 0
+  offset = keyframes[0]
+  keyframes = [keyframe - offset for keyframe in keyframes]
+
   return keyframes
 
 def find_pose_bone(armature, bone):
@@ -55,9 +60,7 @@ def generate_bone_list(armatures):
       bones.append((armature, bone, pose_bone, -1))
 
   # Fill parent index in
-  for i, (armature, bone, pose_bone, unused) in enumerate(bones):
-    parent_index = find_bone_parent_index(bone, bones)
-    bones[i] = armature, bone, pose_bone, parent_index
+  bones = [(armature, bone, pose_bone, find_bone_parent_index(bone, bones)) for (armature, bone, pose_bone, unused) in bones]
 
   return bones
 
@@ -212,7 +215,7 @@ class Exporter(bpy.types.Operator, ExportHelper):
       old_frame = bpy.context.scene.frame_current
       for keyframe in keyframes:
         file.write(struct.pack("<f", keyframe)) # Keyframe time
-        bpy.context.scene.frame_set(keyframe)
+        bpy.context.scene.frame_set(keyframe) # TODO: This needs an int but gets a float, causing a warning
         for armature, bone, pose_bone, parent_index in bones:
           transform = pose_bone.matrix
           if pose_bone.parent:

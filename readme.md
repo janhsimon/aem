@@ -113,3 +113,5 @@ The parent bone indices index into this same bone section, and will be -1 for ro
 | ...    | ...  | ...                 | ...              |
 
 (The fields above are repeated for each keyframe in the model. Additionally, the field Posed bone matrix is repeated for each bone in the model.)
+
+Keyframes are sorted chronologically, and the first keyframe is always at time 0.0.

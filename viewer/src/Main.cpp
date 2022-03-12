@@ -341,7 +341,6 @@ int main(int argc, char* argv[])
 
       // Major lines
       {
-
         gridOverlayVertices.at(index++).position = glm::vec3(-length, 0.0f, 0.0f);
         gridOverlayVertices.at(index++).position = glm::vec3(length, 0.0f, 0.0f);
         gridOverlayVertices.at(index++).position = glm::vec3(0.0f, 0.0f, -length);
@@ -829,18 +828,10 @@ int main(int argc, char* argv[])
 
         // Ensure the animation time is somewhere between the beginning and end of the keyframe times
         {
-          const float firstKeyframeTime = keyframes.front().time;
           const float lastKeyframeTime = keyframes.back().time;
-          const float animationLength = lastKeyframeTime - firstKeyframeTime;
-
-          while (animationTime < firstKeyframeTime)
-          {
-            animationTime += animationLength;
-          }
-
           while (animationTime > lastKeyframeTime)
           {
-            animationTime -= animationLength;
+            animationTime -= lastKeyframeTime;
           }
         }
 
