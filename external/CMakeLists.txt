@@ -1,0 +1,7 @@
+add_subdirectory(assimp)
+add_subdirectory(cglm)
+add_subdirectory(cimgui)
+add_subdirectory(glad)
+add_subdirectory(glfw)
+add_subdirectory(nfdx)
+add_subdirectory(stb)
