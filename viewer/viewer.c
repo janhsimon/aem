@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
 
     glfwMakeContextCurrent(window);
-    if (gladLoadGL(glfwGetProcAddress) == 0)
+    if (gladLoadGL() == 0)
     {
       printf("Failed to load OpenGL");
       return EXIT_FAILURE;

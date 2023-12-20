@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <util/util.h>
-#include <vcruntime_string.h>
 
 #include "assimp/anim.h"
 #include "assimp/mesh.h"

@@ -28,10 +28,10 @@ void main()
 {
   vec4 color = vec4(0);
 
-  color = mix(color, vec4(0.1, 0.1, 0.1, 1), grid(1.0, 100));   // Minor grid
-  color = mix(color, vec4(0.32, 0.32, 0.32, 1), grid(1.5, 10)); // Major grid
-  color = mix(color, vec4(1, 0, 0, 1), axis(2.0, vec2(1, 0)));  // X axis
-  color = mix(color, vec4(0, 0, 1, 1), axis(2.0, vec2(0, 1)));  // Y axis
+  color = mix(color, vec4(0.16, 0.16, 0.16, 1), grid(3.0, 100));   // Minor grid
+  color = mix(color, vec4(0.32, 0.32, 0.32, 1), grid(3.0, 10)); // Major grid
+  color = mix(color, vec4(1, 0, 0, 1), axis(3.0, vec2(1, 0)));  // X axis
+  color = mix(color, vec4(0, 0, 1, 1), axis(3.0, vec2(0, 1)));  // Y axis
 
   color.a *= 1 - length(uv * 2 - 1); // Fade out
 

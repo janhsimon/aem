@@ -5,7 +5,6 @@
 #include <cglm/io.h>
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
-#include <corecrt_wstdio.h>
 #include <nfdx/nfdx.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,7 +28,7 @@
 // #define DUMP_BONES
 #define DUMP_ANIMATIONS
 
-#define SKIP_TEXTURE_EXPORT
+//#define SKIP_TEXTURE_EXPORT
 
 struct Material
 {

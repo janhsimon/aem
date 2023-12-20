@@ -27,8 +27,8 @@ void camera_tumble(vec2 delta)
 
   vec3 move;
   glm_vec3_sub(position, pivot, move);
-  glm_mat4_mulv(tumble, move, move);
 
+  glm_mat4_mulv3(tumble, move, 0.0f, move);
   glm_vec3_add(pivot, move, position);
 }
 

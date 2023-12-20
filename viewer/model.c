@@ -317,7 +317,7 @@ void load_model(const char* filepath, const char* path)
       fread(&animation->duration, sizeof(float), 1, file);
 
       animation->position_keyframe_counts = malloc(sizeof(uint32_t) * bone_count);
-      assert(animation->position_keyframes);
+      assert(animation->position_keyframe_counts);
 
       animation->rotation_keyframe_counts = malloc(sizeof(uint32_t) * bone_count);
       assert(animation->rotation_keyframe_counts);

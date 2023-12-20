@@ -13,7 +13,7 @@
 
 #include <math.h>
 
-// #define SHOW_DEMO_WINDOW
+#define SHOW_DEMO_WINDOW
 
 #define PLAYBACK_BUTTON_WIDTH 50.0f
 
@@ -231,9 +231,15 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
     }
 
     igEndDisabled();
+
+    igEnd();
   }
 
-  igEnd();
+  // End the frame if there won't be rendering later
+  if (!display_state->gui)
+  {
+    igEndFrame();
+  }
 }
 
 void render_gui()
