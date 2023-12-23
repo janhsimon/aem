@@ -12,17 +12,18 @@ GLuint load_shader(const char* filename, GLenum type)
   assert(file);
 
   fseek(file, 0, SEEK_END);
-  long length = ftell(file);
+  GLint length = (GLint)ftell(file);
   fseek(file, 0, SEEK_SET);
-  GLchar* source = malloc(length + 1); // Extra character for null-termination
+
+  GLchar* source = malloc(length);
   assert(source);
   fread(source, 1, length, file);
   fclose(file);
 
-  source[length] = '\0'; // Null-terminate the source
-
   GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, &source, NULL);
+
+  const GLchar* sources[] = { source };
+  glShaderSource(shader, 1, sources, &length);
   free(source);
 
   glCompileShader(shader);

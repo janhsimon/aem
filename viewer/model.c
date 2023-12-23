@@ -280,7 +280,7 @@ void load_model(const char* filepath, const char* path)
     for (uint32_t texture_index = 0; texture_index < header.texture_count; ++texture_index)
     {
       const aem_string* texture = &texture_filenames[texture_index];
-      printf("Texture #%u: \"%s\"\n", texture_index, texture);
+      printf("Texture #%u: \"%s\"\n", texture_index, (char*)texture);
     }
   }
 
