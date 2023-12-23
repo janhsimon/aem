@@ -9,6 +9,8 @@
 GLuint load_shader(const char* filename, GLenum type)
 {
   FILE* file = fopen(filename, "rb");
+  assert(file);
+
   fseek(file, 0, SEEK_END);
   long length = ftell(file);
   fseek(file, 0, SEEK_SET);
