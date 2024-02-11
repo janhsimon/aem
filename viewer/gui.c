@@ -13,7 +13,7 @@
 
 #include <math.h>
 
-#define SHOW_DEMO_WINDOW
+//#define SHOW_DEMO_WINDOW
 
 #define PLAYBACK_BUTTON_WIDTH 50.0f
 

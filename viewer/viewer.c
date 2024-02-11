@@ -15,6 +15,7 @@
 #include <nfdx/nfdx.h>
 #include <util/util.h>
 
+#include <assert.h>
 #include <stdio.h>
 
 static const char window_title[] = "AEM Viewer";
@@ -31,8 +32,12 @@ static struct SceneState scene_state;
 
 static char** animation_names = NULL;
 
+static bool model_loaded = false;
+
 void file_open_callback()
 {
+  model_loaded = false;
+
   NFD_Init();
 
   char* filepath = NULL;
@@ -69,6 +74,8 @@ void file_open_callback()
   scene_state.scale = 100;
 
   evaluate_model_animation(animation_state.current_index, 0.0f);
+
+  model_loaded = true;
 }
 
 void window_resize_callback(GLFWwindow* window, int width, int height)
@@ -182,8 +189,11 @@ int main(int argc, char* argv[])
         update_gui(window_width, window_height, animation_names, animation_duration);
       }
 
-      update_animation_state(&animation_state, delta_time, animation_duration);
-      evaluate_model_animation(animation_state.current_index, animation_state.time);
+      if (model_loaded)
+      {
+        update_animation_state(&animation_state, delta_time, animation_duration);
+        evaluate_model_animation(animation_state.current_index, animation_state.time);
+      }
 
       if (scene_state.auto_rotate_camera)
       {
@@ -207,7 +217,10 @@ int main(int argc, char* argv[])
       calc_light_dir(light_dir);
       glm_vec3_make(get_camera_position(), camera_pos);
 
-      draw_model(light_dir, camera_pos, world_matrix, viewproj_matrix);
+      if (model_loaded)
+      {
+        draw_model(light_dir, camera_pos, world_matrix, viewproj_matrix);
+      }
 
       if (display_state.grid)
       {
@@ -227,6 +240,13 @@ int main(int argc, char* argv[])
 
       glfwSwapBuffers(window);
       glfwPollEvents();
+
+      const int error = glGetError();
+      if (error != GL_NO_ERROR)
+      {
+        printf("ERROR!\n");
+        assert(false);
+      }
     }
   }
 

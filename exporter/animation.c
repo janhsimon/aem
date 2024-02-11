@@ -19,6 +19,8 @@
 #include "cglm/mat4.h"
 #include "cglm/vec3.h"
 
+#define MAX_BONES_PER_NODE 16 // Maximum number of bones that can be referenced by a single node
+
 #pragma pack(1)
 struct NodeInfo
 {
@@ -36,17 +38,54 @@ void get_node_count(const struct aiNode* root_node, unsigned int* count)
   }
 }
 
-void get_bone_info_count(const struct aiNode* root_node, unsigned int* count)
+struct aiBone** bones_from_node(const struct aiScene* scene, const struct aiNode* node, unsigned int* bone_count)
 {
-  *count += (1 + root_node->mNumMeshes);
+  *bone_count = 0;
 
-  for (unsigned int child_index = 0; child_index < root_node->mNumChildren; ++child_index)
+  struct aiBone** bones = malloc(sizeof(struct aiBone*) * MAX_BONES_PER_NODE);
+  assert(bones);
+
+  for (unsigned int mesh_index = 0u; mesh_index < scene->mNumMeshes; ++mesh_index)
   {
-    get_bone_info_count(root_node->mChildren[child_index], count);
+    const struct aiMesh* mesh = scene->mMeshes[mesh_index];
+    for (unsigned int bone_index = 0u; bone_index < mesh->mNumBones; ++bone_index)
+    {
+      struct aiBone* bone = mesh->mBones[bone_index];
+      if (bone->mNode == node)
+      {
+        bones[(*bone_count)++] = bone;
+
+        if (*bone_count >= MAX_BONES_PER_NODE)
+        {
+          assert(false);
+          return bones;
+        }
+      }
+    }
+  }
+
+  return bones;
+}
+
+void get_bone_info_count(const struct aiScene* scene, const struct aiNode* node, unsigned int* count)
+{
+  unsigned int bone_count;
+  bones_from_node(scene, node, &bone_count);
+
+  if (bone_count == 0)
+  {
+    bone_count = 1;
+  }
+
+  *count += (bone_count + node->mNumMeshes);
+
+  for (unsigned int child_index = 0; child_index < node->mNumChildren; ++child_index)
+  {
+    get_bone_info_count(scene, node->mChildren[child_index], count);
   }
 }
 
-struct aiBone* bone_from_node(const struct aiScene* scene, const struct aiNode* node)
+bool has_node_bones(const struct aiScene* scene, const struct aiNode* node)
 {
   for (unsigned int mesh_index = 0u; mesh_index < scene->mNumMeshes; ++mesh_index)
   {
@@ -56,12 +95,12 @@ struct aiBone* bone_from_node(const struct aiScene* scene, const struct aiNode* 
       struct aiBone* bone = mesh->mBones[bone_index];
       if (bone->mNode == node)
       {
-        return bone;
+        return true;
       }
     }
   }
 
-  return NULL;
+  return false;
 }
 
 const struct aiMesh* mesh_from_bone(const struct aiScene* scene, const struct aiBone* bone)
@@ -79,6 +118,7 @@ const struct aiMesh* mesh_from_bone(const struct aiScene* scene, const struct ai
     }
   }
 
+  assert(false);
   return NULL;
 }
 
@@ -264,7 +304,7 @@ uint8_t node_has_bone_ancestors(const struct aiScene* scene, const struct aiNode
 
   while (node)
   {
-    if (bone_from_node(scene, node))
+    if (has_node_bones(scene, node))
     {
       return true;
     }
@@ -285,7 +325,7 @@ uint8_t node_has_bone_descendents(const struct aiScene* scene, const struct aiNo
   {
     const struct aiNode* child = node->mChildren[child_index];
 
-    if (bone_from_node(scene, child))
+    if (has_node_bones(scene, child))
     {
       return true;
     }
@@ -354,15 +394,19 @@ int32_t process_node(const struct aiScene* scene,
   struct aiNode* node = node_info->node;
   assert(node);
 
-  // Generate a bone if this node references one for skeletal animation
-  struct aiBone* bone = bone_from_node(scene, node);
-  if (bone)
+  // Generate a bone for each bone that this node references for skeletal animation
+  unsigned int bone_count;
+  struct aiBone** bones = bones_from_node(scene, node, &bone_count);
+  for (unsigned int bone_index = 0; bone_index < bone_count; ++bone_index)
   {
+    struct aiBone* bone = bones[bone_index];
+
     mat4 inv_bind_matrix;
     glm_mat4_make(&bone->mOffsetMatrix.a1, inv_bind_matrix);
     glm_mat4_transpose(inv_bind_matrix); // From row-major (assimp) to column-major (OpenGL)
 
     const struct aiMesh* mesh = mesh_from_bone(scene, bone);
+    assert(mesh);
 
     generate_bone_info(bone, inv_bind_matrix, mesh, node_info->parent_index, bone_infos, total_bone_count, Skeletal);
     parent_index = *total_bone_count - 1;
@@ -389,7 +433,7 @@ int32_t process_node(const struct aiScene* scene,
     generate_bone_info(mesh_bone, inv_bind_matrix, mesh, node_info->parent_index, bone_infos, total_bone_count, Mesh);
   }
 
-  if (!bone /*&& node->mNumMeshes == 0*/)
+  if (bone_count == 0 /*!bone && node->mNumMeshes == 0*/)
   {
     struct aiBone* hierarchy_bone = malloc(sizeof(struct aiBone));
     assert(hierarchy_bone);
@@ -465,8 +509,8 @@ void print_node_hierarchy(const struct aiScene* scene, struct aiNode* node, int 
 
   print_checkbox("\tMesh", node->mNumMeshes);
 
-  const struct aiBone* bone = bone_from_node(scene, node);
-  print_checkbox("\tBone", !!bone);
+  const bool has_bones = has_node_bones(scene, node);
+  print_checkbox("\tBones", has_bones);
 
   bool animated = false;
   for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
@@ -520,12 +564,19 @@ void print_node_hierarchy(const struct aiScene* scene, struct aiNode* node, int 
     printf("\n");
   }
 
-  if (bone)
+  if (has_bones)
   {
-    indent(level, "|   ", NULL);
+    unsigned int bone_count;
+    const struct aiBone** bones = bones_from_node(scene, node, &bone_count);
 
-    printf("Bone affects mesh \"%s\" with armature: \"%s\" and %u weights\n", mesh_from_bone(scene, bone)->mName.data,
-           bone->mArmature->mName.data, bone->mNumWeights);
+    for (unsigned int bone_index = 0; bone_index < bone_count; ++bone_index)
+    {
+      indent(level, "|   ", NULL);
+
+      const struct aiBone* bone = bones[bone_index];
+      printf("Bone #%u affects mesh \"%s\" with armature: \"%s\" and %u weights\n", bone_index,
+             mesh_from_bone(scene, bone)->mName.data, bone->mArmature->mName.data, bone->mNumWeights);
+    }
   }
 
   ++level;

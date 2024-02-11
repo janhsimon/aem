@@ -23,9 +23,9 @@
 #include "cglm/types.h"
 #include "texture.h"
 
-// #define DUMP_NODES
+#define DUMP_NODES
 // #define DUMP_MATERIALS
-// #define DUMP_BONES
+#define DUMP_BONES
 #define DUMP_ANIMATIONS
 
 //#define SKIP_TEXTURE_EXPORT
@@ -148,14 +148,14 @@ int main(int argc, char* argv[])
   unsigned int total_bone_count = 0;
   {
     unsigned int bone_info_count = 0;
-    get_bone_info_count(scene->mRootNode, &bone_info_count);
-    printf("*** BONE INFO COUNT = %u\n", bone_info_count);
+    get_bone_info_count(scene, scene->mRootNode, &bone_info_count);
+    // printf("*** BONE INFO COUNT = %u\n", bone_info_count);
 
     bone_infos = malloc(sizeof(struct BoneInfo) * bone_info_count);
     init_animation(scene, bone_infos, total_node_count, &total_bone_count);
 
-    printf("*** TOTAL NODE COUNT = %u\n", total_node_count);
-    printf("*** TOTAL BONE COUNT = %u\n", total_bone_count);
+    // printf("*** TOTAL NODE COUNT = %u\n", total_node_count);
+    // printf("*** TOTAL BONE COUNT = %u\n", total_bone_count);
   }
 
   // Header
@@ -243,34 +243,34 @@ int main(int argc, char* argv[])
 
         for (int32_t bone_index = 0; bone_index < total_bone_count; ++bone_index)
         {
-          const struct BoneInfo bone_info = bone_infos[bone_index];
-          if (bone_info.mesh != mesh)
+          const struct BoneInfo* bone_info = &bone_infos[bone_index];
+          if (bone_info->mesh != mesh)
           {
             continue;
           }
 
-          if (bone_info.type == Skeletal)
+          if (bone_info->type == Skeletal)
           {
-            const struct aiBone* bone = bone_info.bone;
+            const struct aiBone* bone = bone_info->bone;
 
             for (unsigned int weight_index = 0; weight_index < bone->mNumWeights; ++weight_index)
             {
-              struct aiVertexWeight weight = bone->mWeights[weight_index];
-              if (weight.mVertexId == vertex_index && weight.mWeight > 0.0)
+              const struct aiVertexWeight* weight = &bone->mWeights[weight_index];
+              if (weight->mVertexId == vertex_index && weight->mWeight > 0.0f)
               {
                 for (unsigned int bone_weight_index = 0; bone_weight_index < MAX_BONE_WEIGHT_COUNT; ++bone_weight_index)
                 {
                   if (bone_indices[bone_weight_index] < 0)
                   {
                     bone_indices[bone_weight_index] = bone_index;
-                    bone_weights[bone_weight_index] = weight.mWeight;
+                    bone_weights[bone_weight_index] = weight->mWeight;
                     break;
                   }
                 }
               }
             }
           }
-          else if (bone_info.type == Mesh)
+          else if (bone_info->type == Mesh)
           {
             extra_bone_index = bone_index;
           }
@@ -593,101 +593,6 @@ int main(int argc, char* argv[])
       }
     }
   }
-
-  /*
-  {
-    // Animation section
-    for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
-    {
-      const struct aiAnimation* animation = scene->mAnimations[animation_index];
-
-      // Name
-      {
-        char name[STRING_SIZE];
-        sprintf(name, "%s", animation->mName.data); // Null-terminates string
-        fwrite(name, STRING_SIZE, 1, output);
-      }
-
-      const double inv_ticks_per_sec = 1.0 / (animation->mTicksPerSecond > 0.0 ? animation->mTicksPerSecond : 1000.0);
-
-      // Duration
-      const float duration = (float)(animation->mDuration * inv_ticks_per_sec);
-      fwrite(&duration, sizeof(duration), 1, output);
-
-      // Retrieve or make a channel for each bone
-      struct aiNodeAnim** channels = malloc(sizeof(void*) * total_bone_count);
-      for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-      {
-        struct aiNode* node = bone_infos[bone_index].bone->mNode;
-        channels[bone_index] = channel_from_node(scene, animation, node);
-        if (!channels[bone_index])
-        {
-          make_channel_for_node(node, &channels[bone_index]);
-        }
-      }
-
-      // Position keyframe section
-      for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-      {
-        const struct aiNodeAnim* channel = channels[bone_index];
-        const uint32_t position_key_count = channel->mNumPositionKeys;
-        fwrite(&position_key_count, sizeof(position_key_count), 1, output);
-
-        for (unsigned int key_index = 0; key_index < position_key_count; ++key_index)
-        {
-          const struct aiVectorKey* key = &channel->mPositionKeys[key_index];
-
-          const float time = (float)(key->mTime * inv_ticks_per_sec);
-          fwrite(&time, sizeof(time), 1, output);
-
-          const float value[4] = { key->mValue.x, key->mValue.y, key->mValue.z, 0.0f };
-          fwrite(&value, sizeof(value), 1, output);
-        }
-      }
-
-      // Rotation keyframe section
-      for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-      {
-        const struct aiNodeAnim* channel = channels[bone_index];
-        const uint32_t rotation_key_count = channel->mNumRotationKeys;
-        fwrite(&rotation_key_count, sizeof(rotation_key_count), 1, output);
-
-        for (unsigned int key_index = 0; key_index < rotation_key_count; ++key_index)
-        {
-          const struct aiQuatKey* key = &channel->mRotationKeys[key_index];
-
-          const float time = (float)(key->mTime * inv_ticks_per_sec);
-          fwrite(&time, sizeof(time), 1, output);
-
-          const float value[4] = { key->mValue.x, key->mValue.y, key->mValue.z, key->mValue.w };
-          fwrite(&value, sizeof(value), 1, output);
-        }
-      }
-
-      // Scale keyframe section
-      for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-      {
-        const struct aiNodeAnim* channel = channels[bone_index];
-        const uint32_t scale_key_count = channel->mNumScalingKeys;
-        fwrite(&scale_key_count, sizeof(scale_key_count), 1, output);
-
-        for (unsigned int key_index = 0; key_index < scale_key_count; ++key_index)
-        {
-          const struct aiVectorKey* key = &channel->mScalingKeys[key_index];
-
-          const float time = (float)(key->mTime * inv_ticks_per_sec);
-          fwrite(&time, sizeof(time), 1, output);
-
-          const float value[4] = { key->mValue.x, key->mValue.y, key->mValue.z, 0.0f };
-          fwrite(&value, sizeof(value), 1, output);
-        }
-      }
-
-      free(channels);
-
-      printf("Animation #%u \"%s\":\n\tDuration: %f\n", animation_index, animation->mName.data, duration);
-    }
-  }*/
 
   fclose(output);
 

@@ -30,7 +30,7 @@ struct aiAnimation;
 struct aiNodeAnim;
 
 void get_node_count(const struct aiNode* root_node, unsigned int* count);
-void get_bone_info_count(const struct aiNode* root_node, unsigned int* count);
+void get_bone_info_count(const struct aiScene* scene, const struct aiNode* node, unsigned int* count);
 
 struct aiNode* node_from_mesh(const struct aiScene* scene, struct aiNode* root_node, const struct aiMesh* mesh);
 struct aiNodeAnim*
