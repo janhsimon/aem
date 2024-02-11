@@ -76,8 +76,8 @@ int main(int argc, char* argv[])
   char* basename = basename_from_filename(filename_from_filepath(filepath));
 
   const struct aiScene* scene =
-    aiImportFile(filepath, aiProcessPreset_TargetRealtime_Quality | aiProcess_OptimizeMeshes | aiProcess_FlipUVs |
-                             aiProcess_EmbedTextures | aiProcess_PopulateArmatureData);
+    aiImportFile(filepath, aiProcessPreset_TargetRealtime_Quality | aiProcess_OptimizeGraph | aiProcess_OptimizeMeshes |
+                             aiProcess_FlipUVs | aiProcess_EmbedTextures | aiProcess_PopulateArmatureData);
   if (!scene)
   {
     printf("Error: %s\n", aiGetErrorString());
