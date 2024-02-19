@@ -48,29 +48,9 @@ static inline void fix_coords(struct aiVector3D in, vec3 out)
   out[2] = /*-*/ in.z;
 }
 
-int main(int argc, char* argv[])
+static void export_file(char* filepath)
 {
-  char* filepath = NULL;
-  if (argc < 2)
-  {
-    NFD_Init();
-
-    nfdfilteritem_t filter[1] = { { "Importable Model", "fbx,glb,gltf" } };
-    nfdresult_t result = NFD_OpenDialog(&filepath, filter, 1, NULL);
-    if (result == NFD_CANCEL)
-    {
-      return EXIT_SUCCESS;
-    }
-    else if (result == NFD_ERROR)
-    {
-      printf("Error: %s\n", NFD_GetError());
-      return EXIT_FAILURE;
-    }
-  }
-  else
-  {
-    filepath = argv[1];
-  }
+  printf("*** Exporting \"%s\" ***\n", filepath);
 
   char* path = path_from_filepath(filepath);
   char* basename = basename_from_filename(filename_from_filepath(filepath));
@@ -80,24 +60,18 @@ int main(int argc, char* argv[])
                              aiProcess_FlipUVs | aiProcess_EmbedTextures | aiProcess_PopulateArmatureData);
   if (!scene)
   {
-    printf("Error: %s\n", aiGetErrorString());
-    return EXIT_FAILURE;
+    printf("Error: %s Skipping export.\n\n", aiGetErrorString());
+    return;
   }
 
-  if (argc < 2)
-  {
-    NFD_FreePath(filepath);
-    NFD_Quit();
-  }
-
-  char buffer[STRING_SIZE * 2];
+  char buffer[STRING_SIZE * 2 + 4];
   sprintf(buffer, "%s/%s%s", path, basename, ".aem"); // Null-terminates string
   free(basename);
   FILE* output = fopen(buffer, "wb");
   if (!output)
   {
-    printf("Error: Failed to open output file\n");
-    return EXIT_FAILURE;
+    printf("Error: Failed to open output file \"%s\". Skipping export.\n\n", buffer);
+    return;
   }
 
   // Magic number
@@ -176,7 +150,12 @@ int main(int argc, char* argv[])
     printf("Bone count: %u\n", total_bone_count);
     printf("Animation count: %u\n", scene->mNumAnimations);
 
-    assert(total_bone_count < MAX_BONE_COUNT);
+    if (total_bone_count >= MAX_BONE_COUNT)
+    {
+      printf("Error: Too many bones. Model has %u bones, max is %u. Skipping export.\n\n", total_bone_count,
+             MAX_BONE_COUNT);
+      return;
+    }
   }
 
   // Vertex section
@@ -599,6 +578,82 @@ int main(int argc, char* argv[])
   free(bone_infos);
   free(materials);
   free(path);
+
+  printf("*** Successfully exported \"%s\" ***\n\n", buffer);
+}
+
+int main(int argc, char* argv[])
+{
+  char* filepath = NULL;
+  if (argc < 2)
+  {
+    NFD_Init();
+
+    nfdfilteritem_t filter[5] = { { "All Model Files", "fbx,glb,gltf,lst" },
+                                  { "FBX Models", "fbx" },
+                                  { "GLB Models", "glb" },
+                                  { "GLTF Models", "gltx" },
+                                  { "List of Models", "lst" } };
+    nfdresult_t result = NFD_OpenDialog(&filepath, filter, 5, NULL);
+    if (result == NFD_CANCEL)
+    {
+      return EXIT_SUCCESS;
+    }
+    else if (result == NFD_ERROR)
+    {
+      printf("Error: %s\n", NFD_GetError());
+      return EXIT_FAILURE;
+    }
+  }
+  else
+  {
+    filepath = argv[1];
+  }
+
+  const char* extension = extension_from_filepath(filepath);
+  if (strcmp(extension, "lst") == 0)
+  {
+    long length;
+    char* list = load_text_file(filepath, &length);
+    if (!list)
+    {
+      printf("Error: Failed to open list input file: \"%s\"\n", filepath);
+      return EXIT_FAILURE;
+    }
+
+    preprocess_list_file(list, length);
+
+    // Export the identified files
+    long index = 0;
+    while (index < length)
+    {
+      if (list[index] != '\0')
+      {
+        char* filepath = &list[index];
+        export_file(filepath);
+
+        do
+        {
+          ++index;
+        } while (list[index] != '\0' && index < length);
+        continue;
+      }
+
+      ++index;
+    }
+
+    free(list);
+  }
+  else
+  {
+    export_file(filepath);
+  }
+
+  if (argc < 2)
+  {
+    NFD_FreePath(filepath);
+    NFD_Quit();
+  }
 
   return EXIT_SUCCESS;
 }

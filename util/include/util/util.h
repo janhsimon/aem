@@ -33,3 +33,8 @@ int is_mat4_identity(const float* mat);
 char* filename_from_filepath(char* filepath);
 char* path_from_filepath(char* filepath);
 char* basename_from_filename(char* filename);
+char* extension_from_filepath(char* filepath);
+
+// File loading
+char* load_text_file(const char* filepath, long* length);
+void preprocess_list_file(char* list, long length); // Preprocess to eliminate whitespaces and skip comments

@@ -111,3 +111,75 @@ char* basename_from_filename(char* filename)
   path[length] = '\0';
   return path;
 }
+
+char* extension_from_filepath(char* filepath)
+{
+  char* extension = filepath;
+  while (*filepath != '\0')
+  {
+    if (*filepath == '.')
+    {
+      extension = filepath + 1;
+    }
+    ++filepath;
+  }
+
+  return extension;
+}
+
+char* load_text_file(const char* filepath, long* length)
+{
+  FILE* file = fopen(filepath, "rb");
+  if (!file)
+  {
+    return NULL;
+  }
+
+  fseek(file, 0, SEEK_END);
+  *length = ftell(file);
+  if (*length <= 0)
+  {
+    return NULL;
+    fclose(file);
+  }
+
+  fseek(file, 0, SEEK_SET);
+
+  char* content = malloc(*length + 1);
+  if (content)
+  {
+    fread(content, 1, *length, file);
+    content[*length] = '\0';
+  }
+
+  fclose(file);
+
+  return content;
+}
+
+void preprocess_list_file(char* list, long length)
+{
+  long index = 0;
+  while (index < length)
+  {
+    const char c = list[index];
+
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
+    {
+      // Zero out whitespaces
+      list[index] = '\0';
+    }
+    else if (c == '#')
+    {
+      // Zero out all characters in a comment until a new line occurs
+      do
+      {
+        list[index] = '\0';
+        ++index;
+      } while (list[index] != '\n' && list[index] != '\r' && index < length);
+      continue;
+    }
+
+    ++index;
+  }
+}

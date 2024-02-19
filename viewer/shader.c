@@ -1,6 +1,7 @@
 #include "shader.h"
 
-#include <assert.h>
+#include <util/util.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,22 +9,18 @@
 
 GLuint load_shader(const char* filename, GLenum type)
 {
-  FILE* file = fopen(filename, "rb");
-  assert(file);
-
-  fseek(file, 0, SEEK_END);
-  GLint length = (GLint)ftell(file);
-  fseek(file, 0, SEEK_SET);
-
-  GLchar* source = malloc(length);
-  assert(source);
-  fread(source, 1, length, file);
-  fclose(file);
+  long length;
+  GLchar* source = (GLchar*)load_text_file(filename, &length);
+  if (!source)
+  {
+    printf("Failed to open shader file: \"%s\"\n", filename);
+    return 0;
+  }
 
   GLuint shader = glCreateShader(type);
 
   const GLchar* sources[] = { source };
-  glShaderSource(shader, 1, sources, &length);
+  glShaderSource(shader, 1, sources, &(GLint)length);
   free(source);
 
   glCompileShader(shader);
