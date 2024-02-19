@@ -48,7 +48,7 @@ static inline void fix_coords(struct aiVector3D in, vec3 out)
   out[2] = /*-*/ in.z;
 }
 
-static void export_file(char* filepath)
+static int export_file(char* filepath)
 {
   printf("*** Exporting \"%s\" ***\n", filepath);
 
@@ -61,7 +61,7 @@ static void export_file(char* filepath)
   if (!scene)
   {
     printf("Error: %s Skipping export.\n\n", aiGetErrorString());
-    return;
+    return EXIT_FAILURE;
   }
 
   char buffer[STRING_SIZE * 2 + 4];
@@ -71,7 +71,7 @@ static void export_file(char* filepath)
   if (!output)
   {
     printf("Error: Failed to open output file \"%s\". Skipping export.\n\n", buffer);
-    return;
+    return EXIT_FAILURE;
   }
 
   // Magic number
@@ -154,7 +154,7 @@ static void export_file(char* filepath)
     {
       printf("Error: Too many bones. Model has %u bones, max is %u. Skipping export.\n\n", total_bone_count,
              MAX_BONE_COUNT);
-      return;
+      return EXIT_FAILURE;
     }
   }
 
@@ -580,6 +580,47 @@ static void export_file(char* filepath)
   free(path);
 
   printf("*** Successfully exported \"%s\" ***\n\n", buffer);
+  return EXIT_SUCCESS;
+}
+
+static int export_list(const char* filepath)
+{
+  long length;
+  char* list = load_text_file(filepath, &length);
+  if (!list)
+  {
+    printf("Error: Failed to open list input file: \"%s\"\n", filepath);
+    return EXIT_FAILURE;
+  }
+
+  preprocess_list_file(list, length);
+
+  // Export the identified files
+  long index = 0;
+  int result = EXIT_SUCCESS;
+  while (index < length)
+  {
+    if (list[index] != '\0')
+    {
+      char* filepath = &list[index];
+      if (export_file(filepath) == EXIT_FAILURE)
+      {
+        result = EXIT_FAILURE;
+      }
+
+      do
+      {
+        ++index;
+      } while (list[index] != '\0' && index < length);
+      continue;
+    }
+
+    ++index;
+  }
+
+  free(list);
+
+  return result;
 }
 
 int main(int argc, char* argv[])
@@ -610,43 +651,17 @@ int main(int argc, char* argv[])
     filepath = argv[1];
   }
 
-  const char* extension = extension_from_filepath(filepath);
-  if (strcmp(extension, "lst") == 0)
+  int result;
   {
-    long length;
-    char* list = load_text_file(filepath, &length);
-    if (!list)
+    const char* extension = extension_from_filepath(filepath);
+    if (strcmp(extension, "lst") == 0)
     {
-      printf("Error: Failed to open list input file: \"%s\"\n", filepath);
-      return EXIT_FAILURE;
+      result = export_list(filepath);
     }
-
-    preprocess_list_file(list, length);
-
-    // Export the identified files
-    long index = 0;
-    while (index < length)
+    else
     {
-      if (list[index] != '\0')
-      {
-        char* filepath = &list[index];
-        export_file(filepath);
-
-        do
-        {
-          ++index;
-        } while (list[index] != '\0' && index < length);
-        continue;
-      }
-
-      ++index;
+      result = export_file(filepath);
     }
-
-    free(list);
-  }
-  else
-  {
-    export_file(filepath);
   }
 
   if (argc < 2)
@@ -655,5 +670,5 @@ int main(int argc, char* argv[])
     NFD_Quit();
   }
 
-  return EXIT_SUCCESS;
+  return result;
 }
