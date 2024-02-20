@@ -36,8 +36,6 @@ static bool model_loaded = false;
 
 void file_open_callback()
 {
-  model_loaded = false;
-
   NFD_Init();
 
   char* filepath = NULL;

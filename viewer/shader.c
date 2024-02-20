@@ -20,7 +20,7 @@ GLuint load_shader(const char* filename, GLenum type)
   GLuint shader = glCreateShader(type);
 
   const GLchar* sources[] = { source };
-  glShaderSource(shader, 1, sources, &(GLint)length);
+  glShaderSource(shader, 1, sources, (GLint*)&length);
   free(source);
 
   glCompileShader(shader);
