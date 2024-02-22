@@ -567,7 +567,7 @@ void print_node_hierarchy(const struct aiScene* scene, struct aiNode* node, int 
   if (has_bones)
   {
     unsigned int bone_count;
-    const struct aiBone** bones = bones_from_node(scene, node, &bone_count);
+    struct aiBone** bones = bones_from_node(scene, node, &bone_count);
 
     for (unsigned int bone_index = 0; bone_index < bone_count; ++bone_index)
     {

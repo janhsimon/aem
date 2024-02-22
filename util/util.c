@@ -169,6 +169,21 @@ void preprocess_list_file(char* list, long length)
       // Zero out whitespaces
       list[index] = '\0';
     }
+    else if (c == '"')
+    {
+      // Fast-forward through quotes so that whitespaces persist
+      // But zero out the beginning and ending quotes
+      list[index] = '\0';
+      do
+      {
+        ++index;
+      } while (list[index] != '"' && index < length);
+
+      if (list[index] == '"')
+      {
+        list[index] = '\0';
+      }
+    }
     else if (c == '#')
     {
       // Zero out all characters in a comment until a new line occurs
