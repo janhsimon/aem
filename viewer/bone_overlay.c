@@ -17,7 +17,7 @@ static GLuint vertex_array;
 static GLuint shader_program;
 static GLint world_uniform_location, viewproj_uniform_location;
 
-void generate_bone_overlay()
+bool generate_bone_overlay()
 {
   float vertices[VERTEX_COUNT * 3];
 
@@ -91,9 +91,18 @@ void generate_bone_overlay()
 
   // Generate shader program
   {
-    const GLuint vertex_shader = load_shader("shaders/bone_overlay.vert.glsl", GL_VERTEX_SHADER);
-    const GLuint fragment_shader = load_shader("shaders/bone_overlay.frag.glsl", GL_FRAGMENT_SHADER);
-    shader_program = generate_shader_program(vertex_shader, fragment_shader);
+    GLuint vertex_shader, fragment_shader;
+    if (!load_shader("shaders/bone_overlay.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !load_shader("shaders/bone_overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    {
+      return false;
+    }
+
+    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    {
+      return false;
+    }
+
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
@@ -108,6 +117,8 @@ void generate_bone_overlay()
       glUniform4fv(color_uniform_location, 1, color);
     }
   }
+
+  return true;
 }
 
 void draw_bone_overlay(mat4 world_matrix, mat4 viewproj_matrix)

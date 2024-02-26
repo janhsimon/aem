@@ -2,7 +2,7 @@
 
 #include <cglm/mat4.h>
 
-void load_model(const char* filepath, const char* path);
+bool load_model(const char* filepath, const char* path);
 void destroy_model();
 
 uint32_t get_model_animation_count();

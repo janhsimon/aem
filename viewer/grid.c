@@ -11,7 +11,7 @@ static GLuint vertex_array;
 static GLuint shader_program;
 static GLint viewproj_uniform_location;
 
-void generate_grid()
+bool generate_grid()
 {
   float vertices[VERTEX_COUNT * 5];
 
@@ -54,9 +54,18 @@ void generate_grid()
 
   // Generate shader program
   {
-    const GLuint vertex_shader = load_shader("shaders/grid.vert.glsl", GL_VERTEX_SHADER);
-    const GLuint fragment_shader = load_shader("shaders/grid.frag.glsl", GL_FRAGMENT_SHADER);
-    shader_program = generate_shader_program(vertex_shader, fragment_shader);
+    GLuint vertex_shader, fragment_shader;
+    if (!load_shader("shaders/grid.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !load_shader("shaders/grid.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    {
+      return false;
+    }
+
+    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    {
+      return false;
+    }
+
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
@@ -67,6 +76,8 @@ void generate_grid()
       viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
     }
   }
+
+  return true;
 }
 
 void draw_grid(const mat4 viewproj_matrix)

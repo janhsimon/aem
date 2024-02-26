@@ -188,13 +188,13 @@ void get_keyframe_transform(const struct Animation* animation, uint32_t bone_ind
   }
 }
 
-void load_model(const char* filepath, const char* path)
+bool load_model(const char* filepath, const char* path)
 {
   FILE* file = fopen(filepath, "rb");
   if (!file)
   {
     printf("Failed to load model file: %s (file not found)", filepath);
-    return;
+    return false;
   }
 
   uint8_t id[3];
@@ -203,7 +203,7 @@ void load_model(const char* filepath, const char* path)
   {
     printf("Failed to load model file: %s (invalid file type, expected AEM, got %c%c%c)", filepath, id[0], id[1],
            id[2]);
-    return;
+    return false;
   }
 
   uint8_t version;
@@ -211,7 +211,7 @@ void load_model(const char* filepath, const char* path)
   if (version != 1)
   {
     printf("Failed to load model file: %s (invalid file version, expected 1, got %u)", filepath, (unsigned)version);
-    return;
+    return false;
   }
 
   // Header
@@ -476,9 +476,18 @@ void load_model(const char* filepath, const char* path)
 
   // Generate shader program
   {
-    const GLuint vertex_shader = load_shader("shaders/model.vert.glsl", GL_VERTEX_SHADER);
-    const GLuint fragment_shader = load_shader("shaders/model.frag.glsl", GL_FRAGMENT_SHADER);
-    shader_program = generate_shader_program(vertex_shader, fragment_shader);
+    GLuint vertex_shader, fragment_shader;
+    if (!load_shader("shaders/model.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !load_shader("shaders/model.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    {
+      return false;
+    }
+
+    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    {
+      return false;
+    }
+
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
@@ -504,6 +513,8 @@ void load_model(const char* filepath, const char* path)
       glUniform1i(orm_tex_uniform_location, 2);
     }
   }
+
+  return true;
 }
 
 void destroy_model()

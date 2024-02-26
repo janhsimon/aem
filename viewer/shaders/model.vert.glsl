@@ -41,7 +41,7 @@ void main()
 
   normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
   tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);
-  bitangent = normalize((world * bone_transform * mesh_transform* vec4(in_bitangent, 0)).xyz);
+  bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
 
   uv = in_uv;
   

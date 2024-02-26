@@ -51,9 +51,15 @@ void file_open_callback()
     return;
   }
 
-  char* path = path_from_filepath(filepath);
   destroy_model();
-  load_model(filepath, path);
+  model_loaded = false;
+
+  char* path = path_from_filepath(filepath);
+  if (!load_model(filepath, path))
+  {
+    return;
+  }
+
   free(path);
 
   NFD_FreePath(filepath);
@@ -159,8 +165,15 @@ int main(int argc, char* argv[])
   init_input(&animation_state, &display_state, &scene_state, file_open_callback);
   init_gui(window, &animation_state, &display_state, &scene_state, file_open_callback);
 
-  generate_grid();
-  generate_bone_overlay();
+  if (!generate_grid())
+  {
+    return EXIT_FAILURE;
+  }
+
+  if (!generate_bone_overlay())
+  {
+    return EXIT_FAILURE;
+  }
 
   window_resize_callback(window, window_width, window_height);
 
