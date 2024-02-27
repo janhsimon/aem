@@ -628,7 +628,11 @@ int main(int argc, char* argv[])
   char* filepath = NULL;
   if (argc < 2)
   {
-    NFD_Init();
+    if (NFD_Init() == NFD_ERROR)
+    {
+      printf("Error: %s\n", NFD_GetError());
+      return EXIT_FAILURE;
+    }
 
     nfdfilteritem_t filter[5] = { { "All Model Files", "fbx,glb,gltf,lst" },
                                   { "FBX Models", "fbx" },

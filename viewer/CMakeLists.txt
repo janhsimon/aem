@@ -27,6 +27,9 @@ set(SOURCE
   model.c
   model.h
 
+  model_renderer.c
+  model_renderer.h
+
   scene_state.h;
 
   shader.c

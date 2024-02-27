@@ -10,7 +10,6 @@
 #include <cglm/io.h>
 #include <cglm/mat4.h>
 #include <cglm/quat.h>
-#include <glad/gl.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -60,16 +59,18 @@ struct Animation
   struct Keyframe** scale_keyframes; // Per bone
 };
 
-static GLuint vertex_array;
-static GLuint shader_program;
-static GLint light_dir_uniform_location, camera_pos_uniform_location, bone_transforms_uniform_location,
-  world_uniform_location, viewproj_uniform_location;
+// Temporary CPU data
+struct Vertex* vertices = NULL;
+uint32_t vertices_size = 0;
+uint32_t* indices = NULL;
+uint32_t indices_size = 0;
 
 static uint32_t mesh_count;
 static struct Mesh* meshes;
 
 static struct Material* materials;
 
+static uint32_t texture_count;
 static GLuint* textures;
 static GLuint fallback_diffuse_texture, fallback_normal_texture, fallback_orm_texture;
 
@@ -229,17 +230,17 @@ bool load_model(const char* filepath, const char* path)
   }
 
   // Vertex section
-  struct Vertex* vertices;
   {
-    vertices = malloc(header.vertex_count * sizeof(struct Vertex));
-    fread(vertices, header.vertex_count * sizeof(struct Vertex), 1, file);
+    vertices_size = header.vertex_count * VERTEX_SIZE;
+    vertices = malloc(vertices_size);
+    fread(vertices, vertices_size, 1, file);
   }
 
   // Index section
-  uint32_t* indices;
   {
-    indices = malloc(header.index_count * INDEX_SIZE);
-    fread(indices, header.index_count * INDEX_SIZE, 1, file);
+    indices_size = header.index_count * INDEX_SIZE;
+    indices = malloc(indices_size);
+    fread(indices, indices_size, 1, file);
   }
 
   // Mesh section
@@ -274,10 +275,11 @@ bool load_model(const char* filepath, const char* path)
   // Texture section
   aem_string* texture_filenames;
   {
-    texture_filenames = (aem_string*)malloc(header.texture_count * sizeof(aem_string));
-    fread(texture_filenames, header.texture_count * sizeof(aem_string), 1, file);
+    texture_count = header.texture_count;
+    texture_filenames = (aem_string*)malloc(texture_count * sizeof(aem_string));
+    fread(texture_filenames, texture_count * sizeof(aem_string), 1, file);
 
-    for (uint32_t texture_index = 0; texture_index < header.texture_count; ++texture_index)
+    for (uint32_t texture_index = 0; texture_index < texture_count; ++texture_index)
     {
       const aem_string* texture = &texture_filenames[texture_index];
       printf("Texture #%u: \"%s\"\n", texture_index, (char*)texture);
@@ -397,9 +399,9 @@ bool load_model(const char* filepath, const char* path)
 
   // Load textures
   {
-    textures = (GLuint*)malloc(header.texture_count * sizeof(GLuint));
-    memset(textures, 0, header.texture_count * sizeof(GLuint));
-    for (uint32_t texture_index = 0; texture_index < header.texture_count; ++texture_index)
+    textures = (GLuint*)malloc(texture_count * sizeof(GLuint));
+    memset(textures, 0, texture_count * sizeof(GLuint));
+    for (uint32_t texture_index = 0; texture_index < texture_count; ++texture_index)
     {
       char filepath[128];
       sprintf(filepath, "%s/%s", path, texture_filenames[texture_index]);
@@ -412,107 +414,6 @@ bool load_model(const char* filepath, const char* path)
   }
 
   free(texture_filenames);
-
-  // Generate model vertex array
-  {
-    glGenVertexArrays(1, &vertex_array);
-    glBindVertexArray(vertex_array);
-
-    // Generate and fill a vertex buffer
-    {
-      GLuint vertex_buffer;
-      glGenBuffers(1, &vertex_buffer);
-      glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-      glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(VERTEX_SIZE * header.vertex_count), vertices, GL_STATIC_DRAW);
-    }
-
-    free(vertices);
-
-    // Generate and fill an index buffer
-    {
-      GLuint index_buffer;
-      glGenBuffers(1, &index_buffer);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-      glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(INDEX_SIZE * header.index_count), indices, GL_STATIC_DRAW);
-    }
-
-    free(indices);
-
-    // Apply the vertex definition
-    {
-      // Position
-      glEnableVertexAttribArray(0);
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(0 * 4));
-
-      // Normal
-      glEnableVertexAttribArray(1);
-      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(3 * 4));
-
-      // Tangent
-      glEnableVertexAttribArray(2);
-      glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(6 * 4));
-
-      // Bitangent
-      glEnableVertexAttribArray(3);
-      glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(9 * 4));
-
-      // UV
-      glEnableVertexAttribArray(4);
-      glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(12 * 4));
-
-      // Bone indices
-      glEnableVertexAttribArray(5);
-      glVertexAttribIPointer(5, 4, GL_INT, VERTEX_SIZE, (void*)(14 * 4));
-
-      // Bone weights
-      glEnableVertexAttribArray(6);
-      glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(18 * 4));
-
-      // Extra bone index
-      glEnableVertexAttribArray(7);
-      glVertexAttribIPointer(7, 1, GL_INT, VERTEX_SIZE, (void*)(22 * 4));
-    }
-  }
-
-  // Generate shader program
-  {
-    GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/model.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/model.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
-    {
-      return false;
-    }
-
-    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
-    {
-      return false;
-    }
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    // Retrieve uniform locations and set constant uniforms
-    {
-      glUseProgram(shader_program);
-
-      bone_transforms_uniform_location = get_uniform_location(shader_program, "bone_transforms");
-
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
-
-      light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
-      camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
-
-      const GLint base_color_tex_uniform_location = get_uniform_location(shader_program, "base_color_tex");
-      glUniform1i(base_color_tex_uniform_location, 0);
-
-      const GLint normal_tex_uniform_location = get_uniform_location(shader_program, "normal_tex");
-      glUniform1i(normal_tex_uniform_location, 1);
-
-      const GLint orm_tex_uniform_location = get_uniform_location(shader_program, "orm_tex");
-      glUniform1i(orm_tex_uniform_location, 2);
-    }
-  }
 
   return true;
 }
@@ -539,10 +440,32 @@ void destroy_model()
     free(animation->scale_keyframe_counts);
   }
 
+  glDeleteTextures(texture_count, textures);
+
   free(animations);
   free(bone_transforms);
   free(materials);
   free(meshes);
+}
+
+struct Vertex* get_model_vertices()
+{
+  return vertices;
+}
+
+uint32_t get_model_vertices_size()
+{
+  return vertices_size;
+}
+
+void* get_model_indices()
+{
+  return indices;
+}
+
+uint32_t get_model_indices_size()
+{
+  return indices_size;
 }
 
 uint32_t get_model_animation_count()
@@ -599,25 +522,10 @@ void evaluate_model_animation(int animation_index, float time)
   }
 }
 
-void draw_model(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix)
+void draw_model(GLint bone_transforms_uniform_location)
 {
-  glBindVertexArray(vertex_array);
-  glUseProgram(shader_program);
-
-  // Set light direction uniform
-  glUniform3fv(light_dir_uniform_location, 1, light_dir);
-
-  // Set camera position uniform
-  glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
-
   // Set bone transforms uniform
   glUniformMatrix4fv(bone_transforms_uniform_location, bone_count, GL_FALSE, (GLfloat*)bone_transforms);
-
-  // Set world matrix uniform
-  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
-
-  // Set view-projection matrix uniform
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
 
   // Render each mesh
   uint64_t index_offset = 0;

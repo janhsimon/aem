@@ -7,6 +7,7 @@
 #include "input.h"
 #include "light.h"
 #include "model.h"
+#include "model_renderer.h"
 #include "scene_state.h"
 
 #include <cglm/affine.h>
@@ -36,7 +37,11 @@ static bool model_loaded = false;
 
 void file_open_callback()
 {
-  NFD_Init();
+  if (NFD_Init() == NFD_ERROR)
+  {
+    printf("Error: %s\n", NFD_GetError());
+    return;
+  }
 
   char* filepath = NULL;
   nfdfilteritem_t filter[1] = { { "AEM", "aem" } };
@@ -51,13 +56,28 @@ void file_open_callback()
     return;
   }
 
-  destroy_model();
-  model_loaded = false;
+  // Teardown the old model if there was one loaded and the file dialog was not canceled
+  if (model_loaded)
+  {
+    destroy_model();
+    model_loaded = false;
+  }
 
+  // Load the new model
   char* path = path_from_filepath(filepath);
   if (!load_model(filepath, path))
   {
     return;
+  }
+
+  // Fill the vertex and index buffer of the model renderer with the new model data
+  {
+    struct Vertex* vertices = get_model_vertices();
+    void* indices = get_model_indices();
+    fill_model_renderer_buffers(get_model_vertices_size(), vertices, get_model_indices_size(), indices);
+
+    free(vertices);
+    free(indices);
   }
 
   free(path);
@@ -165,6 +185,11 @@ int main(int argc, char* argv[])
   init_input(&animation_state, &display_state, &scene_state, file_open_callback);
   init_gui(window, &animation_state, &display_state, &scene_state, file_open_callback);
 
+  if (!load_model_renderer())
+  {
+    return EXIT_FAILURE;
+  }
+
   if (!generate_grid())
   {
     return EXIT_FAILURE;
@@ -230,7 +255,8 @@ int main(int argc, char* argv[])
 
       if (model_loaded)
       {
-        draw_model(light_dir, camera_pos, world_matrix, viewproj_matrix);
+        prepare_model_draw(light_dir, camera_pos, world_matrix, viewproj_matrix);
+        draw_model(get_bone_transforms_uniform_location());
       }
 
       if (display_state.grid)
@@ -238,7 +264,7 @@ int main(int argc, char* argv[])
         draw_grid(viewproj_matrix);
       }
 
-      if (display_state.skeleton)
+      if (model_loaded && display_state.skeleton)
       {
         const bool bind_pose = animation_state.current_index < 0 ? true : false;
         draw_model_bone_overlay(bind_pose, world_matrix, viewproj_matrix);
@@ -262,6 +288,7 @@ int main(int argc, char* argv[])
   }
 
   destroy_model();
+  destroy_model_renderer();
   destroy_gui();
 
   glfwTerminate();
