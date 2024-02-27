@@ -599,7 +599,7 @@ static int export_list(const char* filepath)
 
   // Export the identified files
   long index = 0;
-  int result = EXIT_SUCCESS;
+  uint32_t successes = 0, file_count = 0;
   while (index < length)
   {
     if (list[index] != '\0')
@@ -607,11 +607,12 @@ static int export_list(const char* filepath)
       char absolute_filepath[256];
       sprintf(absolute_filepath, "%s/%s", path, &list[index]);
 
-      if (export_file(absolute_filepath) == EXIT_FAILURE)
+      if (export_file(absolute_filepath) != EXIT_FAILURE)
       {
-        result = EXIT_FAILURE;
+        ++successes;
       }
 
+      ++file_count;
       do
       {
         ++index;
@@ -622,9 +623,16 @@ static int export_list(const char* filepath)
     ++index;
   }
 
+  printf("*** Exported %u models (%u succeeded, %u failed) ***\n\n", file_count, successes, file_count - successes);
+
   free(list);
 
-  return result;
+  if (successes == file_count)
+  {
+    return EXIT_SUCCESS;
+  }
+
+  return EXIT_FAILURE;
 }
 
 int main(int argc, char* argv[])
