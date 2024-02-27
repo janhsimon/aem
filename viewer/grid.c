@@ -7,7 +7,7 @@
 #define VERTEX_COUNT 4
 #define VERTEX_SIZE 12 // The size of a grid vertex in bytes
 
-static GLuint vertex_array;
+static GLuint vertex_array, vertex_buffer;
 static GLuint shader_program;
 static GLint viewproj_uniform_location;
 
@@ -38,7 +38,6 @@ bool generate_grid()
 
     // Generate and fill a vertex buffer
     {
-      GLuint vertex_buffer;
       glGenBuffers(1, &vertex_buffer);
       glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
       glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(VERTEX_SIZE * VERTEX_COUNT), vertices, GL_STATIC_DRAW);
@@ -78,6 +77,15 @@ bool generate_grid()
   }
 
   return true;
+}
+
+void destroy_grid()
+{
+  glDeleteProgram(shader_program);
+
+  glDeleteBuffers(1, &vertex_buffer);
+
+  glDeleteVertexArrays(1, &vertex_array);
 }
 
 void draw_grid(const mat4 viewproj_matrix)

@@ -2,8 +2,7 @@
 
 #include <util/util.h>
 
-static GLuint vertex_array;
-static GLuint vertex_buffer, index_buffer;
+static GLuint vertex_array, vertex_buffer, index_buffer;
 
 static GLuint shader_program;
 static GLint light_dir_uniform_location, camera_pos_uniform_location, bone_transforms_uniform_location,

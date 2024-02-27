@@ -287,7 +287,13 @@ int main(int argc, char* argv[])
     }
   }
 
-  destroy_model();
+  if (model_loaded)
+  {
+    destroy_model();
+  }
+
+  destroy_bone_overlay();
+  destroy_grid();
   destroy_model_renderer();
   destroy_gui();
 

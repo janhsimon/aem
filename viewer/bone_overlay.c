@@ -13,7 +13,7 @@
 
 static const vec4 color = { 0.7f, 0.7f, 0.7f, 1.0f };
 
-static GLuint vertex_array;
+static GLuint vertex_array, vertex_buffer, index_buffer;
 static GLuint shader_program;
 static GLint world_uniform_location, viewproj_uniform_location;
 
@@ -67,7 +67,6 @@ bool generate_bone_overlay()
 
     // Generate and fill a vertex buffer
     {
-      GLuint vertex_buffer;
       glGenBuffers(1, &vertex_buffer);
       glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
       glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(VERTEX_SIZE * VERTEX_COUNT), vertices, GL_STATIC_DRAW);
@@ -75,7 +74,6 @@ bool generate_bone_overlay()
 
     // Generate and fill an index buffer
     {
-      GLuint index_buffer;
       glGenBuffers(1, &index_buffer);
       glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(INDEX_SIZE * INDEX_COUNT), indices, GL_STATIC_DRAW);
@@ -119,6 +117,16 @@ bool generate_bone_overlay()
   }
 
   return true;
+}
+
+void destroy_bone_overlay()
+{
+  glDeleteProgram(shader_program);
+
+  glDeleteBuffers(1, &index_buffer);
+  glDeleteBuffers(1, &vertex_buffer);
+
+  glDeleteVertexArrays(1, &vertex_array);
 }
 
 void draw_bone_overlay(mat4 world_matrix, mat4 viewproj_matrix)
