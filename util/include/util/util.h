@@ -31,7 +31,7 @@ int is_mat4_identity(const float* mat);
 
 // Filenames
 char* filename_from_filepath(char* filepath);
-char* path_from_filepath(char* filepath);
+char* path_from_filepath(const char* filepath);
 char* basename_from_filename(char* filename);
 char* extension_from_filepath(char* filepath);
 

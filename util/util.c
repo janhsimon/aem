@@ -72,7 +72,7 @@ char* filename_from_filepath(char* filepath)
   return trim;
 }
 
-char* path_from_filepath(char* filepath)
+char* path_from_filepath(const char* filepath)
 {
   int length = 0;
   int offset = 0;

@@ -64,7 +64,7 @@ static int export_file(char* filepath)
     return EXIT_FAILURE;
   }
 
-  char buffer[STRING_SIZE * 2 + 4];
+  char buffer[STRING_SIZE * 2 + 6];
   sprintf(buffer, "%s/%s%s", path, basename, ".aem"); // Null-terminates string
   free(basename);
   FILE* output = fopen(buffer, "wb");
@@ -595,6 +595,8 @@ static int export_list(const char* filepath)
 
   preprocess_list_file(list, length);
 
+  char* path = path_from_filepath(filepath);
+
   // Export the identified files
   long index = 0;
   int result = EXIT_SUCCESS;
@@ -602,8 +604,10 @@ static int export_list(const char* filepath)
   {
     if (list[index] != '\0')
     {
-      char* filepath = &list[index];
-      if (export_file(filepath) == EXIT_FAILURE)
+      char absolute_filepath[256];
+      sprintf(absolute_filepath, "%s/%s", path, &list[index]);
+
+      if (export_file(absolute_filepath) == EXIT_FAILURE)
       {
         result = EXIT_FAILURE;
       }

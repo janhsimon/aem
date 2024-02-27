@@ -1,19 +1,21 @@
 #include "texture.h"
 
+#include <util/util.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
-#include "assimp/defs.h"
-#include "assimp/scene.h"
-#include "assimp/texture.h"
-#include "assimp/types.h"
+#include <assimp/defs.h>
+#include <assimp/scene.h>
+#include <assimp/texture.h>
+#include <assimp/types.h>
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 struct aiTexture* init_texture(const struct aiScene* scene,
                                const struct aiMaterial* material,
@@ -48,7 +50,7 @@ void save_texture(const struct aiTexture* texture, const char* path, const char*
   int x = 0, y = 0, channels = 0;
   stbi_uc* data = stbi_load_from_memory((stbi_uc*)texture->pcData, size, &x, &y, &channels, channel_count);
 
-  char filepath[128 * 2];
+  char filepath[STRING_SIZE * 2 + 2];
   sprintf(filepath, "%s/%s", path, filename);
   stbi_write_png(filepath, x, y, channel_count, data, 0);
 
