@@ -156,6 +156,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         file_open_callback();
       }
     }
+    else if (key == GLFW_KEY_P)
+    {
+      reset_camera_pivot();
+    }
     else if (key == GLFW_KEY_U)
     {
       display_state->gui = !display_state->gui;

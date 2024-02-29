@@ -9,6 +9,7 @@ static const float fov = GLM_PI_4; // 45deg, vertical field of view in radians
 
 static vec3 position = { 0.0f, 0.4f, -4.0f };
 static vec3 pivot = { 0.0f, 0.4f, 0.0f };
+static vec3 up = { 0.0f, 1.0f, 0.0f };
 
 void camera_tumble(vec2 delta)
 {
@@ -17,9 +18,17 @@ void camera_tumble(vec2 delta)
   glm_vec3_normalize(forward);
 
   vec3 right;
-  vec3 up = { 0.0f, 1.0f, 0.0f };
-  glm_vec3_cross(up, forward, right);
+  vec3 temp_up = { 0.0f, 1.0f, 0.0f };
+  glm_vec3_cross(temp_up, forward, right);
   glm_vec3_cross(forward, right, up);
+  glm_vec3_normalize(up);
+
+  // Limit the pitch angle
+  const float dot = glm_dot(forward, temp_up);
+  if ((dot <= -0.99f && delta[1] > 0.0f) || (dot >= 0.99f && delta[1] < 0.0f))
+  {
+    delta[1] = 0.0f;
+  }
 
   mat4 tumble;
   glm_rotate_make(tumble, -delta[0], up); // Yaw
@@ -40,14 +49,15 @@ void camera_pan(vec2 delta)
   glm_vec3_normalize(forward);
 
   vec3 right;
-  vec3 up = { 0.0f, 1.0f, 0.0f };
   glm_vec3_cross(up, forward, right);
+  glm_vec3_normalize(right);
 
-  glm_vec3_scale(right, delta[0] * distance, right);
-  glm_vec3_scale(up, delta[1] * distance, up);
+  vec3 x, y;
+  glm_vec3_scale(right, delta[0] * distance, x);
+  glm_vec3_scale(up, delta[1] * distance, y);
 
   vec3 move;
-  glm_vec3_add(up, right, move);
+  glm_vec3_add(y, x, move);
   glm_vec3_add(position, move, position);
   glm_vec3_add(pivot, move, pivot);
 }
@@ -64,6 +74,12 @@ void camera_dolly(vec2 delta)
   glm_vec3_sub(pivot, forward, position);
 }
 
+void reset_camera_pivot()
+{
+  pivot[0] = 0.0f;
+  pivot[1] = 0.4f;
+  pivot[2] = 0.0f;
+}
 float* get_camera_position()
 {
   return (float*)position;

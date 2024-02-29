@@ -11,8 +11,8 @@ struct SceneState;
 void init_gui(struct GLFWwindow* window,
               struct AnimationState* animation_state,
               struct DisplayState* display_state,
-              struct SceneState* scene_state_,
-              void (*file_open_callback_)());
+              struct SceneState* scene_state,
+              void (*file_open_callback)());
 
 bool is_mouse_consumed();
 bool is_keyboard_consumed();

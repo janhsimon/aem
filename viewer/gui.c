@@ -1,6 +1,7 @@
 #include "gui.h"
 
 #include "animation_state.h"
+#include "camera.h"
 #include "display_state.h"
 #include "scene_state.h"
 
@@ -116,6 +117,12 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
       igSliderInt("##SceneScale", &scene_state->scale, 1, 500, "Scene Scale: %d%%", 0);
       igSeparator();
 
+      // Reset camera pivot
+      if (igMenuItem_Bool("Reset Camera Pivot", "P", false, true))
+      {
+        reset_camera_pivot();
+      }
+
       // Auto-rotate camera
       if (igMenuItem_Bool("Auto-Rotate Camera", "R", scene_state->auto_rotate_camera, true))
       {
@@ -123,6 +130,7 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
       }
 
       igSliderInt("##AutoRotateCameraSpeed", &scene_state->auto_rotate_camera_speed, 1, 500, "Camera Speed: %d%%", 0);
+
       igSeparator();
 
       // Show flags
