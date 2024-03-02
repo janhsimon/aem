@@ -17,7 +17,6 @@ struct Vertex
 #define INDEX_SIZE 4                      // Size of an AEM index in bytes
 #define STRING_SIZE 128                   // Size of an AEM string in bytes
 
-#define MAX_BONE_COUNT 128      // Maximum number of bones in a single file
 #define MAX_BONE_WEIGHT_COUNT 4 // Maximum number of bone weights that can influence a single vertex
 
 typedef unsigned char aem_string[STRING_SIZE];

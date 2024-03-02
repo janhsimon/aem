@@ -59,7 +59,7 @@ void save_texture(const struct aiTexture* texture, const char* path, const char*
   stbi_image_free(data);
 }
 
-void print_materials(const struct aiScene* scene)
+void print_material_properties(const struct aiScene* scene)
 {
   for (unsigned int material_index = 0; material_index < scene->mNumMaterials; ++material_index)
   {

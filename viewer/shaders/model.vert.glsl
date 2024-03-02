@@ -1,8 +1,12 @@
 #version 330 core
 
-#define MAX_BONE_COUNT 128
+#define MAX_BONE_COUNT 128 // Seems to be okay if we exceed this number
 
-uniform mat4 bone_transforms[MAX_BONE_COUNT];
+layout (std140) uniform Bones
+{
+    mat4 bone_transforms[MAX_BONE_COUNT];
+};
+
 uniform mat4 world;
 uniform mat4 viewproj;
 
@@ -15,11 +19,14 @@ layout(location = 5) in ivec4 in_bone_indices;
 layout(location = 6) in vec4 in_bone_weights;
 layout(location = 7) in int in_extra_bone_index;
 
-out vec3 position; // In world space
-out vec3 normal;
-out vec3 tangent;
-out vec3 bitangent;
-out vec2 uv;
+out VERT_TO_FRAG
+{
+  vec3 position; // In world space
+  vec3 normal;
+  vec3 tangent;
+  vec3 bitangent;
+  vec2 uv;
+} output;
 
 void main()
 {
@@ -37,13 +44,14 @@ void main()
     }
   }
 
-  position = (world * bone_transform * mesh_transform * vec4(in_position, 1)).xyz;
+  output.position = (world * bone_transform * mesh_transform * vec4(in_position, 1)).xyz;
 
-  normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
-  tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);
-  bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
+  output.normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
+  output.tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);
+  output.bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
 
-  uv = in_uv;
+  output.uv = in_uv;
+  //output.uv.y = -uv.y;
   
-  gl_Position = viewproj * vec4(position, 1);
+  gl_Position = viewproj * vec4(output.position, 1);
 }

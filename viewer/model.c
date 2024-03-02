@@ -289,7 +289,6 @@ bool load_model(const char* filepath, const char* path)
   // Bone section
   {
     bone_count = header.bone_count;
-    assert(bone_count < MAX_BONE_COUNT);
     bones = malloc(bone_count * sizeof(struct Bone));
     fread(bones, bone_count * sizeof(struct Bone), 1, file);
 
@@ -468,6 +467,11 @@ uint32_t get_model_indices_size()
   return indices_size;
 }
 
+uint32_t get_model_bone_count()
+{
+  return bone_count;
+}
+
 uint32_t get_model_animation_count()
 {
   return animation_count;
@@ -522,10 +526,9 @@ void evaluate_model_animation(int animation_index, float time)
   }
 }
 
-void draw_model(GLint bone_transforms_uniform_location)
+void draw_model()
 {
-  // Set bone transforms uniform
-  glUniformMatrix4fv(bone_transforms_uniform_location, bone_count, GL_FALSE, (GLfloat*)bone_transforms);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(mat4) * bone_count, bone_transforms, GL_DYNAMIC_DRAW);
 
   // Render each mesh
   uint64_t index_offset = 0;

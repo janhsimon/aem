@@ -1,12 +1,13 @@
 #include "model_renderer.h"
 
+#include "shader.h"
+
 #include <util/util.h>
 
-static GLuint vertex_array, vertex_buffer, index_buffer;
+static GLuint vertex_array, vertex_buffer, index_buffer, uniform_buffer;
 
 static GLuint shader_program;
-static GLint light_dir_uniform_location, camera_pos_uniform_location, bone_transforms_uniform_location,
-  world_uniform_location, viewproj_uniform_location;
+static GLint light_dir_uniform_location, camera_pos_uniform_location, world_uniform_location, viewproj_uniform_location;
 
 bool load_model_renderer()
 {
@@ -15,12 +16,10 @@ bool load_model_renderer()
 
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &index_buffer);
+  glGenBuffers(1, &uniform_buffer);
 
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  // glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
-
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, 0, NULL, GL_STATIC_DRAW);
 
   // Apply the vertex definition
   {
@@ -78,8 +77,6 @@ bool load_model_renderer()
     {
       glUseProgram(shader_program);
 
-      bone_transforms_uniform_location = get_uniform_location(shader_program, "bone_transforms");
-
       world_uniform_location = get_uniform_location(shader_program, "world");
       viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
 
@@ -104,27 +101,26 @@ void destroy_model_renderer()
 {
   glDeleteProgram(shader_program);
 
+  glDeleteBuffers(1, &uniform_buffer);
   glDeleteBuffers(1, &index_buffer);
   glDeleteBuffers(1, &vertex_buffer);
 
   glDeleteVertexArrays(1, &vertex_array);
 }
 
-GLint get_bone_transforms_uniform_location()
-{
-  return bone_transforms_uniform_location;
-}
-
 void fill_model_renderer_buffers(GLsizeiptr vertices_size,
                                  const struct Vertex* vertices,
                                  GLsizeiptr indices_size,
-                                 const void* indices)
+                                 const void* indices,
+                                 uint32_t bone_count)
 {
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, vertices_size, (const void*)vertices, GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);
+
+  glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * bone_count);
 }
 
 void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix)

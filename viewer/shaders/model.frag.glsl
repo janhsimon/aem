@@ -7,11 +7,13 @@ uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D orm_tex; // Occlusion, roughness, metalness
 
-in vec3 position; // In world space
-in vec3 normal;
-in vec3 tangent;
-in vec3 bitangent;
-in vec2 uv;
+in VERT_TO_FRAG {
+  vec3 position; // In world space
+  vec3 normal;
+  vec3 tangent;
+  vec3 bitangent;
+  vec2 uv;
+} input;
 
 out vec4 out_color;
 
@@ -70,21 +72,21 @@ vec3 aces(vec3 x)
 
 void main()
 {
-  vec4 base_color_sample = texture(base_color_tex, uv);
+  vec4 base_color_sample = texture(base_color_tex, input.uv);
   vec3 base_color = pow(base_color_sample.rgb, vec3(2.2)); // Convert sRGB to linear color space
   float opacity = base_color_sample.a;
 
-  vec3 normal_sample = texture(normal_tex, uv).rgb * 2.0 - 1.0;
+  vec3 normal_sample = texture(normal_tex, input.uv).rgb * 2.0 - 1.0;
   
-  vec3 orm_sample = texture(orm_tex, uv).rgb;
+  vec3 orm_sample = texture(orm_tex, input.uv).rgb;
   float occlusion = orm_sample.r;
   float roughness = orm_sample.g;
   float metalness = orm_sample.b;
 
-  vec3 V = normalize(camera_pos - position);
+  vec3 V = normalize(camera_pos - input.position);
 
   // Normal mapping
-  mat3 tbn = mat3(tangent, bitangent, normal);
+  mat3 tbn = mat3(input.tangent, input.bitangent, input.normal);
   vec3 N = normalize(tbn * normal_sample);
 
   vec3 F0 = vec3(0.04); 

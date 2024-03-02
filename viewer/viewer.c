@@ -74,7 +74,8 @@ void file_open_callback()
   {
     struct Vertex* vertices = get_model_vertices();
     void* indices = get_model_indices();
-    fill_model_renderer_buffers(get_model_vertices_size(), vertices, get_model_indices_size(), indices);
+    fill_model_renderer_buffers(get_model_vertices_size(), vertices, get_model_indices_size(), indices,
+                                get_model_bone_count());
 
     free(vertices);
     free(indices);
@@ -256,7 +257,7 @@ int main(int argc, char* argv[])
       if (model_loaded)
       {
         prepare_model_draw(light_dir, camera_pos, world_matrix, viewproj_matrix);
-        draw_model(get_bone_transforms_uniform_location());
+        draw_model();
       }
 
       if (display_state.grid)

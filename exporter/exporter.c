@@ -23,12 +23,15 @@
 #include "cglm/types.h"
 #include "texture.h"
 
-#define DUMP_NODES
-// #define DUMP_MATERIALS
-#define DUMP_BONES
-#define DUMP_ANIMATIONS
+// #define DUMP_HEADER
+// #define DUMP_NODES
+//  #define DUMP_MESHES
+//  #define DUMP_MATERIALS
+//  #define DUMP_MATERIAL_PROPERTIES
+// #define DUMP_BONES
+//  #define DUMP_ANIMATIONS
 
-//#define SKIP_TEXTURE_EXPORT
+#define SKIP_TEXTURE_EXPORT
 
 struct Material
 {
@@ -142,6 +145,7 @@ static int export_file(char* filepath)
     fwrite(&total_bone_count, sizeof(total_bone_count), 1, output);
     fwrite(&scene->mNumAnimations, sizeof(scene->mNumAnimations), 1, output);
 
+#ifdef DUMP_HEADER
     printf("Vertex count: %u\n", total_vertex_count);
     printf("Index count: %u\n", total_index_count);
     printf("Mesh count: %u\n", scene->mNumMeshes);
@@ -149,13 +153,7 @@ static int export_file(char* filepath)
     printf("Texture count: %u\n", total_texture_count);
     printf("Bone count: %u\n", total_bone_count);
     printf("Animation count: %u\n", scene->mNumAnimations);
-
-    if (total_bone_count >= MAX_BONE_COUNT)
-    {
-      printf("Error: Too many bones. Model has %u bones, max is %u. Skipping export.\n\n", total_bone_count,
-             MAX_BONE_COUNT);
-      return EXIT_FAILURE;
-    }
+#endif DUMP_HEADER
   }
 
   // Vertex section
@@ -299,12 +297,14 @@ static int export_file(char* filepath)
     unsigned char material_index = mesh->mMaterialIndex;
     fwrite(&material_index, sizeof(material_index), 1, output);
 
+#ifdef DUMP_MESHES
     printf("Mesh #%u \"%s\":\n\tIndex count: %u\n\tMaterial index: %u\n", mesh_index, mesh->mName.data, index_count,
            material_index);
+#endif
   }
 
-#ifdef DUMP_MATERIALS
-  print_materials(scene);
+#ifdef DUMP_MATERIAL_PROPERTIES
+  print_material_properties(scene);
 #endif
 
   // Material section
@@ -344,10 +344,12 @@ static int export_file(char* filepath)
         strcpy(material_name.data, "Unnamed material");
       }
 
+#ifdef DUMP_MATERIALS
       printf("Material #%u \"%s\":\n\tBase color texture index: %u\n\tNormal texture index: "
              "%u\n\tOcclusion/Roughness/Metalness "
              "texture index: %u\n",
              material_index, material_name.data, base_color_tex_index, normal_tex_index, orm_tex_index);
+#endif
     }
   }
 

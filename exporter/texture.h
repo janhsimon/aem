@@ -14,4 +14,4 @@ struct aiTexture* init_texture(const struct aiScene* scene,
 
 void save_texture(const struct aiTexture* texture, const char* path, const char* filename, int channel_count);
 
-void print_materials(const struct aiScene* scene);
+void print_material_properties(const struct aiScene* scene);

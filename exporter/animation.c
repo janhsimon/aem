@@ -298,7 +298,7 @@ void get_node_transform(const struct aiScene* scene, struct aiNode* node, mat4 t
 // Helper function used to trim down the amount of bones created for the nodes of the scene
 // Does not check "node" itself
 // Returns true or false
-uint8_t node_has_bone_ancestors(const struct aiScene* scene, const struct aiNode* node)
+bool node_has_bone_ancestors(const struct aiScene* scene, const struct aiNode* node)
 {
   node = node->mParent;
 
@@ -315,11 +315,11 @@ uint8_t node_has_bone_ancestors(const struct aiScene* scene, const struct aiNode
   return false;
 }
 
-// Checks if the node has another node with a bone or mesh connection in its list of descendents
+// Checks if the node has another node with a bone connection in its list of descendents
 // Helper function used to trim down the amount of bones created for the nodes of the scene
 // Does not check "node" itself
 // Returns true or false
-uint8_t node_has_bone_descendents(const struct aiScene* scene, const struct aiNode* node)
+bool node_has_bone_descendents(const struct aiScene* scene, const struct aiNode* node)
 {
   for (unsigned int child_index = 0; child_index < node->mNumChildren; ++child_index)
   {
@@ -343,13 +343,13 @@ uint8_t node_has_bone_descendents(const struct aiScene* scene, const struct aiNo
 // Helper function used to trim down the amount of bones created for the nodes of the scene
 // Does not check "node" itself
 // Returns true or false
-uint8_t node_has_mesh_descendents(const struct aiScene* scene, const struct aiNode* node)
+bool node_has_mesh_descendents(const struct aiScene* scene, const struct aiNode* node)
 {
   for (unsigned int child_index = 0; child_index < node->mNumChildren; ++child_index)
   {
     const struct aiNode* child = node->mChildren[child_index];
 
-    if (child->mNumChildren > 0)
+    if (child->mNumMeshes > 0)
     {
       return true;
     }
@@ -423,17 +423,10 @@ int32_t process_node(const struct aiScene* scene,
     mesh_bone->mNode = node;
     mesh_bone->mNumWeights = 0;
 
-    // mat4 inv_bind_matrix = GLM_MAT4_IDENTITY_INIT;
-
-    // Create the inverse bind matrix for this node
-    mat4 inv_bind_matrix = GLM_MAT4_IDENTITY_INIT;
-    // get_node_transform(scene, node, inv_bind_matrix);
-    // glm_mat4_inv(inv_bind_matrix, inv_bind_matrix);
-
-    generate_bone_info(mesh_bone, inv_bind_matrix, mesh, node_info->parent_index, bone_infos, total_bone_count, Mesh);
+    generate_bone_info(mesh_bone, GLM_MAT4_IDENTITY, mesh, node_info->parent_index, bone_infos, total_bone_count, Mesh);
   }
 
-  if (bone_count == 0 /*!bone && node->mNumMeshes == 0*/)
+  if (bone_count == 0 && node->mNumMeshes == 0)
   {
     struct aiBone* hierarchy_bone = malloc(sizeof(struct aiBone));
     assert(hierarchy_bone);
@@ -441,15 +434,7 @@ int32_t process_node(const struct aiScene* scene,
     hierarchy_bone->mNode = node;
     hierarchy_bone->mNumWeights = 0;
 
-    // Create the inverse bind matrix for this node
-    // TODO: It looks like this is completely unnecessary
-    // Why would it be needed? We just need the anim channel for this?
-    // So the inv bind matrix could just be identity and the check against node->mNumMeshes is 0 could go back in
-    mat4 inv_bind_matrix = GLM_MAT4_IDENTITY_INIT;
-    get_node_transform(scene, node, inv_bind_matrix);
-    glm_mat4_inv(inv_bind_matrix, inv_bind_matrix);
-
-    generate_bone_info(hierarchy_bone, inv_bind_matrix, NULL, node_info->parent_index, bone_infos, total_bone_count,
+    generate_bone_info(hierarchy_bone, GLM_MAT4_IDENTITY, NULL, node_info->parent_index, bone_infos, total_bone_count,
                        Hierarchy);
 
     parent_index = *total_bone_count - 1;
