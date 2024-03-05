@@ -51,7 +51,6 @@ void main()
   output.bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
 
   output.uv = in_uv;
-  //output.uv.y = -uv.y;
   
   gl_Position = viewproj * vec4(output.position, 1);
 }

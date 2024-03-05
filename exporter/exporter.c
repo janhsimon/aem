@@ -60,7 +60,7 @@ static int export_file(char* filepath)
 
   const struct aiScene* scene =
     aiImportFile(filepath, aiProcessPreset_TargetRealtime_Quality | aiProcess_OptimizeGraph | aiProcess_OptimizeMeshes |
-                             aiProcess_FlipUVs | aiProcess_EmbedTextures | aiProcess_PopulateArmatureData);
+                             aiProcess_EmbedTextures | aiProcess_PopulateArmatureData);
   if (!scene)
   {
     printf("Error: %s Skipping export.\n\n", aiGetErrorString());

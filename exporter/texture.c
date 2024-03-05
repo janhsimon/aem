@@ -52,6 +52,7 @@ void save_texture(const struct aiTexture* texture, const char* path, const char*
 
   char filepath[STRING_SIZE * 2 + 2];
   sprintf(filepath, "%s/%s", path, filename);
+  stbi_flip_vertically_on_write(1);
   stbi_write_png(filepath, x, y, channel_count, data, 0);
 
   printf("%dx%dx%d)\n", x, y, channel_count);
