@@ -10,6 +10,7 @@
 #include "model_renderer.h"
 #include "scene_state.h"
 
+#include <aem/aem.h>
 #include <cglm/affine.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
@@ -25,7 +26,7 @@ static int window_height = 800;
 
 static const vec4 color_background = { 0.02f, 0.02f, 0.02f, 1.0f };
 
-static mat4 proj_matrix;
+static struct GLFWwindow* window = NULL;
 
 static struct AnimationState animation_state;
 static struct DisplayState display_state;
@@ -70,15 +71,14 @@ void file_open_callback()
     return;
   }
 
-  // Fill the vertex and index buffer of the model renderer with the new model data
-  {
-    struct Vertex* vertices = get_model_vertices();
-    void* indices = get_model_indices();
-    fill_model_renderer_buffers(get_model_vertices_size(), vertices, get_model_indices_size(), indices,
-                                get_model_bone_count());
+  finish_loading_model();
 
-    free(vertices);
-    free(indices);
+  // Update window title to include filename
+  {
+    char* title = malloc(strlen(window_title) + 6 + strlen(filepath)); // Including null terminator
+    sprintf(title, "%s - [%s]", window_title, filepath);               // Null-terminates string
+    glfwSetWindowTitle(window, title);
+    free(title);
   }
 
   free(path);
@@ -107,9 +107,6 @@ void window_resize_callback(GLFWwindow* window, int width, int height)
 {
   window_width = width;
   window_height = height;
-
-  const float aspect = (float)window_width / (float)window_height;
-  calc_proj_matrix(proj_matrix, aspect);
 }
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
@@ -132,11 +129,11 @@ int main(int argc, char* argv[])
 
   // Initialize scene state
   scene_state.scale = 100;
+  scene_state.camera_fov = 60.0f;
   scene_state.auto_rotate_camera = false;
   scene_state.auto_rotate_camera_speed = 100;
 
   // Create window and load OpenGL
-  GLFWwindow* window;
   {
     if (!glfwInit())
     {
@@ -201,8 +198,6 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  window_resize_callback(window, window_width, window_height);
-
   double prev_time = glfwGetTime(); // In seconds
 
   // Main loop
@@ -246,8 +241,14 @@ int main(int argc, char* argv[])
       mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
       glm_scale_uni(world_matrix, (float)scene_state.scale * 0.01f);
 
-      mat4 view_matrix, viewproj_matrix;
+      mat4 view_matrix;
       calc_view_matrix(view_matrix);
+
+      mat4 proj_matrix;
+      const float aspect = (float)window_width / (float)window_height;
+      calc_proj_matrix(aspect, glm_rad((float)scene_state.camera_fov), proj_matrix);
+
+      mat4 viewproj_matrix;
       glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
 
       vec3 light_dir, camera_pos;

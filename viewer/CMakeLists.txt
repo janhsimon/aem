@@ -55,6 +55,7 @@ set(DEPENDENCIES
   cimgui
   glad
   glfw
+  libaem
   nfdx
   stb
   util

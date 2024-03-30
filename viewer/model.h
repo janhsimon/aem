@@ -8,9 +8,10 @@
 #include <stdint.h>
 
 bool load_model(const char* filepath, const char* path);
+void finish_loading_model();
 void destroy_model();
 
-struct Vertex* get_model_vertices();
+void* get_model_vertices();
 uint32_t get_model_vertices_size();
 
 void* get_model_indices();

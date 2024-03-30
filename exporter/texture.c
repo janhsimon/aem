@@ -1,5 +1,7 @@
 #include "texture.h"
 
+#include <aem/aem.h>
+
 #include <util/util.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -50,7 +52,7 @@ void save_texture(const struct aiTexture* texture, const char* path, const char*
   int x = 0, y = 0, channels = 0;
   stbi_uc* data = stbi_load_from_memory((stbi_uc*)texture->pcData, size, &x, &y, &channels, channel_count);
 
-  char filepath[STRING_SIZE * 2 + 2];
+  char filepath[AEM_STRING_SIZE * 2 + 2];
   sprintf(filepath, "%s/%s", path, filename);
   stbi_flip_vertically_on_write(1);
   stbi_write_png(filepath, x, y, channel_count, data, 0);

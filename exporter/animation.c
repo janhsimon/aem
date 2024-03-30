@@ -509,7 +509,7 @@ void print_node_hierarchy(const struct aiScene* scene, struct aiNode* node, int 
   print_checkbox("\tAnimated", animated);
   printf("\n");
 
-  if (has_transform)
+  /*if (has_transform)
   {
     indent(level, "|   ", NULL);
     printf("Transform:\n");
@@ -529,7 +529,7 @@ void print_node_hierarchy(const struct aiScene* scene, struct aiNode* node, int 
     indent(level, "|   ", NULL);
     printf("%f %f %f %f\n", node->mTransformation.a4, node->mTransformation.b4, node->mTransformation.c4,
            node->mTransformation.d4);
-  }
+  }*/
 
   if (node->mNumMeshes > 0)
   {

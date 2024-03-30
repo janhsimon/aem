@@ -13,6 +13,7 @@ set(SOURCE
 set(DEPENDENCIES
   assimp
   cglm
+  libaem
   nfdx
   stb
   util

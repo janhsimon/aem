@@ -1,13 +1,20 @@
 #include "model_renderer.h"
 
 #include "shader.h"
+#include "texture.h"
+
+#include <aem/aem.h>
 
 #include <util/util.h>
+
+#include <stdio.h>
 
 static GLuint vertex_array, vertex_buffer, index_buffer, uniform_buffer;
 
 static GLuint shader_program;
 static GLint light_dir_uniform_location, camera_pos_uniform_location, world_uniform_location, viewproj_uniform_location;
+
+static GLuint fallback_diffuse_texture, fallback_normal_texture, fallback_orm_texture;
 
 bool load_model_renderer()
 {
@@ -25,35 +32,35 @@ bool load_model_renderer()
   {
     // Position
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(0 * 4));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(0 * 4));
 
     // Normal
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(3 * 4));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(3 * 4));
 
     // Tangent
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(6 * 4));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(6 * 4));
 
     // Bitangent
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(9 * 4));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(9 * 4));
 
     // UV
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(12 * 4));
+    glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(12 * 4));
 
     // Bone indices
     glEnableVertexAttribArray(5);
-    glVertexAttribIPointer(5, 4, GL_INT, VERTEX_SIZE, (void*)(14 * 4));
+    glVertexAttribIPointer(5, 4, GL_INT, AEM_VERTEX_SIZE, (void*)(14 * 4));
 
     // Bone weights
     glEnableVertexAttribArray(6);
-    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, VERTEX_SIZE, (void*)(18 * 4));
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(18 * 4));
 
     // Extra bone index
     glEnableVertexAttribArray(7);
-    glVertexAttribIPointer(7, 1, GL_INT, VERTEX_SIZE, (void*)(22 * 4));
+    glVertexAttribIPointer(7, 1, GL_INT, AEM_VERTEX_SIZE, (void*)(22 * 4));
   }
 
   // Generate shader program
@@ -94,6 +101,10 @@ bool load_model_renderer()
     }
   }
 
+  fallback_diffuse_texture = load_texture("textures/fallback_diffuse.png");
+  fallback_normal_texture = load_texture("textures/fallback_normal.png");
+  fallback_orm_texture = load_texture("textures/fallback_orm.png");
+
   return true;
 }
 
@@ -106,16 +117,35 @@ void destroy_model_renderer()
   glDeleteBuffers(1, &vertex_buffer);
 
   glDeleteVertexArrays(1, &vertex_array);
+
+  glDeleteTextures(1, &fallback_diffuse_texture);
+  glDeleteTextures(1, &fallback_normal_texture);
+  glDeleteTextures(1, &fallback_orm_texture);
+}
+
+GLuint get_fallback_diffuse_texture()
+{
+  return fallback_diffuse_texture;
+}
+
+GLuint get_fallback_normal_texture()
+{
+  return fallback_normal_texture;
+}
+
+GLuint get_fallback_orm_texture()
+{
+  return fallback_orm_texture;
 }
 
 void fill_model_renderer_buffers(GLsizeiptr vertices_size,
-                                 const struct Vertex* vertices,
+                                 const void* vertices,
                                  GLsizeiptr indices_size,
                                  const void* indices,
                                  uint32_t bone_count)
 {
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, vertices_size, (const void*)vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);

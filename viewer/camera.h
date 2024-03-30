@@ -11,4 +11,4 @@ void reset_camera_pivot();
 
 float* get_camera_position();
 void calc_view_matrix(mat4 view_matrix);
-void calc_proj_matrix(mat4 proj_matrix, float aspect);
+void calc_proj_matrix(float aspect, float fov, mat4 proj_matrix);

@@ -1,37 +1,31 @@
-#include <assert.h>
+#include "animation.h"
+#include "texture.h"
+
+#include <aem/aem.h>
+
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
-#include <assimp/scene.h>
-#include <cglm/io.h>
+
 #include <cglm/vec2.h>
-#include <cglm/vec3.h>
+
 #include <nfdx/nfdx.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
 #include <util/util.h>
 
-#include "animation.h"
-#include "assimp/anim.h"
-#include "assimp/material.h"
-#include "assimp/mesh.h"
-#include "assimp/quaternion.h"
-#include "assimp/types.h"
-#include "assimp/vector3.h"
-#include "cglm/mat4.h"
-#include "cglm/types.h"
-#include "texture.h"
+#include <assert.h>
+#include <stdio.h>
 
 // #define DUMP_HEADER
 // #define DUMP_NODES
-//  #define DUMP_MESHES
-//  #define DUMP_MATERIALS
-//  #define DUMP_MATERIAL_PROPERTIES
+// #define DUMP_MESHES
+// #define DUMP_MATERIALS
+// #define DUMP_MATERIAL_PROPERTIES
 // #define DUMP_BONES
-//  #define DUMP_ANIMATIONS
+// #define DUMP_ANIMATIONS
 
 #define SKIP_TEXTURE_EXPORT
+
+#define MAX_BONE_WEIGHT_COUNT 4 // Maximum number of bone weights that can influence a single vertex
 
 struct Material
 {
@@ -67,7 +61,7 @@ static int export_file(char* filepath)
     return EXIT_FAILURE;
   }
 
-  char buffer[STRING_SIZE * 2 + 6];
+  char buffer[AEM_STRING_SIZE * 2 + 6];
   sprintf(buffer, "%s/%s%s", path, basename, ".aem"); // Null-terminates string
   free(basename);
   FILE* output = fopen(buffer, "wb");
@@ -135,6 +129,29 @@ static int export_file(char* filepath)
     // printf("*** TOTAL BONE COUNT = %u\n", total_bone_count);
   }
 
+  // Calculate total number of position, rotation and scale keyframes across all animations
+  uint32_t keyframe_count = 0;
+  {
+    for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
+    {
+      const struct aiAnimation* animation = scene->mAnimations[animation_index];
+
+      for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
+      {
+        struct aiNode* node = bone_infos[bone_index].bone->mNode;
+        const struct aiNodeAnim* channel = channel_from_node(scene, animation, node);
+        if (!channel)
+        {
+          keyframe_count += 3;
+        }
+        else
+        {
+          keyframe_count += channel->mNumPositionKeys + channel->mNumRotationKeys + channel->mNumScalingKeys;
+        }
+      }
+    }
+  }
+
   // Header
   {
     fwrite(&total_vertex_count, sizeof(total_vertex_count), 1, output);
@@ -144,6 +161,7 @@ static int export_file(char* filepath)
     fwrite(&total_texture_count, sizeof(total_texture_count), 1, output);
     fwrite(&total_bone_count, sizeof(total_bone_count), 1, output);
     fwrite(&scene->mNumAnimations, sizeof(scene->mNumAnimations), 1, output);
+    fwrite(&keyframe_count, sizeof(keyframe_count), 1, output);
 
 #ifdef DUMP_HEADER
     printf("Vertex count: %u\n", total_vertex_count);
@@ -153,6 +171,7 @@ static int export_file(char* filepath)
     printf("Texture count: %u\n", total_texture_count);
     printf("Bone count: %u\n", total_bone_count);
     printf("Animation count: %u\n", scene->mNumAnimations);
+    printf("Keyframe count: %u\n", keyframe_count);
 #endif DUMP_HEADER
   }
 
@@ -278,7 +297,7 @@ static int export_file(char* filepath)
         for (unsigned int index = 0; index < triangle.mNumIndices; ++index)
         {
           uint32_t ix = triangle.mIndices[index] + index_offset;
-          fwrite(&ix, INDEX_SIZE, 1, output);
+          fwrite(&ix, AEM_INDEX_SIZE, 1, output);
         }
       }
 
@@ -287,20 +306,25 @@ static int export_file(char* filepath)
   }
 
   // Mesh section
+  uint32_t first_index = 0;
   for (unsigned int mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index)
   {
     const struct aiMesh* mesh = scene->mMeshes[mesh_index];
 
+    fwrite(&first_index, sizeof(first_index), 1, output);
+
     const uint32_t index_count = mesh->mNumFaces * 3;
     fwrite(&index_count, sizeof(index_count), 1, output);
 
-    unsigned char material_index = mesh->mMaterialIndex;
+    const uint32_t material_index = mesh->mMaterialIndex;
     fwrite(&material_index, sizeof(material_index), 1, output);
 
 #ifdef DUMP_MESHES
-    printf("Mesh #%u \"%s\":\n\tIndex count: %u\n\tMaterial index: %u\n", mesh_index, mesh->mName.data, index_count,
-           material_index);
+    printf("Mesh #%u \"%s\":\n\tFirst index: %u\n\tIndex count: %u\n\tMaterial index: %u\n", mesh_index,
+           mesh->mName.data, first_index, index_count, material_index);
 #endif
+
+    first_index += index_count;
   }
 
 #ifdef DUMP_MATERIAL_PROPERTIES
@@ -309,12 +333,12 @@ static int export_file(char* filepath)
 
   // Material section
   {
-    unsigned int texture_counter = 0;
+    int32_t texture_counter = 0;
     for (unsigned int material_index = 0; material_index < scene->mNumMaterials; ++material_index)
     {
       const struct Material* material = &materials[material_index];
 
-      unsigned char base_color_tex_index = 255;
+      int32_t base_color_tex_index = -1;
       if (material->base_color_tex)
       {
         base_color_tex_index = texture_counter;
@@ -322,7 +346,7 @@ static int export_file(char* filepath)
       }
       fwrite(&base_color_tex_index, sizeof(base_color_tex_index), 1, output);
 
-      unsigned char normal_tex_index = 255;
+      int32_t normal_tex_index = -1;
       if (material->normal_tex)
       {
         normal_tex_index = texture_counter;
@@ -330,7 +354,7 @@ static int export_file(char* filepath)
       }
       fwrite(&normal_tex_index, sizeof(normal_tex_index), 1, output);
 
-      unsigned char orm_tex_index = 255;
+      int32_t orm_tex_index = -1;
       if (material->orm_tex)
       {
         orm_tex_index = texture_counter;
@@ -345,9 +369,8 @@ static int export_file(char* filepath)
       }
 
 #ifdef DUMP_MATERIALS
-      printf("Material #%u \"%s\":\n\tBase color texture index: %u\n\tNormal texture index: "
-             "%u\n\tOcclusion/Roughness/Metalness "
-             "texture index: %u\n",
+      printf("Material #%u \"%s\":\n\tBase color texture index: %d\n\tNormal texture index: "
+             "%d\n\tOcclusion/Roughness/Metalness texture index: %d\n",
              material_index, material_name.data, base_color_tex_index, normal_tex_index, orm_tex_index);
 #endif
     }
@@ -361,7 +384,7 @@ static int export_file(char* filepath)
       struct aiString material_name;
       aiGetMaterialString(scene->mMaterials[material_index], AI_MATKEY_NAME, &material_name);
 
-      char filename[STRING_SIZE];
+      char filename[AEM_STRING_SIZE];
       struct aiTexture* tex = materials[material_index].base_color_tex;
       if (tex)
       {
@@ -372,7 +395,7 @@ static int export_file(char* filepath)
         save_texture(tex, path, filename, 4);
 #endif
 
-        fwrite(filename, STRING_SIZE, 1, output);
+        fwrite(filename, AEM_STRING_SIZE, 1, output);
       }
 
       tex = materials[material_index].normal_tex;
@@ -385,7 +408,7 @@ static int export_file(char* filepath)
         save_texture(tex, path, filename, 3);
 #endif
 
-        fwrite(filename, STRING_SIZE, 1, output);
+        fwrite(filename, AEM_STRING_SIZE, 1, output);
       }
 
       tex = materials[material_index].orm_tex;
@@ -398,7 +421,7 @@ static int export_file(char* filepath)
         save_texture(tex, path, filename, 3);
 #endif
 
-        fwrite(filename, STRING_SIZE, 1, output);
+        fwrite(filename, AEM_STRING_SIZE, 1, output);
       }
     }
   }
@@ -429,31 +452,46 @@ static int export_file(char* filepath)
 #ifdef DUMP_BONES
     const struct aiBone* bone = bone_info->bone;
 
-    printf("Bone #%u \"%s\":\n\tParent bone: ", bone_index, bone->mName.data);
+    printf("Bone #%u \"%s\":\n\tType: ", bone_index, bone->mName.data);
 
-    if (bone_info->parent_index < 0)
+    if (bone_info->type == Skeletal)
     {
-      printf("<None>\n");
+      printf("Skeletal");
     }
-    else
+    else if (bone_info->type == Mesh)
     {
-      printf("#%d \"%s\"\n", bone_info->parent_index, bone_infos[bone_info->parent_index].bone->mName.data);
+      printf("Mesh");
     }
+    else if (bone_info->type == Hierarchy)
+    {
+      printf("Hierarchy");
+    }
+    printf("\n");
 
-    printf("\tMesh: ");
-    if (bone_info->mesh)
-    {
-      printf("\"%s\"\n", bone_info->mesh->mName.data);
-    }
-    else
-    {
-      printf("<None>\n");
-    }
+    // printf("\n\tParent bone: ");
+    // if (bone_info->parent_index < 0)
+    //{
+    //   printf("<None>\n");
+    // }
+    // else
+    //{
+    //   printf("#%d \"%s\"\n", bone_info->parent_index, bone_infos[bone_info->parent_index].bone->mName.data);
+    // }
 
-    printf("\tBone weights: %u\n", bone->mNumWeights);
+    // printf("\tMesh: ");
+    // if (bone_info->mesh)
+    //{
+    //   printf("\"%s\"\n", bone_info->mesh->mName.data);
+    // }
+    // else
+    //{
+    //   printf("<None>\n");
+    // }
 
-    printf("\tInverse bind matrix: ");
-    glm_mat4_print(inv_bind_matrix, stdout);
+    // printf("\tBone weights: %u\n", bone->mNumWeights);
+
+    // printf("\tInverse bind matrix: ");
+    // glm_mat4_print(inv_bind_matrix, stdout);
 #endif
   }
 
@@ -461,52 +499,76 @@ static int export_file(char* filepath)
   assert(channels);
 
   // Animation section
-  for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
   {
-    const struct aiAnimation* animation = scene->mAnimations[animation_index];
-
-    // Name
-    char name[STRING_SIZE];
+    uint32_t keyframe_counter = 0;
+    for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
     {
-      sprintf(name, "%s", animation->mName.data); // Null-terminates string
-      fwrite(name, STRING_SIZE, 1, output);
-    }
+      const struct aiAnimation* animation = scene->mAnimations[animation_index];
 
-    const double inv_ticks_per_sec = 1.0 / (animation->mTicksPerSecond > 0.0 ? animation->mTicksPerSecond : 1000.0);
-
-    // Duration
-    const float duration = (float)(animation->mDuration * inv_ticks_per_sec);
-    fwrite(&duration, sizeof(duration), 1, output);
-
-#ifdef DUMP_ANIMATIONS
-    printf("Animation #%u: \"%s\"\n\tduration: %f\n", animation_index, name, duration);
-#endif
-
-    channels[animation_index] = malloc(sizeof(void*) * total_bone_count);
-    assert(channels[animation_index]);
-
-    for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-    {
-      // Retrieve or make a channel for each bone
-      struct aiNode* node = bone_infos[bone_index].bone->mNode;
-      channels[animation_index][bone_index] = channel_from_node(scene, animation, node);
-      if (!channels[animation_index][bone_index])
+      // Name
+      char name[AEM_STRING_SIZE];
       {
-        make_channel_for_node(node, &channels[animation_index][bone_index]);
+        sprintf(name, "%s", animation->mName.data); // Null-terminates string
+        fwrite(name, AEM_STRING_SIZE, 1, output);
       }
 
-      const uint32_t position_key_count = channels[animation_index][bone_index]->mNumPositionKeys;
-      fwrite(&position_key_count, sizeof(position_key_count), 1, output);
+      // Duration
+      float duration = 0.0f;
+      {
+        const double inv_ticks_per_sec = 1.0 / (animation->mTicksPerSecond > 0.0 ? animation->mTicksPerSecond : 1000.0);
+        duration = (float)(animation->mDuration * inv_ticks_per_sec);
+        fwrite(&duration, sizeof(duration), 1, output);
+      }
 
-      const uint32_t rotation_key_count = channels[animation_index][bone_index]->mNumRotationKeys;
-      fwrite(&rotation_key_count, sizeof(rotation_key_count), 1, output);
+#ifdef DUMP_ANIMATIONS
+      printf("Animation #%u: \"%s\"\n\tDuration: %f seconds\n", animation_index, name, duration);
+#endif
 
-      const uint32_t scale_key_count = channels[animation_index][bone_index]->mNumScalingKeys;
-      fwrite(&scale_key_count, sizeof(scale_key_count), 1, output);
+      // Keyframe indices per bone
+      {
+        channels[animation_index] = malloc(sizeof(void*) * total_bone_count);
+        assert(channels[animation_index]);
+
+        for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
+        {
+          // Retrieve or make a channel for each bone
+          struct aiNode* node = bone_infos[bone_index].bone->mNode;
+          channels[animation_index][bone_index] = channel_from_node(scene, animation, node);
+          if (!channels[animation_index][bone_index])
+          {
+            make_channel_for_node(node, &channels[animation_index][bone_index]);
+          }
+
+          const uint32_t first_position_keyframe_index = keyframe_counter;
+          const uint32_t position_keyframe_count = channels[animation_index][bone_index]->mNumPositionKeys;
+          fwrite(&keyframe_counter, sizeof(keyframe_counter), 1, output);
+          fwrite(&position_keyframe_count, sizeof(position_keyframe_count), 1, output);
+          keyframe_counter += position_keyframe_count;
+
+          const uint32_t first_rotation_keyframe_index = keyframe_counter;
+          const uint32_t rotation_keyframe_count = channels[animation_index][bone_index]->mNumRotationKeys;
+          fwrite(&keyframe_counter, sizeof(keyframe_counter), 1, output);
+          fwrite(&rotation_keyframe_count, sizeof(rotation_keyframe_count), 1, output);
+          keyframe_counter += rotation_keyframe_count;
+
+          const uint32_t first_scale_keyframe_index = keyframe_counter;
+          const uint32_t scale_keyframe_count = channels[animation_index][bone_index]->mNumScalingKeys;
+          fwrite(&keyframe_counter, sizeof(keyframe_counter), 1, output);
+          fwrite(&scale_keyframe_count, sizeof(scale_keyframe_count), 1, output);
+          keyframe_counter += scale_keyframe_count;
+
+#ifdef DUMP_ANIMATIONS
+          printf("\tBone #%u: %u position keyframes (starting at %u), %u rotation keyframes (starting at %u), %u scale "
+                 "keyframes (starting at %u)\n",
+                 bone_index, position_keyframe_count, first_position_keyframe_index, rotation_keyframe_count,
+                 first_rotation_keyframe_index, scale_keyframe_count, first_scale_keyframe_index);
+#endif
+        }
+      }
     }
   }
 
-  // Position keyframe section
+  // Keyframe section
   for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
   {
     const struct aiAnimation* animation = scene->mAnimations[animation_index];
@@ -526,18 +588,6 @@ static int export_file(char* filepath)
         const float value[4] = { key->mValue.x, key->mValue.y, key->mValue.z, 0.0f };
         fwrite(&value, sizeof(value), 1, output);
       }
-    }
-  }
-
-  // Rotation keyframe section
-  for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
-  {
-    const struct aiAnimation* animation = scene->mAnimations[animation_index];
-    const double inv_ticks_per_sec = 1.0 / (animation->mTicksPerSecond > 0.0 ? animation->mTicksPerSecond : 1000.0);
-
-    for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-    {
-      const struct aiNodeAnim* channel = channels[animation_index][bone_index];
 
       for (unsigned int key_index = 0; key_index < channel->mNumRotationKeys; ++key_index)
       {
@@ -549,18 +599,6 @@ static int export_file(char* filepath)
         const float value[4] = { key->mValue.x, key->mValue.y, key->mValue.z, key->mValue.w };
         fwrite(&value, sizeof(value), 1, output);
       }
-    }
-  }
-
-  // Scale keyframe section
-  for (unsigned int animation_index = 0; animation_index < scene->mNumAnimations; ++animation_index)
-  {
-    const struct aiAnimation* animation = scene->mAnimations[animation_index];
-    const double inv_ticks_per_sec = 1.0 / (animation->mTicksPerSecond > 0.0 ? animation->mTicksPerSecond : 1000.0);
-
-    for (unsigned int bone_index = 0; bone_index < total_bone_count; ++bone_index)
-    {
-      const struct aiNodeAnim* channel = channels[animation_index][bone_index];
 
       for (unsigned int key_index = 0; key_index < channel->mNumScalingKeys; ++key_index)
       {

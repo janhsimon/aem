@@ -9,8 +9,12 @@
 bool load_model_renderer();
 void destroy_model_renderer();
 
+GLuint get_fallback_diffuse_texture();
+GLuint get_fallback_normal_texture();
+GLuint get_fallback_orm_texture();
+
 void fill_model_renderer_buffers(GLsizeiptr vertices_size,
-                                 const struct Vertex* vertices,
+                                 const void* vertices,
                                  GLsizeiptr indices_size,
                                  const void* indices,
                                  uint32_t bone_count);

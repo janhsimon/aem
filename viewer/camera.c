@@ -5,7 +5,6 @@
 
 static const float near = 0.1f;
 static const float far = 1000.0f;
-static const float fov = GLM_PI_4; // 45deg, vertical field of view in radians
 
 static vec3 position = { 0.0f, 0.4f, -4.0f };
 static vec3 pivot = { 0.0f, 0.4f, 0.0f };
@@ -90,7 +89,7 @@ void calc_view_matrix(mat4 view_matrix)
   glm_lookat(position, pivot, GLM_YUP, view_matrix);
 }
 
-void calc_proj_matrix(mat4 proj_matrix, float aspect)
+void calc_proj_matrix(float aspect, float fov, mat4 proj_matrix)
 {
   glm_perspective(fov, aspect, near, far, proj_matrix);
 }
