@@ -23,7 +23,7 @@
 // #define DUMP_BONES
 // #define DUMP_ANIMATIONS
 
-#define SKIP_TEXTURE_EXPORT
+//#define SKIP_TEXTURE_EXPORT
 
 #define MAX_BONE_WEIGHT_COUNT 4 // Maximum number of bone weights that can influence a single vertex
 
@@ -172,7 +172,7 @@ static int export_file(char* filepath)
     printf("Bone count: %u\n", total_bone_count);
     printf("Animation count: %u\n", scene->mNumAnimations);
     printf("Keyframe count: %u\n", keyframe_count);
-#endif DUMP_HEADER
+#endif
   }
 
   // Vertex section

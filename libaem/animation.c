@@ -83,7 +83,7 @@ static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, unsi
 }
 
 static void get_bone_posed_transform(const struct AEMModel* model,
-                                     const struct AEMAnimation* animation,
+                                     const uint8_t* animation,
                                      uint32_t bone_index,
                                      float time,
                                      mat4 transform)
@@ -97,12 +97,12 @@ static void get_bone_posed_transform(const struct AEMModel* model,
   const uint32_t animation_size = sizeof(aem_string) + sizeof(float) + model->header.bone_count * sizeof(uint32_t) * 6;
   const uint32_t animations_size = model->header.animation_count * animation_size;
 
-  uint32_t position_keyframe_count = *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) +
+  uint32_t position_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
                                                    bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t)));
   if (position_keyframe_count > 0)
   {
     uint32_t first_position_keyframe_index =
-      *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) + bone_index * sizeof(uint32_t) * 6));
+      *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) + bone_index * sizeof(uint32_t) * 6));
 
     struct Keyframe* position_keyframes =
       (struct Keyframe*)((uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size + animations_size +
@@ -113,11 +113,11 @@ static void get_bone_posed_transform(const struct AEMModel* model,
     glm_translate(transform, position);
   }
 
-  uint32_t rotation_keyframe_count = *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) +
+  uint32_t rotation_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
                                                    bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 3));
   if (rotation_keyframe_count > 0)
   {
-    uint32_t first_rotation_keyframe_index = *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) +
+    uint32_t first_rotation_keyframe_index = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
                                                            bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 2));
 
     struct Keyframe* rotation_keyframes =
@@ -129,11 +129,11 @@ static void get_bone_posed_transform(const struct AEMModel* model,
     glm_quat_rotate(transform, rotation, transform);
   }
 
-  uint32_t scale_keyframe_count = *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) +
+  uint32_t scale_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
                                                 bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 5));
   if (scale_keyframe_count > 0)
   {
-    uint32_t first_scale_keyframe_index = *((uint32_t*)((uint8_t*)animation + sizeof(aem_string) + sizeof(float) +
+    uint32_t first_scale_keyframe_index = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
                                                         bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 4));
 
     struct Keyframe* scale_keyframes =
@@ -170,9 +170,9 @@ void aem_evaluate_model_animation(const struct AEMModel* model,
       const uint32_t bones_size = model->header.bone_count * sizeof(struct AEMBone);
       const uint32_t animation_size =
         sizeof(aem_string) + sizeof(float) + model->header.bone_count * sizeof(uint32_t) * 6;
-      const struct AEMAnimation* animation =
-        (const struct AEMAnimation*)((uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size +
-                                     animation_size * animation_index);
+      const uint8_t* animation =
+        (uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size +
+                                     animation_size * animation_index;
 
       get_bone_posed_transform(model, animation, bone_index, time, transforms[bone_index]);
 

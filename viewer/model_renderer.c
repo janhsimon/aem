@@ -150,6 +150,7 @@ void fill_model_renderer_buffers(GLsizeiptr vertices_size,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);
 
+  glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer);
   glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * bone_count);
 }
 

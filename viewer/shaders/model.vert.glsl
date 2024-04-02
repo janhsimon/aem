@@ -26,7 +26,7 @@ out VERT_TO_FRAG
   vec3 tangent;
   vec3 bitangent;
   vec2 uv;
-} output;
+} o;
 
 void main()
 {
@@ -44,13 +44,13 @@ void main()
     }
   }
 
-  output.position = (world * bone_transform * mesh_transform * vec4(in_position, 1)).xyz;
+  o.position = (world * bone_transform * mesh_transform * vec4(in_position, 1)).xyz;
 
-  output.normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
-  output.tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);
-  output.bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
+  o.normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
+  o.tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);
+  o.bitangent = normalize((world * bone_transform * mesh_transform * vec4(in_bitangent, 0)).xyz);
 
-  output.uv = in_uv;
+  o.uv = in_uv;
   
-  gl_Position = viewproj * vec4(output.position, 1);
+  gl_Position = viewproj * vec4(o.position, 1);
 }

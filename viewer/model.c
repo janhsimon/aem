@@ -9,6 +9,8 @@
 #include <cglm/quat.h>
 
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
 static struct AEMModel* model;
 

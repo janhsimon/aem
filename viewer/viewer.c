@@ -19,6 +19,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 static const char window_title[] = "AEM Viewer";
 static int window_width = 1280;
@@ -283,8 +284,8 @@ int main(int argc, char* argv[])
       const int error = glGetError();
       if (error != GL_NO_ERROR)
       {
-        printf("ERROR!\n");
-        assert(false);
+        printf("OpenGL error code: %d\n", error);
+        //assert(false);
       }
     }
   }

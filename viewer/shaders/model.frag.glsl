@@ -13,7 +13,7 @@ in VERT_TO_FRAG {
   vec3 tangent;
   vec3 bitangent;
   vec2 uv;
-} input;
+} i;
 
 out vec4 out_color;
 
@@ -72,21 +72,21 @@ vec3 aces(vec3 x)
 
 void main()
 {
-  vec4 base_color_sample = texture(base_color_tex, input.uv);
+  vec4 base_color_sample = texture(base_color_tex, i.uv);
   vec3 base_color = pow(base_color_sample.rgb, vec3(2.2)); // Convert sRGB to linear color space
   float opacity = base_color_sample.a;
 
-  vec3 normal_sample = texture(normal_tex, input.uv).rgb * 2.0 - 1.0;
+  vec3 normal_sample = texture(normal_tex, i.uv).rgb * 2.0 - 1.0;
   
-  vec3 orm_sample = texture(orm_tex, input.uv).rgb;
+  vec3 orm_sample = texture(orm_tex, i.uv).rgb;
   float occlusion = orm_sample.r;
   float roughness = orm_sample.g;
   float metalness = orm_sample.b;
 
-  vec3 V = normalize(camera_pos - input.position);
+  vec3 V = normalize(camera_pos - i.position);
 
   // Normal mapping
-  mat3 tbn = mat3(input.tangent, input.bitangent, input.normal);
+  mat3 tbn = mat3(i.tangent, i.bitangent, i.normal);
   vec3 N = normalize(tbn * normal_sample);
 
   vec3 F0 = vec3(0.04); 
