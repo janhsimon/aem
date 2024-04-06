@@ -285,7 +285,7 @@ int main(int argc, char* argv[])
       if (error != GL_NO_ERROR)
       {
         printf("OpenGL error code: %d\n", error);
-        //assert(false);
+        // assert(false);
       }
     }
   }

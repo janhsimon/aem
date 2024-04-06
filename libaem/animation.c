@@ -1,14 +1,13 @@
 #include "aem.h"
 #include "common.h"
 
-// #include <cglm/affine.h>
 #include <cglm/mat4.h>
 #include <cglm/quat.h>
 
-static unsigned int get_keyframe_index_after(float time, struct Keyframe* keyframes, uint32_t keyframe_count)
+static uint32_t get_keyframe_index_after(float time, struct Keyframe* keyframes, uint32_t keyframe_count)
 {
-  unsigned int after_index = keyframe_count;
-  for (unsigned int keyframe_index = 0; keyframe_index < keyframe_count; ++keyframe_index)
+  uint32_t after_index = keyframe_count;
+  for (uint32_t keyframe_index = 0; keyframe_index < keyframe_count; ++keyframe_index)
   {
     if (keyframes[keyframe_index].time >= time)
     {
@@ -17,12 +16,12 @@ static unsigned int get_keyframe_index_after(float time, struct Keyframe* keyfra
     }
   }
 
-  return (unsigned int)after_index;
+  return after_index;
 }
 
 static void get_keyframe_blend_vec3(float time, struct Keyframe* keyframes, uint32_t keyframe_count, vec3* out)
 {
-  unsigned int keyframe_index = get_keyframe_index_after(time, keyframes, keyframe_count);
+  uint32_t keyframe_index = get_keyframe_index_after(time, keyframes, keyframe_count);
 
   // Before the first keyframe
   if (keyframe_index == 0)
@@ -51,9 +50,9 @@ static void get_keyframe_blend_vec3(float time, struct Keyframe* keyframes, uint
   }
 }
 
-static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, unsigned int keyframe_count, versor* out)
+static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, uint32_t keyframe_count, versor* out)
 {
-  unsigned int keyframe_index = get_keyframe_index_after(time, keyframes, keyframe_count);
+  uint32_t keyframe_index = get_keyframe_index_after(time, keyframes, keyframe_count);
 
   // Before the first keyframe
   if (keyframe_index == 0)
@@ -83,62 +82,39 @@ static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, unsi
 }
 
 static void get_bone_posed_transform(const struct AEMModel* model,
-                                     const uint8_t* animation,
+                                     const struct Animation* animation,
                                      uint32_t bone_index,
                                      float time,
                                      mat4 transform)
 {
   glm_mat4_identity(transform);
 
-  // Offsets
-  const uint32_t meshes_size = model->header.mesh_count * sizeof(struct AEMMesh);
-  const uint32_t materials_size = model->header.material_count * sizeof(struct AEMMaterial);
-  const uint32_t bones_size = model->header.bone_count * sizeof(struct AEMBone);
-  const uint32_t animation_size = sizeof(aem_string) + sizeof(float) + model->header.bone_count * sizeof(uint32_t) * 6;
-  const uint32_t animations_size = model->header.animation_count * animation_size;
+  const struct Sequence* sequence = &model->sequences[animation->sequence_index + bone_index];
 
-  uint32_t position_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
-                                                   bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t)));
+  const uint32_t position_keyframe_count = sequence->position_keyframe_count;
   if (position_keyframe_count > 0)
   {
-    uint32_t first_position_keyframe_index =
-      *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) + bone_index * sizeof(uint32_t) * 6));
-
-    struct Keyframe* position_keyframes =
-      (struct Keyframe*)((uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size + animations_size +
-                         sizeof(struct Keyframe) * first_position_keyframe_index);
+    struct Keyframe* position_keyframes = &model->keyframes[sequence->first_position_keyframe_index];
 
     vec3 position;
     get_keyframe_blend_vec3(time, position_keyframes, position_keyframe_count, &position);
     glm_translate(transform, position);
   }
 
-  uint32_t rotation_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
-                                                   bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 3));
+  const uint32_t rotation_keyframe_count = sequence->rotation_keyframe_count;
   if (rotation_keyframe_count > 0)
   {
-    uint32_t first_rotation_keyframe_index = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
-                                                           bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 2));
-
-    struct Keyframe* rotation_keyframes =
-      (struct Keyframe*)((uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size + animations_size +
-                         sizeof(struct Keyframe) * first_rotation_keyframe_index);
+    struct Keyframe* rotation_keyframes = &model->keyframes[sequence->first_rotation_keyframe_index];
 
     versor rotation;
     get_keyframe_blend_quat(time, rotation_keyframes, rotation_keyframe_count, &rotation);
     glm_quat_rotate(transform, rotation, transform);
   }
 
-  uint32_t scale_keyframe_count = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
-                                                bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 5));
+  const uint32_t scale_keyframe_count = sequence->scale_keyframe_count;
   if (scale_keyframe_count > 0)
   {
-    uint32_t first_scale_keyframe_index = *((uint32_t*)(animation + sizeof(aem_string) + sizeof(float) +
-                                                        bone_index * sizeof(uint32_t) * 6 + sizeof(uint32_t) * 4));
-
-    struct Keyframe* scale_keyframes =
-      (struct Keyframe*)((uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size + animations_size +
-                         sizeof(struct Keyframe) * first_scale_keyframe_index);
+    struct Keyframe* scale_keyframes = &model->keyframes[sequence->first_scale_keyframe_index];
 
     vec3 scale;
     get_keyframe_blend_vec3(time, scale_keyframes, scale_keyframe_count, &scale);
@@ -161,21 +137,10 @@ void aem_evaluate_model_animation(const struct AEMModel* model,
     }
     else
     {
-      const uint32_t meshes_size = model->header.mesh_count * sizeof(struct AEMMesh);
-      const uint32_t materials_size = model->header.material_count * sizeof(struct AEMMaterial);
-
-      struct AEMBone* bone = (struct AEMBone*)((uint8_t*)model->run_time_data + meshes_size + materials_size +
-                                               sizeof(struct AEMBone) * bone_index);
-
-      const uint32_t bones_size = model->header.bone_count * sizeof(struct AEMBone);
-      const uint32_t animation_size =
-        sizeof(aem_string) + sizeof(float) + model->header.bone_count * sizeof(uint32_t) * 6;
-      const uint8_t* animation =
-        (uint8_t*)model->run_time_data + meshes_size + materials_size + bones_size +
-                                     animation_size * animation_index;
-
+      const struct Animation* animation = &model->animations[animation_index];
       get_bone_posed_transform(model, animation, bone_index, time, transforms[bone_index]);
 
+      struct AEMBone* bone = &model->bones[bone_index];
       int32_t parent_bone_index = bone->parent_bone_index;
       while (parent_bone_index >= 0)
       {
@@ -183,10 +148,7 @@ void aem_evaluate_model_animation(const struct AEMModel* model,
         get_bone_posed_transform(model, animation, parent_bone_index, time, parent_transform);
         glm_mat4_mul(parent_transform, transforms[bone_index], transforms[bone_index]);
 
-        const struct AEMBone* parent_bone =
-          (const struct AEMBone*)((uint8_t*)model->run_time_data + meshes_size + materials_size +
-                                  sizeof(struct AEMBone) * parent_bone_index);
-        parent_bone_index = parent_bone->parent_bone_index;
+        parent_bone_index = model->bones[parent_bone_index].parent_bone_index;
       }
 
       mat4 inverse_bind_matrix;

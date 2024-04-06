@@ -7,6 +7,8 @@
 struct aiScene;
 struct aiTexture;
 
+void scan_material_structure(const struct aiScene* scene, enum aiTextureType* base_color_texture_type);
+
 struct aiTexture* init_texture(const struct aiScene* scene,
                                const struct aiMaterial* material,
                                enum aiTextureType type,

@@ -19,31 +19,99 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+enum aiTextureType base_color_texture_type = aiTextureType_BASE_COLOR;
+
+void scan_material_structure(const struct aiScene* scene, enum aiTextureType* base_color_texture_type)
+{
+  bool used_texture_types[AI_TEXTURE_TYPE_MAX];
+  memset(used_texture_types, 0, sizeof(used_texture_types));
+
+  for (unsigned int material_index = 0; material_index < scene->mNumMaterials; ++material_index)
+  {
+    const struct aiMaterial* material = scene->mMaterials[material_index];
+
+    for (unsigned int texture_type = 0; texture_type < AI_TEXTURE_TYPE_MAX; ++texture_type)
+    {
+      struct aiString path;
+
+      const bool hit =
+        (aiGetMaterialTexture(material, texture_type, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS);
+      if (hit)
+      {
+        used_texture_types[texture_type] = true;
+      }
+    }
+  }
+
+  /*printf("Used texture types:\n");
+  for (unsigned int texture_type = 0; texture_type < AI_TEXTURE_TYPE_MAX; ++texture_type)
+  {
+    if (!used_texture_types[texture_type])
+    {
+      continue;
+    }
+
+    printf("\t%s\n", aiTextureTypeToString(texture_type));
+  }*/
+
+  // Determine the base color texture type
+  {
+    *base_color_texture_type = aiTextureType_BASE_COLOR;
+
+    if (used_texture_types[aiTextureType_DIFFUSE] && used_texture_types[aiTextureType_BASE_COLOR])
+    {
+      // assert(false);
+      return;
+    }
+
+    if (used_texture_types[aiTextureType_DIFFUSE])
+    {
+      *base_color_texture_type = aiTextureType_DIFFUSE;
+    }
+  }
+}
+
 struct aiTexture* init_texture(const struct aiScene* scene,
                                const struct aiMaterial* material,
                                enum aiTextureType type,
                                unsigned int* total_texture_count)
 {
-  struct aiString texture_id;
-  if (aiGetMaterialTexture(material, type, 0, &texture_id, NULL, NULL, NULL, NULL, NULL, NULL) != aiReturn_SUCCESS)
+  struct aiString path;
+  /*enum aiTextureMapping mapping;
+  unsigned int uvindex;
+  ai_real blend;
+  enum aiTextureOp op;
+  enum aiTextureMapMode mapmode[2];
+  unsigned int flags;*/
+  if (aiGetMaterialTexture(material, type, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) != aiReturn_SUCCESS)
   {
     return NULL;
   }
 
-  if (texture_id.length <= 1 || texture_id.data[0] != AI_EMBEDDED_TEXNAME_PREFIX[0])
+  aiGetMaterialString(material, _AI_MATKEY_TEXTURE_BASE, type, 0, &path);
+
+  if (path.length <= 1)
   {
     return NULL;
   }
 
-  // Skip the first character (*) and just read the ID number
-  int id = 0;
-  if (sscanf(&texture_id.data[1], "%d", &id) != 1)
+  if (path.data[0] == AI_EMBEDDED_TEXNAME_PREFIX[0])
   {
+    // Skip the first character (*) and just read the ID number
+    int id = 0;
+    if (sscanf(&path.data[1], "%d", &id) != 1)
+    {
+      return NULL;
+    }
+
+    ++(*total_texture_count);
+    return scene->mTextures[id];
+  }
+  else
+  {
+    // printf("External texture: \"%s\"\n", path.data);
     return NULL;
   }
-
-  ++(*total_texture_count);
-  return scene->mTextures[id];
 }
 
 void save_texture(const struct aiTexture* texture, const char* path, const char* filename, int channel_count)

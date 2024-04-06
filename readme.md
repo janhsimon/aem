@@ -32,12 +32,13 @@ This repository contains:
 | 3      | 1    | Version number       | Unsigned integer |
 | 4      | 4    | Number of vertices   | Unsigned integer |
 | 8      | 4    | Number of indices    | Unsigned integer |
-| 12     | 4    | Number of meshes     | Unsigned integer |
-| 16     | 4    | Number of materials  | Unsigned integer |
-| 20     | 4    | Number of textures   | Unsigned integer |
+| 12     | 4    | Number of textures   | Unsigned integer |
+| 16     | 4    | Number of meshes     | Unsigned integer |
+| 20     | 4    | Number of materials  | Unsigned integer |
 | 24     | 4    | Number of bones      | Unsigned integer |
 | 28     | 4    | Number of animations | Unsigned integer |
-| 32     | 4    | Number of keyframes  | Unsigned integer |
+| 32     | 4    | Number of sequences  | Unsigned integer |
+| 36     | 4    | Number of keyframes  | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -73,7 +74,7 @@ The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification des
 
 (The fields above are repeated for each vertex in the file.)
 
-The bone indices 1-4 and extra bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1. If a vertex is affected by less than 4 bones, the additional bone weights are 0.0, and the corresponding bone indices are -1. The bone indices 1-4 express skeletal animation, while the extra bone index is always applied with 100% weight to all vertices in a mesh, and expresses mesh animation.
+The bone indices 1-4 and extra bone indices index into the [bone section](#bone-section). The sum of all bone weights is always 1. If a vertex is affected by less than 4 bones, the additional bone weights are 0.0, and the corresponding bone indices are -1. The bone indices 1-4 express skeletal animation, while the extra bone index is always applied with 100% weight to all vertices in a mesh and expresses mesh animation.
 
 
 ## Index Section
@@ -88,13 +89,25 @@ The bone indices 1-4 and extra bone indices index into the [bone section](#bone-
 The indices index into the [vertex section](#vertex-section).
 
 
+## Texture Section
+
+| Offset | Size | Description | Data Type |
+| ------ | ---- | ----------- | --------- |
+| 0      | 128  | Filename    | String    |
+| ...    | ...  | (repeat)    | ...       |
+
+(The field above is repeated for each texture in the file.)
+
+The filename for a texture is supplied with a null-terminated string of at most 128 characters (including the null terminator). Longer filenames are not supported.
+
+
 ## Mesh Section
 
 | Offset | Size | Description       | Data Type        |
 | ------ | ---- | ----------------- | ---------------- |
 | 0      | 4    | First index       | Unsigned integer |
 | 4      | 4    | Number of indices | Unsigned integer |
-| 8      | 1    | Material index    | Unsigned integer |
+| 8      | 4    | Material index    | Unsigned integer |
 | ...    | ...  | (repeat)          | ...              |
 
 (The field above is repeated for each mesh in the file.)
@@ -114,18 +127,6 @@ Meshes consist of a range of indices in the [index section](#index-section). The
 (The fields above are repeated for each material in the file.)
 
 The texture indices index into the [material section](#material-section). An index of 255 indicates that the respective texture is not defined. In that case, your application should fall back to an appropriate default texture. (For example a solid 127/127/255 texture to use when a mesh in the model does not come with an actual normal map.) ORM stands for Occlusion, Roughness and Metalness: A texture image where red represents occlusion, green represents roughness and the blue channel represents metalness.
-
-
-## Texture Section
-
-| Offset | Size | Description | Data Type |
-| ------ | ---- | ----------- | --------- |
-| 0      | 128  | Filename    | String    |
-| ...    | ...  | (repeat)    | ...       |
-
-(The field above is repeated for each texture in the file.)
-
-The filename for a texture is supplied with a null-terminated string of at most 128 characters (including the null terminator). Longer filenames are not supported.
 
 
 ## Bone Section
@@ -148,17 +149,29 @@ The parent bone indices index into this same bone section, and is -1 for root bo
 | ------ | ---- | ---------------------------- | ---------------- |
 | 0      | 128  | Name                         | String           |
 | 128    | 4    | Duration                     | Float            |
-| 132    | 4    | First position keyframe      | Unsigned integer |
-| 136    | 4    | Number of position keyframes | Unsigned integer |
-| 140    | 4    | First rotation keyframe      | Unsigned integer |
-| 144    | 4    | Number of rotation keyframes | Unsigned integer |
-| 148    | 4    | First scale keyframe         | Unsigned integer |
-| 152    | 4    | Number of scale keyframes    | Unsigned integer |
+| 132    | 4    | Sequence index               | Unsigned integer |
 | ...    | ...  | (repeat)                     | ...              |
 
-(The fields above are repeated for each animation in the file. Additionally, the last six fields are repeated for each bone in the file.)
+(The fields above are repeated for each animation in the file.)
 
-The animation name is supplied as a null-terminated string of at most 128 characters (including the null terminator). The duration is defined in seconds. Animations consist of a range of indices in the [keyframe section](#keyframe-section).
+The animation name is supplied as a null-terminated string of at most 128 characters (including the null terminator). The duration is defined in seconds. The sequence indices index into the [sequence section](#sequence-section) and describe where the sequence for the first bone in the [bone section](#bone-section) for this animation is located. The sequences for the other bones in the model are then found following the first one.
+
+
+## Sequence Section
+
+| Offset | Size | Description                   | Data Type        |
+| ------ | ---- | ----------------------------- | ---------------- |
+| 0      | 4    | First position keyframe index | Unsigned integer |
+| 4      | 4    | Number of position keyframes  | Unsigned integer |
+| 8      | 4    | First rotation keyframe index | Unsigned integer |
+| 12     | 4    | Number of rotation keyframes  | Unsigned integer |
+| 16     | 4    | First scale keyframe index    | Unsigned integer |
+| 20     | 4    | Number of scale keyframes     | Unsigned integer |
+| ...    | ...  | (repeat)                      | ...              |
+
+(The fields above are repeated for each sequence in the file.)
+
+Sequences index into the [keyframe section](#keyframe-section).
 
 
 ## Keyframe Section
@@ -174,4 +187,4 @@ The animation name is supplied as a null-terminated string of at most 128 charac
 
 (The fields above repeated for each keyframe in the file.)
 
-The time of the keyframe is defined in seconds. Keyframes are generic, they can represent position, rotation or scale keyframes, depending on how the animation using the keyframe is indexing it. For position and scale keyframes, the last component W is 0. For rotation keyframes, the X, Y, Z, W values define a quaternion that expresses the rotation of the keyframe.
+The time of the keyframe is defined in seconds. Keyframes are generic, they can represent position, rotation or scale keyframes, depending on how the sequence using the keyframe is indexing it. For position and scale keyframes, the last component W is 0. For rotation keyframes, the X, Y, Z, W values define a quaternion that expresses the rotation of the keyframe.
