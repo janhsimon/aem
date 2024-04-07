@@ -136,6 +136,10 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
 
       igSeparator();
 
+      igColorEdit3("Background Color", scene_state->background_color, ImGuiColorEditFlags_NoInputs);
+
+      igSeparator();
+
       // Show flags
       if (igMenuItem_Bool("Show GUI", "U", display_state->gui, true))
       {

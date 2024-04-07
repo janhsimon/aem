@@ -25,8 +25,6 @@ static const char window_title[] = "AEM Viewer";
 static int window_width = 1280;
 static int window_height = 800;
 
-static const vec4 color_background = { 0.02f, 0.02f, 0.02f, 1.0f };
-
 static struct GLFWwindow* window = NULL;
 
 static struct AnimationState animation_state;
@@ -133,6 +131,7 @@ int main(int argc, char* argv[])
   scene_state.camera_fov = 60.0f;
   scene_state.auto_rotate_camera = false;
   scene_state.auto_rotate_camera_speed = 100;
+  scene_state.background_color[0] = scene_state.background_color[1] = scene_state.background_color[2] = 0.0f;
 
   // Create window and load OpenGL
   {
@@ -168,8 +167,6 @@ int main(int argc, char* argv[])
       printf("Failed to load OpenGL");
       return EXIT_FAILURE;
     }
-
-    glClearColor(color_background[0], color_background[1], color_background[2], color_background[3]);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -237,6 +234,8 @@ int main(int argc, char* argv[])
 
     // Render
     {
+      glClearColor(scene_state.background_color[0], scene_state.background_color[1], scene_state.background_color[2],
+                   1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
