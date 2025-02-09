@@ -65,12 +65,18 @@ void file_open_callback()
 
   // Load the new model
   char* path = path_from_filepath(filepath);
+
+  const double start_time = glfwGetTime();
+
   if (!load_model(filepath, path))
   {
     return;
   }
 
   finish_loading_model();
+
+  const double end_time = glfwGetTime() - start_time;
+  printf("Loaded model \"%s\" in %.2f seconds\n", filepath, end_time);
 
   // Update window title to include filename
   {
@@ -176,6 +182,8 @@ int main(int argc, char* argv[])
     glEnable(GL_BLEND);
 
     glEnable(GL_MULTISAMPLE);
+
+    glDisable(GL_CULL_FACE);
   }
 
   init_input(&animation_state, &display_state, &scene_state, file_open_callback);
@@ -227,7 +235,7 @@ int main(int argc, char* argv[])
 
       if (scene_state.auto_rotate_camera)
       {
-        const float speed = (float)scene_state.auto_rotate_camera_speed * 0.01f;
+        const float speed = (float)scene_state.auto_rotate_camera_speed * (-0.01f);
         camera_tumble((vec2){ delta_time * speed, 0.0f });
       }
     }

@@ -13,6 +13,8 @@ static GLuint vertex_array, vertex_buffer, index_buffer, uniform_buffer;
 
 static GLuint shader_program;
 static GLint light_dir_uniform_location, camera_pos_uniform_location, world_uniform_location, viewproj_uniform_location;
+static GLint base_color_uv_transform_uniform_location, normal_uv_transform_uniform_location,
+  orm_uv_transform_uniform_location;
 
 static GLuint fallback_diffuse_texture, fallback_normal_texture, fallback_orm_texture;
 
@@ -90,6 +92,10 @@ bool load_model_renderer()
       light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
       camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
 
+      base_color_uv_transform_uniform_location = get_uniform_location(shader_program, "base_color_uv_transform");
+      normal_uv_transform_uniform_location = get_uniform_location(shader_program, "normal_uv_transform");
+      orm_uv_transform_uniform_location = get_uniform_location(shader_program, "orm_uv_transform");
+
       const GLint base_color_tex_uniform_location = get_uniform_location(shader_program, "base_color_tex");
       glUniform1i(base_color_tex_uniform_location, 0);
 
@@ -101,9 +107,9 @@ bool load_model_renderer()
     }
   }
 
-  fallback_diffuse_texture = load_texture("textures/fallback_diffuse.png");
-  fallback_normal_texture = load_texture("textures/fallback_normal.png");
-  fallback_orm_texture = load_texture("textures/fallback_orm.png");
+  fallback_diffuse_texture = load_builtin_texture("textures/fallback_diffuse.png");
+  fallback_normal_texture = load_builtin_texture("textures/fallback_normal.png");
+  fallback_orm_texture = load_builtin_texture("textures/fallback_orm.png");
 
   return true;
 }
@@ -138,20 +144,23 @@ GLuint get_fallback_orm_texture()
   return fallback_orm_texture;
 }
 
-void fill_model_renderer_buffers(GLsizeiptr vertices_size,
-                                 const void* vertices,
-                                 GLsizeiptr indices_size,
-                                 const void* indices,
+void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
+                                 const void* model_vertex_buffer,
+                                 GLsizeiptr model_index_buffer_size,
+                                 const void* model_index_buffer,
                                  uint32_t bone_count)
 {
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, model_vertex_buffer_size, model_vertex_buffer, GL_STATIC_DRAW);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, model_index_buffer_size, model_index_buffer, GL_STATIC_DRAW);
 
   glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer);
-  glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * bone_count);
+  if (bone_count > 0)
+  {
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * bone_count);
+  }
 }
 
 void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix)
@@ -170,4 +179,11 @@ void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_
 
   // Set view-projection matrix uniform
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+}
+
+void set_material_uniforms(mat3 base_color_uv_transform, mat3 normal_uv_transform, mat3 orm_uv_transform)
+{
+  glUniformMatrix3fv(base_color_uv_transform_uniform_location, 1, GL_FALSE, (float*)base_color_uv_transform);
+  glUniformMatrix3fv(normal_uv_transform_uniform_location, 1, GL_FALSE, (float*)normal_uv_transform);
+  glUniformMatrix3fv(orm_uv_transform_uniform_location, 1, GL_FALSE, (float*)orm_uv_transform);
 }

@@ -62,7 +62,7 @@ bool generate_shader_program(GLuint vertex_shader, GLuint fragment_shader, GLuin
 GLint get_uniform_location(GLuint shader_program, const char* name)
 {
   GLint uniform_location = glGetUniformLocation(shader_program, name);
-  if (shader_program < 0)
+  if (uniform_location < 0)
   {
     printf("Failed to get uniform location for \"%s\"\n", name);
   }

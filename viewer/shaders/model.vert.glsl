@@ -44,7 +44,7 @@ void main()
     }
   }
 
-  o.position = (world * bone_transform * mesh_transform * vec4(in_position, 1)).xyz;
+  o.position = (world * /*bone_transform */ mesh_transform * vec4(in_position, 1)).xyz;
 
   o.normal = normalize((world * bone_transform * mesh_transform * vec4(in_normal, 0)).xyz);
   o.tangent = normalize((world * bone_transform * mesh_transform * vec4(in_tangent, 0)).xyz);

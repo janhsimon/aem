@@ -1,10 +1,12 @@
 set(TARGET_NAME exporter)
 
 set(SOURCE
-  animation.c
-  animation.h
-
   exporter.c
+
+  config.h
+
+  new_animation.c
+  new_animation.h
 
   texture.c
   texture.h
@@ -13,6 +15,8 @@ set(SOURCE
 set(DEPENDENCIES
   assimp
   cglm
+  glad
+  ktx
   libaem
   nfdx
   stb
@@ -22,6 +26,7 @@ set(DEPENDENCIES
 if(WIN32)
   set(EXTRA_BINS
     "${CMAKE_SOURCE_DIR}/external/assimp/lib/win/assimp.dll"
+    "${CMAKE_SOURCE_DIR}/external/ktx/lib/win/ktx.dll"
   )
 endif()
 

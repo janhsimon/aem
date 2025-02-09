@@ -14,8 +14,6 @@
 
 #include <math.h>
 
-// #define SHOW_DEMO_WINDOW
-
 #define PLAYBACK_BUTTON_WIDTH 50.0f
 
 #define BIND_POSE_LABEL "Static (Bind Pose)"

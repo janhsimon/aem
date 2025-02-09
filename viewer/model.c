@@ -15,7 +15,7 @@
 static struct AEMModel* model;
 
 static uint32_t texture_count;
-static GLuint* textures;
+static GLuint* texture_handles;
 
 static uint32_t bone_count;
 static struct AEMBone* bones;
@@ -32,18 +32,22 @@ bool load_model(const char* filepath, const char* path)
 
   aem_print_model_info(model);
 
-  // Load textures
-  {
-    const aem_string* texture_filenames = aem_get_model_textures(model, &texture_count);
+  // Fill the buffers of the model renderer
+  fill_model_renderer_buffers(get_model_vertex_buffer_size(), get_model_vertex_buffer(), get_model_index_buffer_size(),
+                              get_model_index_buffer(), get_model_bone_count());
 
-    const uint32_t textures_size = texture_count * sizeof(GLuint);
-    textures = (GLuint*)malloc(textures_size);
-    memset(textures, 0, textures_size);
+  // Load textures
+  const struct AEMTexture* textures = aem_get_model_textures(model, &texture_count);
+
+  if (texture_count > 0)
+  {
+    const uint32_t texture_handles_size = sizeof(GLuint) * texture_count;
+    texture_handles = malloc(texture_handles_size);
+    assert(texture_handles);
+
     for (uint32_t texture_index = 0; texture_index < texture_count; ++texture_index)
     {
-      char filepath[128];
-      sprintf(filepath, "%s/%s", path, texture_filenames[texture_index]);
-      textures[texture_index] = load_texture(filepath);
+      texture_handles[texture_index] = load_model_texture(model, &textures[texture_index]);
     }
   }
 
@@ -61,10 +65,6 @@ bool load_model(const char* filepath, const char* path)
   // Load animations
   animation_count = aem_get_model_animation_count(model);
 
-  // Fill the buffers of the model renderer
-  fill_model_renderer_buffers(get_model_vertices_size(), get_model_vertices(), get_model_indices_size(),
-                              get_model_indices(), get_model_bone_count());
-
   return true;
 }
 
@@ -77,27 +77,38 @@ void destroy_model()
 {
   aem_free_model(model);
 
-  glDeleteTextures(texture_count, textures);
+  glDeleteTextures(texture_count, texture_handles);
+  free(texture_handles);
 }
 
-void* get_model_vertices()
+void* get_model_vertex_buffer()
 {
-  return aem_get_model_vertices(model);
+  return aem_get_model_vertex_buffer(model);
 }
 
-uint32_t get_model_vertices_size()
+uint64_t get_model_vertex_buffer_size()
 {
-  return aem_get_model_vertices_size(model);
+  return aem_get_model_vertex_buffer_size(model);
 }
 
-void* get_model_indices()
+void* get_model_index_buffer()
 {
-  return aem_get_model_indices(model);
+  return aem_get_model_index_buffer(model);
 }
 
-uint32_t get_model_indices_size()
+uint64_t get_model_index_buffer_size()
 {
-  return aem_get_model_indices_size(model);
+  return aem_get_model_index_buffer_size(model);
+}
+
+void* get_model_image_buffer()
+{
+  return aem_get_model_image_buffer(model);
+}
+
+uint64_t get_model_image_buffer_size()
+{
+  return aem_get_model_image_buffer_size(model);
 }
 
 uint32_t get_model_bone_count()
@@ -143,13 +154,12 @@ void draw_model()
   for (uint32_t mesh_index = 0; mesh_index < aem_get_model_mesh_count(model); ++mesh_index)
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
-
     const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
 
     glActiveTexture(GL_TEXTURE0);
-    if (material->base_color_tex_index >= 0 && textures[material->base_color_tex_index])
+    if (material && material->base_color_tex_index >= 0 && texture_handles[material->base_color_tex_index])
     {
-      glBindTexture(GL_TEXTURE_2D, textures[material->base_color_tex_index]);
+      glBindTexture(GL_TEXTURE_2D, texture_handles[material->base_color_tex_index]);
     }
     else
     {
@@ -157,9 +167,9 @@ void draw_model()
     }
 
     glActiveTexture(GL_TEXTURE1);
-    if (material->normal_tex_index >= 0 && textures[material->normal_tex_index])
+    if (material && material->normal_tex_index >= 0 && texture_handles[material->normal_tex_index])
     {
-      glBindTexture(GL_TEXTURE_2D, textures[material->normal_tex_index]);
+      glBindTexture(GL_TEXTURE_2D, texture_handles[material->normal_tex_index]);
     }
     else
     {
@@ -167,13 +177,19 @@ void draw_model()
     }
 
     glActiveTexture(GL_TEXTURE2);
-    if (material->orm_tex_index >= 0 && textures[material->orm_tex_index])
+    if (material && material->orm_tex_index >= 0 && texture_handles[material->orm_tex_index])
     {
-      glBindTexture(GL_TEXTURE_2D, textures[material->orm_tex_index]);
+      glBindTexture(GL_TEXTURE_2D, texture_handles[material->orm_tex_index]);
     }
     else
     {
       glBindTexture(GL_TEXTURE_2D, get_fallback_orm_texture());
+    }
+
+    if (material)
+    {
+      set_material_uniforms(material->base_color_uv_transform, material->normal_uv_transform,
+                            material->orm_uv_transform);
     }
 
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,

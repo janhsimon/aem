@@ -3,8 +3,6 @@
 #include <cglm/mat4.h>
 #include <stdint.h>
 
-#include "cglm/types.h"
-
 struct aiMesh;
 
 enum Type
@@ -20,7 +18,7 @@ struct BoneInfo
   mat4 inv_bind_matrix;
   const struct aiMesh* mesh;
   int32_t parent_index;
-  enum Type type;
+  //enum Type type;
 };
 
 struct aiNode;

@@ -4,8 +4,9 @@
 
 struct Header
 {
-  uint32_t vertex_count, index_count, texture_count, mesh_count, material_count, bone_count, animation_count,
-    sequence_count, keyframe_count;
+  uint64_t vertex_buffer_size, index_buffer_size, image_buffer_size;
+  uint32_t level_count, texture_count, mesh_count, material_count;
+  uint32_t bone_count, animation_count, sequence_count, keyframe_count;
 };
 
 struct Vertex
@@ -45,13 +46,26 @@ struct AEMModel
   void* load_time_data; // Load-time data that is released when loading is done
   void* run_time_data;  // Run-time data that is kept around after loading is done
 
-  struct Vertex* vertices;
-  uint32_t* indices;
+  struct Vertex* vertex_buffer;
+  uint32_t* index_buffer;
+  uint8_t* image_buffer;
+
+  struct AEMLevel* levels;
+  struct AEMTexture* textures;
   struct AEMMesh* meshes;
   struct AEMMaterial* materials;
-  aem_string* texture_filenames;
   struct AEMBone* bones;
   struct Animation* animations;
   struct Sequence* sequences;
   struct Keyframe* keyframes;
+};
+
+struct AEMTextureData
+{
+  uint32_t base_width, base_height;
+  uint32_t mip_level_count;
+  uint64_t* mip_offsets; // Offsets into data, one offets per mip level, in bytes
+  uint64_t* mip_sizes;   // One size per mip level, in bytes
+
+  void* data;
 };

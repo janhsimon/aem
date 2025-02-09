@@ -4,7 +4,8 @@ set(SOURCE
   include/aem/aem.h
 
   animation.c
-  core.c
+  model.c
+  texture.c
 
   common.h
 )

@@ -6,6 +6,7 @@ uniform vec3  albedo;
 uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D orm_tex; // Occlusion, roughness, metalness
+uniform mat3 base_color_uv_transform, normal_uv_transform, orm_uv_transform;
 
 in VERT_TO_FRAG {
   vec3 position; // In world space
@@ -72,13 +73,18 @@ vec3 aces(vec3 x)
 
 void main()
 {
-  vec4 base_color_sample = texture(base_color_tex, i.uv);
+  vec2 base_color_uv = vec2(base_color_uv_transform * vec3(i.uv, 1));
+  vec4 base_color_sample = texture(base_color_tex, base_color_uv);
   vec3 base_color = pow(base_color_sample.rgb, vec3(2.2)); // Convert sRGB to linear color space
   float opacity = base_color_sample.a;
 
-  vec3 normal_sample = texture(normal_tex, i.uv).rgb * 2.0 - 1.0;
+  vec2 normal_uv = vec2(normal_uv_transform * vec3(i.uv, 1));
+  vec3 normal_sample;
+  normal_sample.xy = texture(normal_tex, normal_uv).rg * 2.0 - 1.0;
+  normal_sample.z = sqrt(1.0 - normal_sample.x * normal_sample.x - normal_sample.y * normal_sample.y);
   
-  vec3 orm_sample = texture(orm_tex, i.uv).rgb;
+  vec2 orm_uv = vec2(orm_uv_transform * vec3(i.uv, 1));
+  vec3 orm_sample = texture(orm_tex, orm_uv).rgb;
   float occlusion = orm_sample.r;
   float roughness = orm_sample.g;
   float metalness = orm_sample.b;

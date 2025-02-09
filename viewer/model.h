@@ -11,11 +11,14 @@ bool load_model(const char* filepath, const char* path);
 void finish_loading_model();
 void destroy_model();
 
-void* get_model_vertices();
-uint32_t get_model_vertices_size();
+void* get_model_vertex_buffer();
+uint64_t get_model_vertex_buffer_size();
 
-void* get_model_indices();
-uint32_t get_model_indices_size();
+void* get_model_index_buffer();
+uint64_t get_model_index_buffer_size();
+
+void* get_model_image_buffer();
+uint64_t get_model_image_buffer_size();
 
 uint32_t get_model_bone_count();
 

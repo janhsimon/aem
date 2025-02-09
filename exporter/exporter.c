@@ -1,4 +1,6 @@
 #include "animation.h"
+#include "config.h"
+#include "new_animation.h"
 #include "texture.h"
 
 #include <aem/aem.h>
@@ -14,19 +16,6 @@
 
 #include <assert.h>
 #include <stdio.h>
-
-// #define DUMP_HEADER
-// #define DUMP_NODES
-// #define DUMP_MESHES
-// #define DUMP_MATERIALS
-// #define DUMP_MATERIAL_PROPERTIES
-// #define DUMP_BONES
-#define DUMP_ANIMATIONS
-#define DUMP_SEQUENCES
-
-//#define SKIP_TEXTURE_EXPORT
-
-#define MAX_BONE_WEIGHT_COUNT 4 // Maximum number of bone weights that can influence a single vertex
 
 struct Material
 {
@@ -79,16 +68,16 @@ static int export_file(char* filepath)
   }
 
   // Count total number of nodes in the file
-  unsigned int total_node_count = 0;
-  get_node_count(scene->mRootNode, &total_node_count);
+  // unsigned int total_node_count = 0;
+  // get_node_count(scene->mRootNode, &total_node_count);
 
-#ifdef DUMP_NODES
-  printf("Node count: %u\n", total_node_count);
-  print_node_hierarchy(scene, scene->mRootNode, 1);
-#endif
+  // #ifdef DUMP_NODES
+  //   printf("Node count: %u\n", total_node_count);
+  //   print_node_hierarchy(scene, scene->mRootNode, 1);
+  // #endif
 
   // Print the input bones
-  {
+  /*{
     uint32_t counter = 0;
     for (unsigned int mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index)
     {
@@ -96,11 +85,12 @@ static int export_file(char* filepath)
       for (unsigned int bone_index = 0; bone_index < mesh->mNumBones; ++bone_index)
       {
         const struct aiBone* bone = mesh->mBones[bone_index];
-        // printf("Input bone %u (from mesh %u) : \"%s\"\n", counter, mesh_index, bone->mName.data);
+        printf("Input bone %u (from mesh %u) : \"%s\" == \"%s\", with %u weights\n", counter, mesh_index,
+  bone->mName.data, bone->mNode->mName.data, bone->mNumWeights);
         ++counter;
       }
     }
-  }
+  }*/
 
   // Calculate total number of vertices and indices across all meshes
   uint32_t total_vertex_count = 0, total_index_count = 0;
@@ -134,18 +124,70 @@ static int export_file(char* filepath)
   }
 
   // Create a list of bones
-  struct BoneInfo* bone_infos;
+  struct BoneInfo* bone_infos = NULL;
   unsigned int total_bone_count = 0;
   {
-    unsigned int bone_info_count = 0;
-    get_bone_info_count(scene, scene->mRootNode, &bone_info_count);
-    // printf("*** BONE INFO COUNT = %u\n", bone_info_count);
+    for (unsigned int mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index)
+    {
+      const struct aiMesh* mesh = scene->mMeshes[mesh_index];
 
-    bone_infos = malloc(sizeof(struct BoneInfo) * bone_info_count);
-    init_animation(scene, bone_infos, total_node_count, &total_bone_count);
+      // unsigned int bone_info_count = 0;
+      // get_bone_info_count(scene, scene->mRootNode, &bone_info_count);
+      // printf("*** BONE INFO COUNT = %u\n", bone_info_count);
 
-    // printf("*** TOTAL NODE COUNT = %u\n", total_node_count);
-    // printf("*** TOTAL BONE COUNT = %u\n", total_bone_count);
+      total_bone_count += mesh->mNumBones;
+
+      // init_animation(scene, bone_infos, total_node_count, &total_bone_count);
+
+      // printf("*** TOTAL NODE COUNT = %u\n", total_node_count);
+      // printf("*** TOTAL BONE COUNT = %u\n", total_bone_count);
+    }
+
+    bone_infos = malloc(sizeof(struct BoneInfo) * total_bone_count);
+
+    unsigned int bone_info_counter = 0;
+    for (unsigned int mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index)
+    {
+      const struct aiMesh* mesh = scene->mMeshes[mesh_index];
+      for (unsigned int bone_index = 0; bone_index < mesh->mNumBones; ++bone_index)
+      {
+        struct aiBone* bone = mesh->mBones[bone_index];
+        struct BoneInfo* bone_info = &bone_infos[bone_info_counter];
+
+        bone_info->bone = bone;
+
+        mat4 inv_bind_matrix;
+        glm_mat4_make(&bone->mOffsetMatrix.a1, inv_bind_matrix);
+        glm_mat4_transpose(inv_bind_matrix); // From row-major (assimp) to column-major (OpenGL)
+        glm_mat4_copy(inv_bind_matrix, bone_info->inv_bind_matrix);
+
+        bone_info->mesh = mesh;
+
+        // Populate the parent index
+        {
+          bone_info->parent_index = -1;
+
+          // Find the node that corresponds to this bone
+          struct aiNode* node = bone->mNode;
+          assert(node);
+
+          // Walk up the hierarchy to find a node that also corresponds to a bone
+          while (node->mParent)
+          {
+            const struct aiBone* parent_bone = first_bone_from_node(mesh, node->mParent);
+            if (parent_bone)
+            {
+              bone_info->parent_index = (int32_t)get_bone_index(scene, parent_bone);
+              break;
+            }
+
+            node = node->mParent;
+          }
+        }
+
+        ++bone_info_counter;
+      }
+    }
   }
 
   // Calculate total number of sequences
@@ -306,7 +348,7 @@ static int export_file(char* filepath)
             continue;
           }
 
-          if (bone_info->type == Skeletal)
+          // if (bone_info->type == Skeletal)
           {
             const struct aiBone* bone = bone_info->bone;
 
@@ -327,10 +369,10 @@ static int export_file(char* filepath)
               }
             }
           }
-          else if (bone_info->type == Mesh)
-          {
-            extra_bone_index = bone_index;
-          }
+          // else if (bone_info->type == Mesh)
+          //{
+          //   extra_bone_index = bone_index;
+          // }
         }
 
         fwrite(bone_indices, sizeof(bone_indices), 1, output);
@@ -374,44 +416,49 @@ static int export_file(char* filepath)
       struct aiString material_name;
       aiGetMaterialString(scene->mMaterials[material_index], AI_MATKEY_NAME, &material_name);
 
+      enum AEMTextureCompression compression;
+
       char filename[AEM_STRING_SIZE];
+
       struct aiTexture* tex = materials[material_index].base_color_tex;
       if (tex)
       {
-        sprintf(filename, "%s_BCO.png", material_name.data); // Null-terminates string
+        compression = AEMTextureCompression_BC7;
 
 #ifndef SKIP_TEXTURE_EXPORT
-        printf("Texture #%u: \"%s\" (Base Color/Opacity, ", texture_counter++, filename);
-        save_texture(tex, path, filename, 4);
+        save_texture(tex, path, material_name.data, TextureType_BaseColorOpacity, compression, &texture_counter,
+                     filename);
 #endif
 
         fwrite(filename, AEM_STRING_SIZE, 1, output);
+        fwrite(&compression, sizeof(compression), 1, output);
       }
 
       tex = materials[material_index].normal_tex;
       if (tex)
       {
-        sprintf(filename, "%s_N.png", material_name.data); // Null-terminates string
+        compression = AEMTextureCompression_BC5;
 
 #ifndef SKIP_TEXTURE_EXPORT
-        printf("Texture #%u: \"%s\" (Normal, ", texture_counter++, filename);
-        save_texture(tex, path, filename, 3);
+        save_texture(tex, path, material_name.data, TextureType_Normal, compression, &texture_counter, filename);
 #endif
 
         fwrite(filename, AEM_STRING_SIZE, 1, output);
+        fwrite(&compression, sizeof(compression), 1, output);
       }
 
       tex = materials[material_index].orm_tex;
       if (tex)
       {
-        sprintf(filename, "%s_ORM.png", material_name.data); // Null-terminates string
+        compression = AEMTextureCompression_BC7;
 
 #ifndef SKIP_TEXTURE_EXPORT
-        printf("Texture #%u: \"%s\" (Occlusion/Roughness/Metalness, ", texture_counter++, filename);
-        save_texture(tex, path, filename, 3);
+        save_texture(tex, path, material_name.data, TextureType_OcclusionRoughnessMetalness, compression,
+                     &texture_counter, filename);
 #endif
 
         fwrite(filename, AEM_STRING_SIZE, 1, output);
+        fwrite(&compression, sizeof(compression), 1, output);
       }
     }
   }
@@ -513,9 +560,9 @@ static int export_file(char* filepath)
 #ifdef DUMP_BONES
     const struct aiBone* bone = bone_info->bone;
 
-    printf("Bone #%u \"%s\":\n\tType: ", bone_index, bone->mName.data);
+    printf("Bone #%u \"%s\":", bone_index, bone->mName.data);
 
-    if (bone_info->type == Skeletal)
+    /*if (bone_info->type == Skeletal)
     {
       printf("Skeletal");
     }
@@ -527,29 +574,29 @@ static int export_file(char* filepath)
     {
       printf("Hierarchy");
     }
-    printf("\n");
+    printf("\n");*/
 
-    // printf("\n\tParent bone: ");
-    // if (bone_info->parent_index < 0)
-    //{
-    //   printf("<None>\n");
-    // }
-    // else
-    //{
-    //   printf("#%d \"%s\"\n", bone_info->parent_index, bone_infos[bone_info->parent_index].bone->mName.data);
-    // }
+    printf("\n\tParent bone: ");
+    if (bone_info->parent_index < 0)
+    {
+      printf("<None>\n");
+    }
+    else
+    {
+      printf("#%d \"%s\"\n", bone_info->parent_index, bone_infos[bone_info->parent_index].bone->mName.data);
+    }
 
-    // printf("\tMesh: ");
-    // if (bone_info->mesh)
-    //{
-    //   printf("\"%s\"\n", bone_info->mesh->mName.data);
-    // }
-    // else
-    //{
-    //   printf("<None>\n");
-    // }
+    printf("\tMesh: ");
+    if (bone_info->mesh)
+    {
+      printf("\"%s\"\n", bone_info->mesh->mName.data);
+    }
+    else
+    {
+      printf("<None>\n");
+    }
 
-    // printf("\tBone weights: %u\n", bone->mNumWeights);
+    printf("\tBone weights: %u\n", bone->mNumWeights);
 
     // printf("\tInverse bind matrix: ");
     // glm_mat4_print(inv_bind_matrix, stdout);
