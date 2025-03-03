@@ -1,8 +1,10 @@
 #include "geometry.h"
 
 #include "config.h"
+#include "transform.h"
 
 #include <cglm/affine.h>
+#include <cglm/mat3.h>
 #include <cglm/mat4.h>
 #include <cglm/quat.h>
 #include <cglm/vec3.h>
@@ -22,7 +24,7 @@
 //   cgltf_size material_index;
 // };
 
-struct OutputMesh
+typedef struct
 {
   cgltf_mesh* input_mesh;
 
@@ -33,10 +35,10 @@ struct OutputMesh
 
   cgltf_size vertex_count, index_count, first_index;
   int32_t material_index;
-};
+} OutputMesh;
 
-static cgltf_size output_mesh_count = 0;
-static struct OutputMesh* output_meshes = NULL;
+static cgltf_size output_mesh_count;
+static OutputMesh* output_meshes = NULL;
 
 static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
                                             cgltf_attribute** positions,
@@ -79,8 +81,7 @@ static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
   }
 }
 
-static const struct cgltf_node*
-find_node_for_mesh_recursively(const struct cgltf_node* node, const struct cgltf_mesh* mesh)
+static cgltf_node* find_node_for_mesh_recursively(cgltf_node* node, const cgltf_mesh* mesh)
 {
   if (node->mesh == mesh)
   {
@@ -89,9 +90,9 @@ find_node_for_mesh_recursively(const struct cgltf_node* node, const struct cgltf
 
   for (cgltf_size child_index = 0; child_index < node->children_count; ++child_index)
   {
-    const struct cgltf_node* child = node->children[child_index];
+    struct cgltf_node* child = node->children[child_index];
 
-    const struct cgltf_node* result = find_node_for_mesh_recursively(child, mesh);
+    struct cgltf_node* result = find_node_for_mesh_recursively(child, mesh);
     if (result)
     {
       return result;
@@ -101,13 +102,13 @@ find_node_for_mesh_recursively(const struct cgltf_node* node, const struct cgltf
   return NULL;
 }
 
-static const struct cgltf_node* find_node_for_mesh(const struct cgltf_data* input_file, const struct cgltf_mesh* mesh)
+static cgltf_node* find_node_for_mesh(const cgltf_data* input_file, const cgltf_mesh* mesh)
 {
   for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
   {
-    const struct cgltf_node* node = &input_file->nodes[node_index];
+    struct cgltf_node* node = &input_file->nodes[node_index];
 
-    const cgltf_node* result = find_node_for_mesh_recursively(node, mesh);
+    cgltf_node* result = find_node_for_mesh_recursively(node, mesh);
     if (result)
     {
       return result;
@@ -117,8 +118,8 @@ static const struct cgltf_node* find_node_for_mesh(const struct cgltf_data* inpu
   return NULL;
 }
 
-static void reconstruct_tangents(const struct cgltf_data* input_file,
-                                 struct OutputMesh* output_mesh,
+static void reconstruct_tangents(const cgltf_data* input_file,
+                                 OutputMesh* output_mesh,
                                  cgltf_accessor* positions,
                                  cgltf_accessor* normals,
                                  cgltf_accessor* uvs,
@@ -193,8 +194,6 @@ static void reconstruct_tangents(const struct cgltf_data* input_file,
     glm_vec3_add(helper[index0 + output_mesh->vertex_count], tdir, helper[index0 + output_mesh->vertex_count]);
     glm_vec3_add(helper[index1 + output_mesh->vertex_count], tdir, helper[index1 + output_mesh->vertex_count]);
     glm_vec3_add(helper[index2 + output_mesh->vertex_count], tdir, helper[index2 + output_mesh->vertex_count]);
-
-    free(helper);
   }
 
   for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
@@ -226,37 +225,195 @@ static void reconstruct_tangents(const struct cgltf_data* input_file,
       out[vertex_index][3] = (dot < 0.0f) ? -1.0f : 1.0f;
     }
   }
+
+  free(helper);
 }
 
-void setup_geometry_output(const struct cgltf_data* input_file)
+static bool check_node_for_instancing(const cgltf_data* input_file, const cgltf_node* node, bool* mesh_referenced)
 {
-  output_mesh_count = 0;
-
-  // Count the number of output meshes required
-  for (cgltf_size input_mesh_index = 0; input_mesh_index < input_file->meshes_count; ++input_mesh_index)
+  const cgltf_mesh* mesh = node->mesh;
+  if (mesh)
   {
-    const cgltf_mesh* input_mesh = &input_file->meshes[input_mesh_index];
-
-    for (cgltf_size primitive_index = 0; primitive_index < input_mesh->primitives_count; ++primitive_index)
+    for (cgltf_size mesh_index = 0; mesh_index < input_file->meshes_count; ++mesh_index)
     {
-      const cgltf_primitive* primitive = &input_mesh->primitives[primitive_index];
-
-      if (primitive->type != cgltf_primitive_type_triangles)
+      if (mesh == &input_file->meshes[mesh_index])
       {
-        continue;
+        if (mesh_referenced[mesh_index])
+        {
+          return true;
+        }
+
+        mesh_referenced[mesh_index] = true;
+        break;
       }
+    }
+  }
+
+  for (cgltf_size child_index = 0; child_index < node->children_count; ++child_index)
+  {
+    const cgltf_node* child = node->children[child_index];
+    if (check_node_for_instancing(input_file, child, mesh_referenced))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool
+is_primitive_valid(const cgltf_primitive* primitive, const cgltf_attribute* positions, const cgltf_attribute* normals)
+{
+  if (primitive->type != cgltf_primitive_type_triangles)
+  {
+    return false;
+  }
+
+  if (!positions || !normals)
+  {
+    return false;
+  }
+
+  if (!primitive->indices || primitive->indices->count < 3)
+  {
+    return false;
+  }
+
+  return true;
+}
+
+static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
+                                        cgltf_data* input_file,
+                                        cgltf_attribute* positions,
+                                        cgltf_attribute* normals,
+                                        cgltf_attribute* tangents,
+                                        cgltf_attribute* uvs,
+                                        cgltf_accessor* indices,
+                                        mat4 global_node_transform)
+{
+  mat3 global_node_rotation;
+  glm_mat4_pick3(global_node_transform, global_node_rotation);
+
+  glm_vec3_normalize(global_node_rotation[0]);
+  glm_vec3_normalize(global_node_rotation[1]);
+  glm_vec3_normalize(global_node_rotation[2]);
+
+  // Reconstruct tangents if they are not included and uvs exist
+  vec4* reconstructed_tangents = NULL;
+  if (!tangents && uvs)
+  {
+    reconstructed_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
+    assert(reconstructed_tangents);
+
+    reconstruct_tangents(input_file, output_mesh, positions->data, normals->data, uvs->data, indices,
+                         reconstructed_tangents);
+  }
+
+  for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
+  {
+    // Position (required)
+    {
+      const cgltf_bool result =
+        cgltf_accessor_read_float(positions->data, vertex_index, output_mesh->positions[vertex_index], 3);
+      assert(result);
+
+      glm_mat4_mulv3(global_node_transform, output_mesh->positions[vertex_index], 1.0f,
+                     output_mesh->positions[vertex_index]);
+    }
+
+    // Normal (required)
+    {
+      const cgltf_bool result =
+        cgltf_accessor_read_float(normals->data, vertex_index, output_mesh->normals[vertex_index], 3);
+      assert(result);
+
+      glm_mat3_mulv(global_node_rotation, output_mesh->normals[vertex_index], output_mesh->normals[vertex_index]);
+    }
+
+    // Tangent (included or reconstructed)
+    vec4 tangent; // With extra w-channel for later bitangent construction
+    {
+      if (tangents)
+      {
+        const cgltf_bool result = cgltf_accessor_read_float(tangents->data, vertex_index, tangent, 4);
+        assert(result);
+      }
+      else if (reconstructed_tangents)
+      {
+        glm_vec4_copy(reconstructed_tangents[vertex_index], tangent);
+      }
+
+      glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
+      glm_mat3_mulv(global_node_rotation, output_mesh->tangents[vertex_index], output_mesh->tangents[vertex_index]);
+    }
+
+    // Bitangent (constructed)
+    {
+      glm_cross(output_mesh->normals[vertex_index], output_mesh->tangents[vertex_index],
+                output_mesh->bitangents[vertex_index]);
+      glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
+    }
+
+    // UV (optional)
+    if (uvs)
+    {
+      const cgltf_bool result = cgltf_accessor_read_float(uvs->data, vertex_index, output_mesh->uvs[vertex_index], 2);
+      assert(result);
+    }
+  }
+
+  if (reconstructed_tangents)
+  {
+    free(reconstructed_tangents);
+  }
+}
+
+uint32_t get_mesh_count()
+{
+  return (uint32_t)output_mesh_count;
+}
+
+void setup_geometry_output(const cgltf_data* input_file)
+{
+  // Check that there are never two primitives that have triangles
+  for (cgltf_size mesh_index = 0; mesh_index < input_file->meshes_count; ++mesh_index)
+  {
+    const cgltf_mesh* mesh = &input_file->meshes[mesh_index];
+
+    bool has_triangles = false;
+    for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
+    {
+      const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
+      if (primitive->type == cgltf_primitive_type_triangles)
+      {
+        assert(!has_triangles);
+        has_triangles = true;
+      }
+    }
+  }
+
+  // Count the required output meshes
+  output_mesh_count = 0;
+  for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
+  {
+    const cgltf_mesh* mesh = input_file->nodes[node_index].mesh;
+    if (!mesh)
+    {
+      continue;
+    }
+
+    for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
+    {
+      const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
 
       cgltf_attribute *positions = NULL, *normals = NULL;
       locate_attributes_for_primitive(primitive, &positions, &normals, NULL, NULL);
 
-      if (!positions || !normals)
+      if (is_primitive_valid(primitive, positions, normals))
       {
-        continue;
+        ++output_mesh_count;
+        break;
       }
-
-      assert(primitive->indices);
-
-      ++output_mesh_count;
     }
   }
 
@@ -264,43 +421,41 @@ void setup_geometry_output(const struct cgltf_data* input_file)
 
   // Allocate the output meshes
   {
-    const cgltf_size output_meshes_size = sizeof(struct OutputMesh) * output_mesh_count;
+    const cgltf_size output_meshes_size = sizeof(OutputMesh) * output_mesh_count;
     output_meshes = malloc(output_meshes_size);
     assert(output_meshes);
     memset(output_meshes, 0, output_meshes_size);
   }
 
-  // Convert the data into the output meshes
-  cgltf_size output_mesh_index = 0;
-  cgltf_size first_vertex = 0, first_index = 0;
-  for (cgltf_size input_mesh_index = 0; input_mesh_index < input_file->meshes_count; ++input_mesh_index)
+  // Count the mesh vertices and indices and allocate space for them
   {
-    cgltf_mesh* input_mesh = &input_file->meshes[input_mesh_index];
-
-    for (cgltf_size primitive_index = 0; primitive_index < input_mesh->primitives_count; ++primitive_index)
+    cgltf_size output_mesh_index = 0;
+    cgltf_size first_vertex = 0, first_index = 0;
+    for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
     {
-      const cgltf_primitive* primitive = &input_mesh->primitives[primitive_index];
-
-      if (primitive->type != cgltf_primitive_type_triangles)
+      const cgltf_node* node = &input_file->nodes[node_index];
+      const cgltf_mesh* mesh = node->mesh;
+      if (!mesh)
       {
         continue;
       }
 
-      cgltf_attribute *positions = NULL, *normals = NULL, *tangents = NULL, *uvs = NULL;
-      locate_attributes_for_primitive(primitive, &positions, &normals, &tangents, &uvs);
-
-      if (!positions || !normals)
+      OutputMesh* output_mesh = &output_meshes[output_mesh_index];
+      output_mesh->vertex_count = output_mesh->index_count = 0;
+      for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
       {
-        continue;
-      }
+        const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
 
-      struct OutputMesh* output_mesh = &output_meshes[output_mesh_index];
+        cgltf_attribute *positions = NULL, *normals = NULL, *tangents = NULL, *uvs = NULL;
+        locate_attributes_for_primitive(primitive, &positions, &normals, &tangents, &uvs);
 
-      output_mesh->input_mesh = input_mesh;
+        if (!is_primitive_valid(primitive, positions, normals))
+        {
+          continue;
+        }
 
-      // Vertices
-      {
-        output_mesh->vertex_count = positions->data->count;
+        output_mesh->vertex_count += positions->data->count;
+        output_mesh->index_count += primitive->indices->count;
 
         assert(normals->data->count == output_mesh->vertex_count);
 
@@ -313,134 +468,37 @@ void setup_geometry_output(const struct cgltf_data* input_file)
         {
           assert(uvs->data->count == output_mesh->vertex_count);
         }
-
-        output_mesh->positions = malloc(sizeof(*output_mesh->positions) * output_mesh->vertex_count);
-        output_mesh->normals = malloc(sizeof(*output_mesh->normals) * output_mesh->vertex_count);
-        output_mesh->tangents = malloc(sizeof(*output_mesh->tangents) * output_mesh->vertex_count);
-        output_mesh->bitangents = malloc(sizeof(*output_mesh->bitangents) * output_mesh->vertex_count);
-        output_mesh->uvs = malloc(sizeof(*output_mesh->uvs) * output_mesh->vertex_count);
-
-        // Grab the node transform
-        mat4 transform = GLM_MAT4_IDENTITY_INIT;
-        {
-          const cgltf_node* node = find_node_for_mesh(input_file, input_mesh);
-          assert(node);
-
-          const struct cgltf_node* n_ptr = node;
-          while (n_ptr)
-          {
-            mat4 node_transform = GLM_MAT4_IDENTITY_INIT;
-
-            if (n_ptr->has_matrix)
-            {
-              assert(!n_ptr->has_translation && !n_ptr->has_rotation && !n_ptr->has_scale);
-              glm_mat4_make(n_ptr->matrix, node_transform);
-            }
-
-            if (n_ptr->has_translation)
-            {
-              assert(!n_ptr->has_matrix);
-              glm_translate(node_transform, n_ptr->translation);
-            }
-
-            if (n_ptr->has_rotation)
-            {
-              assert(!n_ptr->has_matrix);
-              mat4 rotation;
-              glm_quat_mat4(n_ptr->rotation, rotation);
-              glm_mat4_mul(node_transform, rotation, node_transform);
-            }
-
-            if (n_ptr->has_scale)
-            {
-              assert(!n_ptr->has_matrix);
-              glm_scale(node_transform, n_ptr->scale);
-            }
-
-            glm_mat4_mul(node_transform, transform, transform);
-
-            n_ptr = n_ptr->parent;
-          }
-        }
-
-        // Reconstruct tangents if they are not included and uvs exist
-        vec4* reconstructed_tangents = NULL;
-        if (!tangents && uvs)
-        {
-          reconstructed_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
-          assert(reconstructed_tangents);
-
-          reconstruct_tangents(input_file, output_mesh, positions->data, normals->data, uvs->data, primitive->indices,
-                               reconstructed_tangents);
-        }
-
-        for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
-        {
-          // Position (required)
-          {
-            const cgltf_bool result =
-              cgltf_accessor_read_float(positions->data, vertex_index, output_mesh->positions[vertex_index], 3);
-            assert(result);
-
-            glm_mat4_mulv3(transform, output_mesh->positions[vertex_index], 1.0f, output_mesh->positions[vertex_index]);
-          }
-
-          // Normal (required)
-          {
-            const cgltf_bool result =
-              cgltf_accessor_read_float(normals->data, vertex_index, output_mesh->normals[vertex_index], 3);
-            assert(result);
-
-            glm_mat4_mulv3(transform, output_mesh->normals[vertex_index], 1.0f, output_mesh->normals[vertex_index]);
-          }
-
-          // Tangent (included or reconstructed)
-          vec4 tangent; // With extra w-channel for later bitangent construction
-          {
-            if (tangents)
-            {
-              const cgltf_bool result = cgltf_accessor_read_float(tangents->data, vertex_index, tangent, 4);
-              assert(result);
-            }
-            else if (reconstructed_tangents)
-            {
-              glm_vec4_copy(reconstructed_tangents[vertex_index], tangent);
-            }
-
-            glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
-
-            glm_mat4_mulv3(transform, output_mesh->tangents[vertex_index], 1.0f, output_mesh->tangents[vertex_index]);
-          }
-
-          // Bitangent (constructed)
-          {
-            // Create the bitangent
-            glm_cross(output_mesh->normals[vertex_index], output_mesh->tangents[vertex_index],
-                      output_mesh->bitangents[vertex_index]);
-            glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
-          }
-
-          // UV (optional)
-          if (uvs)
-          {
-            const cgltf_bool result =
-              cgltf_accessor_read_float(uvs->data, vertex_index, output_mesh->uvs[vertex_index], 2);
-            assert(result);
-          }
-        }
-
-        if (reconstructed_tangents)
-        {
-          free(reconstructed_tangents);
-        }
       }
 
-      // Indices
-      {
-        output_mesh->index_count = primitive->indices->count;
+      // Allocate vertices
+      output_mesh->positions = malloc(sizeof(*output_mesh->positions) * output_mesh->vertex_count);
+      output_mesh->normals = malloc(sizeof(*output_mesh->normals) * output_mesh->vertex_count);
+      output_mesh->tangents = malloc(sizeof(*output_mesh->tangents) * output_mesh->vertex_count);
+      output_mesh->bitangents = malloc(sizeof(*output_mesh->bitangents) * output_mesh->vertex_count);
+      output_mesh->uvs = malloc(sizeof(*output_mesh->uvs) * output_mesh->vertex_count);
 
-        output_mesh->indices = malloc(sizeof(*output_mesh->indices) * output_mesh->index_count);
-        assert(output_mesh->indices);
+      // Allocate indices
+      output_mesh->indices = malloc(sizeof(*output_mesh->indices) * output_mesh->index_count);
+      assert(output_mesh->indices);
+
+      mat4 global_node_transform;
+      calculate_global_node_transform(node, global_node_transform);
+
+      // Fill in the vertices and indices
+      for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
+      {
+        const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
+
+        cgltf_attribute *positions = NULL, *normals = NULL, *tangents = NULL, *uvs = NULL;
+        locate_attributes_for_primitive(primitive, &positions, &normals, &tangents, &uvs);
+
+        if (!is_primitive_valid(primitive, positions, normals))
+        {
+          continue;
+        }
+
+        add_vertices_to_output_mesh(output_mesh, input_file, positions, normals, tangents, uvs, primitive->indices,
+                                    global_node_transform);
 
         for (cgltf_size index = 0; index < output_mesh->index_count; ++index)
         {
@@ -448,16 +506,18 @@ void setup_geometry_output(const struct cgltf_data* input_file)
         }
 
         output_mesh->first_index = first_index;
-      }
 
-      // Material index
-      if (primitive->material)
-      {
-        output_mesh->material_index = cgltf_material_index(input_file, primitive->material);
-      }
-      else
-      {
-        output_mesh->material_index = -1;
+        output_mesh->input_mesh = mesh;
+
+        // Material index
+        if (primitive->material)
+        {
+          output_mesh->material_index = cgltf_material_index(input_file, primitive->material);
+        }
+        else
+        {
+          output_mesh->material_index = -1;
+        }
       }
 
       ++output_mesh_index;
@@ -465,223 +525,6 @@ void setup_geometry_output(const struct cgltf_data* input_file)
       first_index += output_mesh->index_count;
     }
   }
-
-  /*
-  const cgltf_size input_mesh_count = input_file->meshes_count;
-
-  // Create an input mesh info struct for each input mesh
-  struct InputMeshInfo* input_mesh_infos = NULL;
-  {
-    const cgltf_size size = sizeof(struct InputMeshInfo) * input_mesh_count;
-    input_mesh_infos = malloc(size);
-    assert(input_mesh_infos);
-    memset(input_mesh_infos, 0, size);
-  }
-
-  // Input meshes -> input mesh infos
-  // Fill out the input mesh infos and count the number of required output meshes
-  {
-    // Decide which input meshes should be represented as output meshes and count the number of attributes
-    for (cgltf_size input_mesh_index = 0; input_mesh_index < input_mesh_count; ++input_mesh_index)
-    {
-      const cgltf_mesh* input_mesh = &input_file->meshes[input_mesh_index];
-      struct InputMeshInfo* input_mesh_info = &input_mesh_infos[input_mesh_index];
-
-      for (cgltf_size primitive_index = 0; primitive_index < input_mesh->primitives_count; ++primitive_index)
-      {
-        const cgltf_primitive* primitive = &input_mesh->primitives[primitive_index];
-
-        if (primitive->type == cgltf_primitive_type_triangles)
-        {
-          cgltf_attribute *positions = NULL, *normals = NULL;
-          locate_attributes_for_primitive(primitive, &positions, &normals, NULL, NULL);
-
-          if (!positions || !normals)
-          {
-            continue;
-          }
-
-          // Represent every input mesh with at least one triangle primitive that includes position and normal
-          // attributes as output mesh
-          input_mesh_info->represent = true;
-
-          // This primitive is contributing attributes
-          ++input_mesh_info->attribute_count;
-        }
-      }
-
-      if (input_mesh_info->represent)
-      {
-        ++output_mesh_count;
-      }
-    }
-
-    // Fill the input mesh infos
-    for (cgltf_size input_mesh_index = 0; input_mesh_index < input_mesh_count; ++input_mesh_index)
-    {
-      const cgltf_mesh* input_mesh = &input_file->meshes[input_mesh_index];
-      struct InputMeshInfo* input_mesh_info = &input_mesh_infos[input_mesh_index];
-
-      if (!input_mesh_info->represent)
-      {
-        continue;
-      }
-
-      const cgltf_size attribute_count = input_mesh_info->attribute_count;
-      input_mesh_info->position_attributes = malloc(sizeof(cgltf_accessor*) * attribute_count);
-      input_mesh_info->normal_attributes = malloc(sizeof(cgltf_accessor*) * attribute_count);
-      input_mesh_info->tangent_attributes = malloc(sizeof(cgltf_accessor*) * attribute_count);
-      input_mesh_info->uv_attributes = malloc(sizeof(cgltf_accessor*) * attribute_count);
-
-      input_mesh_info->index_attributes = malloc(sizeof(cgltf_accessor*) * attribute_count);
-
-      cgltf_size attribute_index = 0;
-      for (cgltf_size primitive_index = 0; primitive_index < input_mesh->primitives_count; ++primitive_index)
-      {
-        const cgltf_primitive* primitive = &input_mesh->primitives[primitive_index];
-
-        if (primitive->type == cgltf_primitive_type_triangles)
-        {
-          cgltf_attribute *positions, *normals, *tangents, *uvs;
-          locate_attributes_for_primitive(primitive, &positions, &normals, &tangents, &uvs);
-
-          if (!positions || !normals)
-          {
-            continue;
-          }
-
-          input_mesh_info->position_attributes[attribute_index] = positions->data;
-          input_mesh_info->normal_attributes[attribute_index] = normals->data;
-          input_mesh_info->tangent_attributes[attribute_index] = tangents->data;
-          input_mesh_info->uv_attributes[attribute_index] = uvs->data;
-
-          input_mesh_info->index_attributes[attribute_index] = primitive->indices;
-
-          ++attribute_index;
-        }
-      }
-
-      input_mesh_info->material_index = cgltf_material_index(input_file, input_mesh->primitives[0].material);
-    }
-  }
-
-  // Create the required number of output meshes
-  {
-    const cgltf_size size = sizeof(struct OutputMesh) * output_mesh_count;
-    output_meshes = malloc(size);
-    assert(output_meshes);
-    memset(output_meshes, 0, size);
-  }
-
-  // Input mesh infos -> output meshes
-  {
-    cgltf_size output_mesh_index = 0;
-    cgltf_size index_offset = 0;
-    for (cgltf_size input_mesh_index = 0; input_mesh_index < input_mesh_count; ++input_mesh_index)
-    {
-      const struct InputMeshInfo* input_mesh_info = &input_mesh_infos[input_mesh_index];
-
-      if (!input_mesh_info->represent)
-      {
-        continue;
-      }
-
-      const cgltf_mesh* input_mesh = &input_file->meshes[input_mesh_index];
-      struct OutputMesh* output_mesh = &output_meshes[output_mesh_index];
-
-      // Count the number of vertices and indices
-      for (cgltf_size attribute_index = 0; attribute_index < input_mesh_info->attribute_count; ++attribute_index)
-      {
-        const cgltf_accessor* positions = input_mesh_info->position_attributes[attribute_index];
-        output_mesh->vertex_count += positions->count;
-
-        output_mesh->index_count += input_mesh_info->index_attributes[attribute_index]->count;
-      }
-
-      const cgltf_size vertex_count = output_mesh->vertex_count;
-      const cgltf_size positions_size = sizeof(*output_mesh->positions) * vertex_count;
-      const cgltf_size normals_size = sizeof(*output_mesh->normals) * vertex_count;
-      const cgltf_size tangents_size = sizeof(*output_mesh->tangents) * vertex_count;
-      const cgltf_size bitangents_size = sizeof(*output_mesh->bitangents) * vertex_count;
-      const cgltf_size uvs_size = sizeof(*output_mesh->uvs) * vertex_count;
-
-      output_mesh->positions = malloc(positions_size);
-      output_mesh->normals = malloc(normals_size);
-      output_mesh->tangents = malloc(tangents_size);
-      output_mesh->bitangents = malloc(bitangents_size);
-      output_mesh->uvs = malloc(uvs_size);
-
-      const cgltf_size index_count = output_mesh->index_count;
-      const cgltf_size indices_size = sizeof(*output_mesh->indices) * index_count;
-
-      output_mesh->indices = malloc(indices_size);
-
-      // Fill the data
-      for (cgltf_size attribute_index = 0; attribute_index < input_mesh_info->attribute_count; ++attribute_index)
-      {
-        const cgltf_accessor* positions = input_mesh_info->position_attributes[attribute_index];
-        const cgltf_accessor* normals = input_mesh_info->normal_attributes[attribute_index];
-        const cgltf_accessor* tangents = input_mesh_info->tangent_attributes[attribute_index];
-        const cgltf_accessor* uvs = input_mesh_info->uv_attributes[attribute_index];
-
-        const cgltf_accessor* indices = input_mesh_info->index_attributes[attribute_index];
-
-        for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
-        {
-          {
-            const cgltf_bool result =
-              cgltf_accessor_read_float(positions, vertex_index, output_mesh->positions[vertex_index], 3);
-            assert(result);
-          }
-
-          {
-            const cgltf_bool result =
-              cgltf_accessor_read_float(normals, vertex_index, output_mesh->normals[vertex_index], 3);
-            assert(result);
-          }
-
-          vec4 tangent; // With extra w-channel for bitangent creation
-          if (tangents)
-          {
-            const cgltf_bool result = cgltf_accessor_read_float(tangents, vertex_index, tangent, 4);
-            assert(result);
-          }
-          else
-          {
-            // reconstruct_tangents(input_file, output_mesh);
-            assert(false);
-          }
-
-          if (uvs)
-          {
-            const cgltf_bool result = cgltf_accessor_read_float(uvs, vertex_index, output_mesh->uvs[vertex_index], 2);
-            assert(result);
-          }
-
-          // Create the three channel tangent
-          glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
-
-          // Create the bitangent
-          glm_cross(output_mesh->normals[vertex_index], output_mesh->tangents[vertex_index],
-                    output_mesh->bitangents[vertex_index]);
-          glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
-        }
-
-        for (cgltf_size index = 0; index < output_mesh->index_count; ++index)
-        {
-          output_mesh->indices[index] = (uint32_t)(cgltf_accessor_read_index(indices, index) + index_offset);
-        }
-
-        output_mesh->material_index = cgltf_material_index(data, mesh);
-      }
-
-      ++output_mesh_index;
-      index_offset += output_mesh->vertex_count;
-    }
-  }
-
-  free(input_mesh_infos);
-  */
 }
 
 uint64_t calculate_vertex_buffer_size()
@@ -689,7 +532,7 @@ uint64_t calculate_vertex_buffer_size()
   cgltf_size vertex_buffer_size = 0;
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
     vertex_buffer_size += output_mesh->vertex_count;
   }
 
@@ -701,7 +544,7 @@ uint64_t calculate_index_buffer_size()
   cgltf_size index_buffer_size = 0;
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
     index_buffer_size += output_mesh->index_count;
   }
 
@@ -712,7 +555,7 @@ void write_vertex_buffer(FILE* output_file)
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
 
     for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
     {
@@ -722,7 +565,7 @@ void write_vertex_buffer(FILE* output_file)
       fwrite(output_mesh->bitangents[vertex_index], sizeof(output_mesh->bitangents[vertex_index]), 1, output_file);
       fwrite(output_mesh->uvs[vertex_index], sizeof(output_mesh->uvs[vertex_index]), 1, output_file);
 
-      // Bone indices
+      // Joint indices
       {
         const int32_t minus_one = -1;
         fwrite(&minus_one, sizeof(minus_one), 1, output_file);
@@ -731,7 +574,7 @@ void write_vertex_buffer(FILE* output_file)
         fwrite(&minus_one, sizeof(minus_one), 1, output_file);
       }
 
-      // Bone weights
+      // Joint weights
       {
         const float zero = 0.0f;
         fwrite(&zero, sizeof(zero), 1, output_file);
@@ -740,7 +583,7 @@ void write_vertex_buffer(FILE* output_file)
         fwrite(&zero, sizeof(zero), 1, output_file);
       }
 
-      // Extra bone index
+      // Extra joint index
       {
         const int32_t minus_one = -1;
         fwrite(&minus_one, sizeof(minus_one), 1, output_file);
@@ -791,7 +634,7 @@ void write_index_buffer(FILE* output_file)
 
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
     fwrite(output_mesh->indices, output_mesh->index_count * sizeof(*output_mesh->indices), 1, output_file);
   }
 }
@@ -800,7 +643,7 @@ void write_meshes(FILE* output_file)
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
 
     const uint32_t first_index = (uint32_t)output_mesh->first_index;
     fwrite(&first_index, sizeof(first_index), 1, output_file);
@@ -847,7 +690,7 @@ void destroy_geometry_output()
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
-    const struct OutputMesh* output_mesh = &output_meshes[mesh_index];
+    const OutputMesh* output_mesh = &output_meshes[mesh_index];
 
     free(output_mesh->positions);
     free(output_mesh->normals);

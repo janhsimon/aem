@@ -17,10 +17,6 @@ static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
   {
     return GL_CLAMP_TO_EDGE;
   }
-  else if (wrap_mode == AEMTextureWrapMode_ClampToBorder)
-  {
-    return GL_CLAMP_TO_BORDER;
-  }
 
   return GL_REPEAT;
 }

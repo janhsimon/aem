@@ -3,7 +3,10 @@
 #include "animation_state.h"
 #include "camera.h"
 #include "display_state.h"
+#include "gui_skeleton.h"
 #include "scene_state.h"
+
+#include <aem/aem.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -13,6 +16,8 @@
 #include <cimgui/cimgui_impl.h>
 
 #include <math.h>
+
+//#define SHOW_DEMO_WINDOW
 
 #define PLAYBACK_BUTTON_WIDTH 50.0f
 
@@ -26,6 +31,7 @@ static void (*file_open_callback)() = NULL;
 struct AnimationState* animation_state;
 struct DisplayState* display_state;
 struct SceneState* scene_state;
+struct SkeletonState* skeleton_state;
 
 void init_gui(struct GLFWwindow* window,
               struct AnimationState* animation_state_,
@@ -67,6 +73,11 @@ bool is_mouse_consumed()
 bool is_keyboard_consumed()
 {
   return io->WantCaptureKeyboard;
+}
+
+void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, const struct AEMJoint* joints, uint32_t joint_count)
+{
+  init_gui_skeleton(skeleton_state, joints, joint_count);
 }
 
 void update_gui(int screen_width, int screen_height, char** animation_names, float animation_duration)
@@ -151,11 +162,21 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
       {
         display_state->skeleton = !display_state->skeleton;
       }
+      if (igMenuItem_Bool("Show Wireframe", "W", display_state->wireframe, true))
+      {
+        display_state->wireframe = !display_state->wireframe;
+      }
 
       igEndMenu();
     }
 
     igEndMainMenuBar();
+  }
+
+  // Skeleton window
+  if (display_state->skeleton)
+  {
+    update_gui_skeleton(screen_width, screen_height);
   }
 
   // Animation window
@@ -263,6 +284,8 @@ void render_gui()
 
 void destroy_gui()
 {
+  destroy_gui_skeleton();
+
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   igDestroyContext(context);

@@ -52,15 +52,15 @@ bool load_model_renderer()
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(12 * 4));
 
-    // Bone indices
+    // Joint indices
     glEnableVertexAttribArray(5);
     glVertexAttribIPointer(5, 4, GL_INT, AEM_VERTEX_SIZE, (void*)(14 * 4));
 
-    // Bone weights
+    // Joint weights
     glEnableVertexAttribArray(6);
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(18 * 4));
 
-    // Extra bone index
+    // Extra joint index
     glEnableVertexAttribArray(7);
     glVertexAttribIPointer(7, 1, GL_INT, AEM_VERTEX_SIZE, (void*)(22 * 4));
   }
@@ -148,7 +148,7 @@ void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
                                  const void* model_vertex_buffer,
                                  GLsizeiptr model_index_buffer_size,
                                  const void* model_index_buffer,
-                                 uint32_t bone_count)
+                                 uint32_t joint_count)
 {
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, model_vertex_buffer_size, model_vertex_buffer, GL_STATIC_DRAW);
@@ -157,9 +157,9 @@ void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, model_index_buffer_size, model_index_buffer, GL_STATIC_DRAW);
 
   glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer);
-  if (bone_count > 0)
+  if (joint_count > 0)
   {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * bone_count);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * joint_count);
   }
 }
 

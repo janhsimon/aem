@@ -31,8 +31,7 @@ enum AEMTextureWrapMode
 {
   AEMTextureWrapMode_Repeat,
   AEMTextureWrapMode_MirroredRepeat,
-  AEMTextureWrapMode_ClampToEdge,
-  AEMTextureWrapMode_ClampToBorder
+  AEMTextureWrapMode_ClampToEdge
 };
 
 struct AEMLevel
@@ -66,10 +65,11 @@ struct AEMMaterial
   float orm_uv_transform[9];
 };
 
-struct AEMBone
+struct AEMJoint
 {
+  aem_string name;
   float inverse_bind_matrix[16];
-  int32_t parent_bone_index;
+  int32_t parent_joint_index;
   int32_t padding[3];
 };
 
@@ -96,8 +96,10 @@ void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, co
 
 uint32_t aem_get_model_mesh_count(const struct AEMModel* model);
 const struct AEMMesh* aem_get_model_mesh(const struct AEMModel* model, uint32_t mesh_index);
+
 const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, int32_t material_index);
-struct AEMBone* aem_get_model_bones(const struct AEMModel* model, uint32_t* bone_count);
+
+struct AEMJoint* aem_get_model_joints(const struct AEMModel* model, uint32_t* joint_count);
 
 uint32_t aem_get_model_animation_count(const struct AEMModel* model);
 const aem_string* aem_get_model_animation_name(const struct AEMModel* model, uint32_t animation_index);
@@ -107,7 +109,7 @@ float aem_get_model_animation_duration(const struct AEMModel* model, uint32_t an
 void aem_evaluate_model_animation(const struct AEMModel* model,
                                   int32_t animation_index,
                                   float time,
-                                  float* bone_transforms);
+                                  float* joint_transforms);
 
 // enum AEMResult aem_load_texture_data(const char* filename, struct AEMTextureData** texture_data);
 // void aem_free_texture_data(struct AEMTextureData* texture_data);

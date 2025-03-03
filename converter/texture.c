@@ -18,43 +18,39 @@
 #include <assert.h>
 #include <stdbool.h>
 
-struct LevelInfo
+typedef struct
 {
   uint32_t width, height;
   uint64_t data_size; // Size of the level in bytes
-};
+} LevelInfo;
 
-struct TextureInfo
+typedef struct
 {
   cgltf_buffer_view* buffer_view;
 
   uint32_t channel_count; // Number of color channels in the texture
 
   cgltf_size level_count;
-  struct LevelInfo* level_infos; // One per level
+  LevelInfo* level_infos; // One per level
 
   enum AEMTextureWrapMode wrap_mode[2]; // 0: x, 1: y
-};
+} TextureInfo;
 
 static cgltf_size texture_count = 0;
-static struct TextureInfo* texture_infos = NULL; // One per texture
+static TextureInfo* texture_infos = NULL; // One per texture
 
 static enum AEMTextureWrapMode cgltf_texture_wrap_mode_to_aem(cgltf_int wrap_mode)
 {
-  if (wrap_mode == 0x8370)
+  if (wrap_mode == cgltf_wrap_mode_mirrored_repeat)
   {
     return AEMTextureWrapMode_MirroredRepeat;
   }
-  else if (wrap_mode == 0x812F)
+  else if (wrap_mode == cgltf_wrap_mode_clamp_to_edge)
   {
     return AEMTextureWrapMode_ClampToEdge;
   }
-  else if (wrap_mode == 0x812D)
-  {
-    return AEMTextureWrapMode_ClampToBorder;
-  }
 
-  assert(wrap_mode == 0x2901);
+  assert(wrap_mode == cgltf_wrap_mode_repeat);
   return AEMTextureWrapMode_Repeat;
 }
 
@@ -68,15 +64,11 @@ static const char* texture_wrap_mode_to_string(enum AEMTextureWrapMode wrap_mode
   {
     return "Clamp to edge";
   }
-  else if (wrap_mode == AEMTextureWrapMode_ClampToBorder)
-  {
-    return "Clamp to border";
-  }
 
   return "Repeat";
 }
 
-void setup_texture_output(const struct cgltf_data* input_file)
+void setup_texture_output(const cgltf_data* input_file)
 {
   texture_count = input_file->textures_count;
   if (texture_count == 0)
@@ -84,16 +76,16 @@ void setup_texture_output(const struct cgltf_data* input_file)
     return;
   }
 
-  texture_infos = malloc(sizeof(struct TextureInfo) * texture_count);
+  texture_infos = malloc(sizeof(TextureInfo) * texture_count);
   assert(texture_infos);
-  memset(texture_infos, 0, sizeof(struct TextureInfo) * texture_count);
+  memset(texture_infos, 0, sizeof(TextureInfo) * texture_count);
 
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
     const cgltf_texture* texture = &input_file->textures[texture_index];
     const cgltf_image* image = texture->image;
 
-    struct TextureInfo* texture_info = &texture_infos[texture_index];
+    TextureInfo* texture_info = &texture_infos[texture_index];
 
     assert(!image->uri);
 
@@ -109,13 +101,13 @@ void setup_texture_output(const struct cgltf_data* input_file)
     }
 
     texture_info->level_count = (cgltf_size)floor(log2(max(base_width, base_height))) + 1;
-    texture_info->level_infos = malloc(sizeof(struct LevelInfo) * texture_info->level_count);
+    texture_info->level_infos = malloc(sizeof(LevelInfo) * texture_info->level_count);
     assert(texture_info->level_infos);
-    memset(texture_info->level_infos, 0, sizeof(struct LevelInfo) * texture_info->level_count);
+    memset(texture_info->level_infos, 0, sizeof(LevelInfo) * texture_info->level_count);
 
     for (cgltf_size level_index = 0; level_index < texture_info->level_count; ++level_index)
     {
-      struct LevelInfo* level_info = &texture_info->level_infos[level_index];
+      LevelInfo* level_info = &texture_info->level_infos[level_index];
 
       level_info->width = (uint32_t)max(base_width >> level_index, 1);
       level_info->height = (uint32_t)max(base_height >> level_index, 1);
@@ -133,10 +125,10 @@ uint64_t calculate_image_buffer_size()
   cgltf_size image_buffer_size = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const struct TextureInfo* texture_info = &texture_infos[texture_index];
+    const TextureInfo* texture_info = &texture_infos[texture_index];
     for (cgltf_size level_index = 0; level_index < texture_info->level_count; ++level_index)
     {
-      const struct LevelInfo* level_info = &texture_info->level_infos[level_index];
+      const LevelInfo* level_info = &texture_info->level_infos[level_index];
       image_buffer_size += level_info->data_size;
     }
   }
@@ -149,7 +141,7 @@ uint32_t calculate_level_count()
   cgltf_size level_count = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const struct TextureInfo* texture_info = &texture_infos[texture_index];
+    const TextureInfo* texture_info = &texture_infos[texture_index];
     level_count += texture_info->level_count;
   }
 
@@ -160,7 +152,7 @@ void write_image_buffer(const char* path, FILE* output_file)
 {
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const struct TextureInfo* texture_info = &texture_infos[texture_index];
+    const TextureInfo* texture_info = &texture_infos[texture_index];
 
     // Load the embedded base image from the input file
     stbi_uc* base_data;
@@ -174,12 +166,12 @@ void write_image_buffer(const char* path, FILE* output_file)
 
     for (cgltf_size level_index = 0; level_index < texture_info->level_count; ++level_index)
     {
-      const struct LevelInfo* level_info = &texture_info->level_infos[level_index];
+      const LevelInfo* level_info = &texture_info->level_infos[level_index];
 
       const stbi_uc* level_data = base_data;
       if (level_index > 0)
       {
-        const struct LevelInfo* base_level_info = &texture_info->level_infos[0];
+        const LevelInfo* base_level_info = &texture_info->level_infos[0];
         level_data = stbir_resize_uint8_linear(base_data, base_level_info->width, base_level_info->height, 0, NULL,
                                                level_info->width, level_info->height, 0, texture_info->channel_count);
       }
@@ -207,10 +199,10 @@ void write_levels(FILE* output_file)
   uint64_t offset = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const struct TextureInfo* texture_info = &texture_infos[texture_index];
+    const TextureInfo* texture_info = &texture_infos[texture_index];
     for (cgltf_size level_index = 0; level_index < texture_info->level_count; ++level_index)
     {
-      const struct LevelInfo* level_info = &texture_info->level_infos[level_index];
+      const LevelInfo* level_info = &texture_info->level_infos[level_index];
 
       fwrite(&offset, sizeof(offset), 1, output_file);
 
@@ -233,9 +225,9 @@ void write_textures(FILE* output_file)
   uint32_t level_offset = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const struct TextureInfo* texture_info = &texture_infos[texture_index];
+    const TextureInfo* texture_info = &texture_infos[texture_index];
 
-    const struct LevelInfo* base_level_info = &texture_info->level_infos[0];
+    const LevelInfo* base_level_info = &texture_info->level_infos[0];
     const uint32_t width = base_level_info->width;
     fwrite(&width, sizeof(width), 1, output_file);
 

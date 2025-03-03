@@ -6,16 +6,16 @@ struct Header
 {
   uint64_t vertex_buffer_size, index_buffer_size, image_buffer_size;
   uint32_t level_count, texture_count, mesh_count, material_count;
-  uint32_t bone_count, animation_count, sequence_count, keyframe_count;
+  uint32_t joint_count, animation_count, sequence_count, keyframe_count;
 };
 
 struct Vertex
 {
   float position[3], normal[3], tangent[3], bitangent[3];
   float uv[2];
-  int32_t bone_indices[4];
-  float bone_weights[4];
-  int32_t extra_bone_index;
+  int32_t joint_indices[4];
+  float joint_weights[4];
+  int32_t extra_joint_index;
 };
 
 struct Animation
@@ -54,7 +54,7 @@ struct AEMModel
   struct AEMTexture* textures;
   struct AEMMesh* meshes;
   struct AEMMaterial* materials;
-  struct AEMBone* bones;
+  struct AEMJoint* joints;
   struct Animation* animations;
   struct Sequence* sequences;
   struct Keyframe* keyframes;

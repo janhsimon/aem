@@ -1,6 +1,7 @@
 #include "model.h"
 
 #include "bone_overlay.h"
+#include "joint_overlay.h"
 #include "model_renderer.h"
 #include "texture.h"
 
@@ -17,9 +18,9 @@ static struct AEMModel* model;
 static uint32_t texture_count;
 static GLuint* texture_handles;
 
-static uint32_t bone_count;
-static struct AEMBone* bones;
-static mat4* bone_transforms;
+static uint32_t joint_count;
+static struct AEMJoint* joints;
+static mat4* joint_transforms;
 
 static uint32_t animation_count;
 
@@ -34,7 +35,7 @@ bool load_model(const char* filepath, const char* path)
 
   // Fill the buffers of the model renderer
   fill_model_renderer_buffers(get_model_vertex_buffer_size(), get_model_vertex_buffer(), get_model_index_buffer_size(),
-                              get_model_index_buffer(), get_model_bone_count());
+                              get_model_index_buffer(), get_model_joint_count());
 
   // Load textures
   const struct AEMTexture* textures = aem_get_model_textures(model, &texture_count);
@@ -51,14 +52,14 @@ bool load_model(const char* filepath, const char* path)
     }
   }
 
-  // Load bones
+  // Load joints
   {
-    bones = aem_get_model_bones(model, &bone_count);
+    joints = aem_get_model_joints(model, &joint_count);
 
-    bone_transforms = malloc(bone_count * sizeof(mat4));
-    for (uint32_t bone_index = 0; bone_index < bone_count; ++bone_index)
+    joint_transforms = malloc(joint_count * sizeof(mat4));
+    for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
     {
-      glm_mat4_identity(bone_transforms[bone_index]);
+      glm_mat4_identity(joint_transforms[joint_index]);
     }
   }
 
@@ -111,9 +112,14 @@ uint64_t get_model_image_buffer_size()
   return aem_get_model_image_buffer_size(model);
 }
 
-uint32_t get_model_bone_count()
+uint32_t get_model_joint_count()
 {
-  return bone_count;
+  return joint_count;
+}
+
+const struct AEMJoint* get_model_joints()
+{
+  return joints;
 }
 
 uint32_t get_model_animation_count()
@@ -143,12 +149,12 @@ float get_model_animation_duration(unsigned int animation_index)
 
 void evaluate_model_animation(int animation_index, float time)
 {
-  aem_evaluate_model_animation(model, animation_index, time, **bone_transforms);
+  aem_evaluate_model_animation(model, animation_index, time, **joint_transforms);
 }
 
 void draw_model()
 {
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(mat4) * bone_count, bone_transforms, GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(mat4) * joint_count, joint_transforms, GL_DYNAMIC_DRAW);
 
   // Render each mesh
   for (uint32_t mesh_index = 0; mesh_index < aem_get_model_mesh_count(model); ++mesh_index)
@@ -197,12 +203,69 @@ void draw_model()
   }
 }
 
-void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix)
+void draw_model_wireframe_overlay()
 {
-  for (unsigned int bone_index = 0; bone_index < bone_count; ++bone_index)
+  for (uint32_t mesh_index = 0; mesh_index < aem_get_model_mesh_count(model); ++mesh_index)
   {
-    struct AEMBone* bone = &bones[bone_index];
-    if (bone->parent_bone_index < 0)
+    const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
+                   (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
+}
+
+void draw_model_joint(uint32_t joint_index,
+                      bool bind_pose,
+                      mat4 world_matrix,
+                      mat4 viewproj_matrix,
+                      int32_t selected_joint_index)
+{
+  struct AEMJoint* joint = &joints[joint_index];
+
+  mat4 joint_matrix;
+  {
+    mat4 inverse_bind_matrix;
+    glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
+    glm_mat4_inv(inverse_bind_matrix, joint_matrix); // From model space origin to joint in bind pose
+  }
+
+  if (!bind_pose)
+  {
+    // Transform from joint in bind pose to joint in animated pose
+    glm_mat4_mul(joint_transforms[joint_index], joint_matrix, joint_matrix);
+  }
+
+  glm_mat4_mul(world_matrix, joint_matrix, joint_matrix);
+  draw_joint_overlay(joint_matrix, viewproj_matrix, joint_index == selected_joint_index);
+}
+
+void draw_model_joint_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_joint_index)
+{
+  for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
+  {
+    if (joint_index == selected_joint_index)
+    {
+      continue;
+    }
+
+    draw_model_joint(joint_index, bind_pose, world_matrix, viewproj_matrix, selected_joint_index);
+  }
+
+  if (selected_joint_index >= 0)
+  {
+    draw_model_joint(selected_joint_index, bind_pose, world_matrix, viewproj_matrix, selected_joint_index);
+  }
+}
+
+void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_joint_index)
+{
+  for (unsigned int joint_index = 0; joint_index < joint_count; ++joint_index)
+  {
+    struct AEMJoint* joint = &joints[joint_index];
+
+    if (joint->parent_joint_index < 0)
     {
       continue;
     }
@@ -210,29 +273,29 @@ void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_ma
     mat4 child_matrix;
     {
       mat4 inverse_bind_matrix;
-      glm_mat4_make(bone->inverse_bind_matrix, inverse_bind_matrix);
-      glm_mat4_inv(inverse_bind_matrix, child_matrix); // From model space origin to bone in bind pose
+      glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
+      glm_mat4_inv(inverse_bind_matrix, child_matrix); // From model space origin to joint in bind pose
     }
 
     if (!bind_pose)
     {
-      // Transform from bone in bind pose to bone in animated pose
-      glm_mat4_mul(bone_transforms[bone_index], child_matrix, child_matrix);
+      // Transform from joint in bind pose to joint in animated pose
+      glm_mat4_mul(joint_transforms[joint_index], child_matrix, child_matrix);
     }
 
-    struct AEMBone* parent_bone = &bones[bone->parent_bone_index];
+    struct AEMJoint* parent_joint = &joints[joint->parent_joint_index];
 
     mat4 parent_matrix;
     {
       mat4 inverse_bind_matrix;
-      glm_mat4_make(parent_bone->inverse_bind_matrix, inverse_bind_matrix);
-      glm_mat4_inv(inverse_bind_matrix, parent_matrix); // From model space origin to bone in bind pose
+      glm_mat4_make(parent_joint->inverse_bind_matrix, inverse_bind_matrix);
+      glm_mat4_inv(inverse_bind_matrix, parent_matrix); // From model space origin to joint in bind pose
     }
 
     if (!bind_pose)
     {
-      // Transform from bone in bind pose to bone in animated pose
-      glm_mat4_mul(bone_transforms[bone->parent_bone_index], parent_matrix, parent_matrix);
+      // Transform from joint in bind pose to joint in animated pose
+      glm_mat4_mul(joint_transforms[joint->parent_joint_index], parent_matrix, parent_matrix);
     }
 
     vec3 child_pos, parent_pos;
@@ -265,9 +328,8 @@ void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_ma
       glm_scale_uni(bone_matrix, scale);
     }
 
-    mat4 test;
-    glm_mat4_copy(world_matrix, test);
     glm_mat4_mul(world_matrix, bone_matrix, bone_matrix);
-    draw_bone_overlay(bone_matrix, viewproj_matrix);
+    const bool selected = (joint_index == selected_joint_index || joint->parent_joint_index == selected_joint_index);
+    draw_bone_overlay(bone_matrix, viewproj_matrix, selected);
   }
 }

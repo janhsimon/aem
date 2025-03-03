@@ -7,4 +7,5 @@ struct DisplayState
   bool gui;
   bool grid;
   bool skeleton;
+  bool wireframe;
 };

@@ -18,8 +18,14 @@ set(SOURCE
   gui.c
   gui.h
 
+  gui_skeleton.c
+  gui_skeleton.h
+
   input.c
   input.h
+
+  joint_overlay.c
+  joint_overlay.h
 
   light.c
   light.h
@@ -35,10 +41,15 @@ set(SOURCE
   shader.c
   shader.h
 
+  skeleton_state.h
+
   texture.c
   texture.h
 
   viewer.c
+
+  wireframe_overlay.c
+  wireframe_overlay.h
 
   shaders/bone_overlay.vert.glsl
   shaders/bone_overlay.frag.glsl

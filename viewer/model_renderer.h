@@ -17,7 +17,7 @@ void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
                                  const void* model_vertex_buffer,
                                  GLsizeiptr model_index_buffer_size,
                                  const void* model_index_buffer,
-                                 uint32_t bone_count);
+                                 uint32_t joint_count);
 
 void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix);
 

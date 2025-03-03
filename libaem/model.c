@@ -44,7 +44,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   const uint32_t textures_size = (*model)->header.texture_count * sizeof(struct AEMTexture);
   const uint32_t meshes_size = (*model)->header.mesh_count * sizeof(struct AEMMesh);
   const uint32_t materials_size = (*model)->header.material_count * sizeof(struct AEMMaterial);
-  const uint32_t bones_size = (*model)->header.bone_count * sizeof(struct AEMBone);
+  const uint32_t joints_size = (*model)->header.joint_count * sizeof(struct AEMJoint);
   const uint32_t animations_size = (*model)->header.animation_count * sizeof(struct Animation);
   const uint32_t sequences_size = (*model)->header.sequence_count * sizeof(struct Sequence);
   const uint32_t keyframes_size = (*model)->header.keyframe_count * sizeof(struct Keyframe);
@@ -61,7 +61,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   fread((*model)->load_time_data, load_time_data_size, 1, (*model)->fp);
 
   const uint32_t run_time_data_size =
-    meshes_size + materials_size + bones_size + animations_size + sequences_size + keyframes_size;
+    meshes_size + materials_size + joints_size + animations_size + sequences_size + keyframes_size;
   (*model)->run_time_data = malloc(run_time_data_size);
   if (!(*model)->run_time_data)
   {
@@ -85,8 +85,8 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   {
     (*model)->meshes = (struct AEMMesh*)((*model)->run_time_data);
     (*model)->materials = (struct AEMMaterial*)((uint8_t*)(*model)->meshes + meshes_size);
-    (*model)->bones = (struct AEMBone*)((uint8_t*)(*model)->materials + materials_size);
-    (*model)->animations = (struct Animation*)((uint8_t*)(*model)->bones + bones_size);
+    (*model)->joints = (struct AEMJoint*)((uint8_t*)(*model)->materials + materials_size);
+    (*model)->animations = (struct Animation*)((uint8_t*)(*model)->joints + joints_size);
     (*model)->sequences = (struct Sequence*)((uint8_t*)(*model)->animations + animations_size);
     (*model)->keyframes = (struct Keyframe*)((uint8_t*)(*model)->sequences + sequences_size);
   }
@@ -117,7 +117,7 @@ void aem_print_model_info(struct AEMModel* model)
   printf("Texture count: %u\n", header->texture_count);
   printf("Mesh count: %u\n", header->mesh_count);
   printf("Material count: %u\n", header->material_count);
-  printf("Bone count: %u\n", header->bone_count);
+  printf("Joint count: %u\n", header->joint_count);
   printf("Animation count: %u\n", header->animation_count);
   printf("Sequence count: %u\n", header->sequence_count);
   printf("Keyframe count: %u\n", header->keyframe_count);
@@ -195,10 +195,10 @@ void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, co
   return (void*)&model->image_buffer[level->offset];
 }
 
-struct AEMBone* aem_get_model_bones(const struct AEMModel* model, uint32_t* bone_count)
+struct AEMJoint* aem_get_model_joints(const struct AEMModel* model, uint32_t* joint_count)
 {
-  *bone_count = model->header.bone_count;
-  return model->bones;
+  *joint_count = model->header.joint_count;
+  return model->joints;
 }
 
 uint32_t aem_get_model_animation_count(const struct AEMModel* model)

@@ -5,10 +5,13 @@
 #include "grid.h"
 #include "gui.h"
 #include "input.h"
+#include "joint_overlay.h"
 #include "light.h"
 #include "model.h"
 #include "model_renderer.h"
 #include "scene_state.h"
+#include "skeleton_state.h"
+#include "wireframe_overlay.h"
 
 #include <aem/aem.h>
 #include <cglm/affine.h>
@@ -30,6 +33,7 @@ static struct GLFWwindow* window = NULL;
 static struct AnimationState animation_state;
 static struct DisplayState display_state;
 static struct SceneState scene_state;
+static struct SkeletonState skeleton_state;
 
 static char** animation_names = NULL;
 
@@ -93,9 +97,12 @@ void file_open_callback()
 
   if (animation_names)
   {
+    for (uint32_t animation_index = 0; animation_index < animation_state.animation_count; ++animation_index)
+    {
+      free(animation_names[animation_index]);
+    }
     free(animation_names);
   }
-
   animation_names = get_model_animation_names();
 
   animation_state.animation_count = get_model_animation_count();
@@ -104,6 +111,8 @@ void file_open_callback()
   scene_state.scale = 100;
 
   evaluate_model_animation(animation_state.current_index, 0.0f);
+
+  gui_on_new_model_loaded(&skeleton_state, get_model_joints(), get_model_joint_count());
 
   model_loaded = true;
 }
@@ -131,6 +140,7 @@ int main(int argc, char* argv[])
   display_state.gui = true;
   display_state.grid = true;
   display_state.skeleton = false;
+  display_state.wireframe = false;
 
   // Initialize scene state
   scene_state.scale = 100;
@@ -204,6 +214,16 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+  if (!generate_joint_overlay())
+  {
+    return EXIT_FAILURE;
+  }
+
+  if (!generate_wireframe_overlay())
+  {
+    return EXIT_FAILURE;
+  }
+
   double prev_time = glfwGetTime(); // In seconds
 
   // Main loop
@@ -267,6 +287,12 @@ int main(int argc, char* argv[])
       {
         prepare_model_draw(light_dir, camera_pos, world_matrix, viewproj_matrix);
         draw_model();
+
+        if (display_state.wireframe)
+        {
+          begin_draw_wireframe_overlay(world_matrix, viewproj_matrix);
+          draw_model_wireframe_overlay();
+        }
       }
 
       if (display_state.grid)
@@ -277,7 +303,8 @@ int main(int argc, char* argv[])
       if (model_loaded && display_state.skeleton)
       {
         const bool bind_pose = animation_state.current_index < 0 ? true : false;
-        draw_model_bone_overlay(bind_pose, world_matrix, viewproj_matrix);
+        draw_model_bone_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
+        draw_model_joint_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
       }
 
       if (display_state.gui)
@@ -292,7 +319,6 @@ int main(int argc, char* argv[])
       if (error != GL_NO_ERROR)
       {
         printf("OpenGL error code: %d\n", error);
-        // assert(false);
       }
     }
   }
@@ -302,6 +328,8 @@ int main(int argc, char* argv[])
     destroy_model();
   }
 
+  destroy_wireframe_overlay();
+  destroy_joint_overlay();
   destroy_bone_overlay();
   destroy_grid();
   destroy_model_renderer();

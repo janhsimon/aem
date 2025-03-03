@@ -81,15 +81,15 @@ static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, uint
   }
 }
 
-static void get_bone_posed_transform(const struct AEMModel* model,
-                                     const struct Animation* animation,
-                                     uint32_t bone_index,
-                                     float time,
-                                     mat4 transform)
+static void get_joint_posed_transform(const struct AEMModel* model,
+                                      const struct Animation* animation,
+                                      uint32_t joint_index,
+                                      float time,
+                                      mat4 transform)
 {
   glm_mat4_identity(transform);
 
-  const struct Sequence* sequence = &model->sequences[animation->sequence_index + bone_index];
+  const struct Sequence* sequence = &model->sequences[animation->sequence_index + joint_index];
 
   const uint32_t position_keyframe_count = sequence->position_keyframe_count;
   if (position_keyframe_count > 0)
@@ -125,35 +125,35 @@ static void get_bone_posed_transform(const struct AEMModel* model,
 void aem_evaluate_model_animation(const struct AEMModel* model,
                                   int32_t animation_index,
                                   float time,
-                                  float* bone_transforms)
+                                  float* joint_transforms)
 {
-  for (uint32_t bone_index = 0; bone_index < model->header.bone_count; ++bone_index)
+  for (uint32_t joint_index = 0; joint_index < model->header.joint_count; ++joint_index)
   {
-    mat4* transforms = (mat4*)bone_transforms;
+    mat4* transforms = (mat4*)joint_transforms;
 
     if (animation_index < 0)
     {
-      glm_mat4_identity(transforms[bone_index]);
+      glm_mat4_identity(transforms[joint_index]);
     }
     else
     {
       const struct Animation* animation = &model->animations[animation_index];
-      get_bone_posed_transform(model, animation, bone_index, time, transforms[bone_index]);
+      get_joint_posed_transform(model, animation, joint_index, time, transforms[joint_index]);
 
-      struct AEMBone* bone = &model->bones[bone_index];
-      int32_t parent_bone_index = bone->parent_bone_index;
-      while (parent_bone_index >= 0)
+      struct AEMJoint* joint = &model->joints[joint_index];
+      int32_t parent_joint_index = joint->parent_joint_index;
+      while (parent_joint_index >= 0)
       {
         mat4 parent_transform;
-        get_bone_posed_transform(model, animation, parent_bone_index, time, parent_transform);
-        glm_mat4_mul(parent_transform, transforms[bone_index], transforms[bone_index]);
+        get_joint_posed_transform(model, animation, parent_joint_index, time, parent_transform);
+        glm_mat4_mul(parent_transform, transforms[joint_index], transforms[joint_index]);
 
-        parent_bone_index = model->bones[parent_bone_index].parent_bone_index;
+        parent_joint_index = model->joints[parent_joint_index].parent_joint_index;
       }
 
       mat4 inverse_bind_matrix;
-      glm_mat4_make(bone->inverse_bind_matrix, inverse_bind_matrix);
-      glm_mat4_mul(transforms[bone_index], inverse_bind_matrix, transforms[bone_index]);
+      glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
+      glm_mat4_mul(transforms[joint_index], inverse_bind_matrix, transforms[joint_index]);
     }
   }
 }

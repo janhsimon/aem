@@ -172,6 +172,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     {
       display_state->skeleton = !display_state->skeleton;
     }
+    else if (key == GLFW_KEY_W)
+    {
+      display_state->wireframe = !display_state->wireframe;
+    }
     else if (key == GLFW_KEY_R)
     {
       scene_state->auto_rotate_camera = !scene_state->auto_rotate_camera;

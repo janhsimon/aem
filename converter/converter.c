@@ -1,6 +1,9 @@
 #include "config.h"
+
+#include "animation.h"
 #include "geometry.h"
 #include "header.h"
+#include "joint.h"
 #include "material.h"
 #include "texture.h"
 
@@ -25,7 +28,33 @@ static bool export_file(char* filepath)
     const cgltf_result result = cgltf_parse_file(&options, filepath, &input_file);
     if (result != cgltf_result_success)
     {
-      printf("ERROR: Parsing input file failed!\n");
+      printf("ERROR: Parsing input file failed.\n");
+      return false;
+    }
+  }
+
+  // Sanity checks
+  {
+    if (input_file->scenes_count == 0)
+    {
+      printf("ERROR: Input file does not contain scenes.");
+      return false;
+    }
+    else if (input_file->scenes_count > 1)
+    {
+      printf("ERROR: Input file contains multiple scenes.");
+      return false;
+    }
+
+    const cgltf_scene* scene = &input_file->scenes[0];
+    if (scene->nodes_count == 0)
+    {
+      printf("ERROR: Input file does not contain nodes.");
+      return false;
+    }
+    else if (scene->nodes_count > 1)
+    {
+      printf("ERROR: Input file contains multiple root nodes.");
       return false;
     }
   }
@@ -59,6 +88,8 @@ static bool export_file(char* filepath)
 
   setup_geometry_output(input_file);
   setup_texture_output(input_file);
+  setup_joint_output(input_file);
+  setup_animation_output(input_file);
 
   write_header(input_file, output_file);
 
@@ -71,10 +102,15 @@ static bool export_file(char* filepath)
   write_textures(output_file);
 
   write_meshes(output_file);
-
   destroy_geometry_output();
 
   write_materials(input_file, output_file);
+
+  write_joints(output_file);
+  destroy_joint_output();
+
+  write_animations(input_file, output_file);
+  destroy_animation_output();
 
   cgltf_free(input_file);
   fclose(output_file);

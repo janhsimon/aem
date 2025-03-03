@@ -2,6 +2,6 @@
 
 #include <stdio.h>
 
-struct cgltf_data;
+typedef struct cgltf_data cgltf_data;
 
-void write_materials(const struct cgltf_data* input_file, FILE* output_file);
+void write_materials(const cgltf_data* input_file, FILE* output_file);

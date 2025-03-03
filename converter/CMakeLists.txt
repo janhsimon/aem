@@ -3,6 +3,9 @@ set(TARGET_NAME converter)
 set(SOURCE
   converter.c
 
+  animation.c
+  animation.h
+
   config.h
 
   geometry.c
@@ -11,11 +14,17 @@ set(SOURCE
   header.c
   header.h
 
+  joint.c
+  joint.h
+
   material.c
   material.h
 
   texture.c
   texture.h
+  
+  transform.c
+  transform.h
 )
 
 set(DEPENDENCIES
