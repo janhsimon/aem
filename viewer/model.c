@@ -33,10 +33,6 @@ bool load_model(const char* filepath, const char* path)
 
   aem_print_model_info(model);
 
-  // Fill the buffers of the model renderer
-  fill_model_renderer_buffers(get_model_vertex_buffer_size(), get_model_vertex_buffer(), get_model_index_buffer_size(),
-                              get_model_index_buffer(), get_model_joint_count());
-
   // Load textures
   const struct AEMTexture* textures = aem_get_model_textures(model, &texture_count);
 
@@ -54,7 +50,8 @@ bool load_model(const char* filepath, const char* path)
 
   // Load joints
   {
-    joints = aem_get_model_joints(model, &joint_count);
+    joint_count = aem_get_model_joint_count(model);
+    joints = aem_get_model_joints(model);
 
     joint_transforms = malloc(joint_count * sizeof(mat4));
     for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
@@ -65,6 +62,10 @@ bool load_model(const char* filepath, const char* path)
 
   // Load animations
   animation_count = aem_get_model_animation_count(model);
+
+  // Fill the buffers of the model renderer
+  fill_model_renderer_buffers(get_model_vertex_buffer_size(), get_model_vertex_buffer(), get_model_index_buffer_size(),
+                              get_model_index_buffer(), joint_count);
 
   return true;
 }
@@ -78,8 +79,11 @@ void destroy_model()
 {
   aem_free_model(model);
 
-  glDeleteTextures(texture_count, texture_handles);
-  free(texture_handles);
+  if (texture_count > 0)
+  {
+    glDeleteTextures(texture_count, texture_handles);
+    free(texture_handles);
+  }
 }
 
 void* get_model_vertex_buffer()

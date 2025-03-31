@@ -99,7 +99,8 @@ const struct AEMMesh* aem_get_model_mesh(const struct AEMModel* model, uint32_t 
 
 const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, int32_t material_index);
 
-struct AEMJoint* aem_get_model_joints(const struct AEMModel* model, uint32_t* joint_count);
+uint32_t aem_get_model_joint_count(const struct AEMModel* model);
+struct AEMJoint* aem_get_model_joints(const struct AEMModel* model);
 
 uint32_t aem_get_model_animation_count(const struct AEMModel* model);
 const aem_string* aem_get_model_animation_name(const struct AEMModel* model, uint32_t animation_index);

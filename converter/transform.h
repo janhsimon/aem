@@ -6,4 +6,5 @@
 
 typedef struct cgltf_node cgltf_node;
 
+void calculate_local_node_transform(cgltf_node* node, mat4 transform);
 void calculate_global_node_transform(cgltf_node* node, mat4 transform);

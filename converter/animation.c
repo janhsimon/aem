@@ -45,7 +45,7 @@ void setup_animation_output(const cgltf_data* input_file)
       cgltf_animation_sampler* sampler = &input_animation->samplers[sampler_index];
 
       float out;
-      const bool result = cgltf_accessor_read_float(sampler->input, sampler_index, &out, 1);
+      const bool result = cgltf_accessor_read_float(sampler->input, sampler->input->count - 1, &out, 1);
       assert(result);
 
       if (out > output_animation->duration)
@@ -56,7 +56,7 @@ void setup_animation_output(const cgltf_data* input_file)
   }
 }
 
-void write_animations(const cgltf_data* input_file, FILE* output_file)
+void write_animations(const cgltf_data* input_file, FILE* output_file, uint32_t joint_count)
 {
   for (cgltf_size output_animation_index = 0; output_animation_index < output_animation_count; ++output_animation_index)
   {
@@ -70,12 +70,13 @@ void write_animations(const cgltf_data* input_file, FILE* output_file)
 
     fwrite(&output_animation->duration, sizeof(output_animation->duration), 1, output_file);
 
-    const uint32_t sequence_index = 0;
+    const uint32_t sequence_index = output_animation_index * joint_count;
     fwrite(&sequence_index, sizeof(sequence_index), 1, output_file);
 
 #ifdef PRINT_ANIMATIONS
     printf("Animation #%llu: \"%s\"\n", output_animation_index, output_animation->animation->name);
     printf("\tDuration: %f\n", output_animation->duration);
+    printf("\tSequence index: %lu\n", sequence_index);
 #endif
   }
 }

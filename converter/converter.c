@@ -86,31 +86,32 @@ static bool export_file(char* filepath)
     free(basename);
   }
 
+
+  // The joint module needs to be initialized first as the geometry module needs it during setup to determine the
+  // correct joint indices for skeletal animations
+  setup_joint_output(input_file);
   setup_geometry_output(input_file);
   setup_texture_output(input_file);
-  setup_joint_output(input_file);
   setup_animation_output(input_file);
 
   write_header(input_file, output_file);
 
   write_vertex_buffer(output_file);
   write_index_buffer(output_file);
-
   write_image_buffer(path, output_file);
-
   write_levels(output_file);
   write_textures(output_file);
-
   write_meshes(output_file);
-  destroy_geometry_output();
-
   write_materials(input_file, output_file);
-
   write_joints(output_file);
-  destroy_joint_output();
+  write_animations(input_file, output_file, get_joint_count());
+  write_sequences(input_file, output_file);
+  write_keyframes(input_file, output_file);
 
-  write_animations(input_file, output_file);
   destroy_animation_output();
+  destroy_texture_output();
+  destroy_geometry_output();
+  destroy_joint_output(input_file);
 
   cgltf_free(input_file);
   fclose(output_file);

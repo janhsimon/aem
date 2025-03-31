@@ -2,7 +2,7 @@
 
 uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
-uniform vec3  albedo;
+uniform vec3 albedo;
 uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D orm_tex; // Occlusion, roughness, metalness

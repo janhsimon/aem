@@ -267,5 +267,8 @@ void destroy_texture_output()
     free(texture_infos[texture_index].level_infos);
   }
 
-  free(texture_infos);
+  if (texture_count > 0)
+  {
+    free(texture_infos);
+  }
 }

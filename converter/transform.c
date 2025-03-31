@@ -8,10 +8,14 @@
 
 #include <assert.h>
 
-static void get_local_node_transform(cgltf_node* node, mat4 transform)
+void calculate_local_node_transform(cgltf_node* node, mat4 transform)
 {
   if (node->has_matrix)
   {
+    assert(!node->has_translation);
+    assert(!node->has_rotation);
+    assert(!node->has_scale);
+
     glm_mat4_make(node->matrix, transform);
     return;
   }
@@ -44,7 +48,7 @@ void calculate_global_node_transform(cgltf_node* node, mat4 transform)
   while (n_ptr)
   {
     mat4 local_node_transform;
-    get_local_node_transform(n_ptr, local_node_transform);
+    calculate_local_node_transform(n_ptr, local_node_transform);
 
     glm_mat4_mul(local_node_transform, transform, transform);
 

@@ -195,9 +195,13 @@ void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, co
   return (void*)&model->image_buffer[level->offset];
 }
 
-struct AEMJoint* aem_get_model_joints(const struct AEMModel* model, uint32_t* joint_count)
+uint32_t aem_get_model_joint_count(const struct AEMModel* model)
 {
-  *joint_count = model->header.joint_count;
+  return model->header.joint_count;
+}
+
+struct AEMJoint* aem_get_model_joints(const struct AEMModel* model)
+{
   return model->joints;
 }
 
