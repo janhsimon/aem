@@ -1,11 +1,11 @@
 #include "config.h"
 
-#include "animation.h"
 #include "geometry.h"
 #include "header.h"
-#include "joint.h"
 #include "material.h"
 #include "texture.h"
+
+#include "animation_module/animation_module.h"
 
 #include <util/util.h>
 
@@ -86,13 +86,12 @@ static bool export_file(char* filepath)
     free(basename);
   }
 
-
-  // The joint module needs to be initialized first as the geometry module needs it during setup to determine the
+  // The animation module needs to be initialized first as the geometry module needs it during setup to determine the
   // correct joint indices for skeletal animations
-  setup_joint_output(input_file);
+  anim_create(input_file);
+
   setup_geometry_output(input_file);
   setup_texture_output(input_file);
-  setup_animation_output(input_file);
 
   write_header(input_file, output_file);
 
@@ -103,15 +102,15 @@ static bool export_file(char* filepath)
   write_textures(output_file);
   write_meshes(output_file);
   write_materials(input_file, output_file);
-  write_joints(output_file);
-  write_animations(input_file, output_file, get_joint_count());
-  write_sequences(input_file, output_file);
-  write_keyframes(input_file, output_file);
+  anim_write_joints(output_file);
+  anim_write_animations(output_file);
+  anim_write_sequences(output_file);
+  anim_write_keyframes(output_file);
 
-  destroy_animation_output();
   destroy_texture_output();
   destroy_geometry_output();
-  destroy_joint_output(input_file);
+
+  anim_free();
 
   cgltf_free(input_file);
   fclose(output_file);

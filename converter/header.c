@@ -1,19 +1,15 @@
 #include "header.h"
 
-#include "animation.h"
 #include "config.h"
 #include "geometry.h"
-#include "joint.h"
 #include "texture.h"
+
+#include "animation_module/animation_module.h"
 
 #include <cgltf/cgltf.h>
 
-#include <assert.h>
-
 void write_header(const struct cgltf_data* input_file, FILE* output_file)
 {
-  assert(input_file->meshes_count > 0);
-
   const uint64_t vertex_buffer_size = calculate_vertex_buffer_size();
   const uint64_t index_buffer_size = calculate_index_buffer_size();
   const uint64_t image_buffer_size = calculate_image_buffer_size();
@@ -24,10 +20,10 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
   const uint32_t mesh_count = get_mesh_count();
   const uint32_t material_count = (uint32_t)input_file->materials_count;
 
-  const uint32_t joint_count = get_joint_count();
+  const uint32_t joint_count = anim_get_joint_count();
   const uint32_t animation_count = (uint32_t)input_file->animations_count;
   const uint32_t sequence_count = animation_count * joint_count;
-  const uint32_t keyframe_count = calculate_keyframe_count(input_file);
+  const uint32_t keyframe_count = anim_get_keyframe_count();
 
   // Write the magic number
   {

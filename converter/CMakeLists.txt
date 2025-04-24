@@ -3,8 +3,29 @@ set(TARGET_NAME converter)
 set(SOURCE
   converter.c
 
-  animation.c
-  animation.h
+  animation_module/animation_module.c
+  animation_module/animation_module.h
+
+  animation_module/animation_processor.c
+  animation_module/animation_processor.h
+  
+  animation_module/joint_printer.c
+  animation_module/joint_printer.h
+
+  animation_module/joint_processor.c
+  animation_module/joint_processor.h
+
+  animation_module/keyframe_processor.c
+  animation_module/keyframe_processor.h
+  
+  animation_module/node_analyzer.c
+  animation_module/node_analyzer.h
+
+  animation_module/node_inspector.c
+  animation_module/node_inspector.h
+
+  animation_module/node_printer.c
+  animation_module/node_printer.h
 
   config.h
 
@@ -13,9 +34,6 @@ set(SOURCE
 
   header.c
   header.h
-
-  joint.c
-  joint.h
 
   material.c
   material.h

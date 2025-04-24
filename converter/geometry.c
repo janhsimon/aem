@@ -1,8 +1,9 @@
 #include "geometry.h"
 
 #include "config.h"
-#include "joint.h"
 #include "transform.h"
+
+#include "animation_module/animation_module.h"
 
 #include <cglm/affine.h>
 #include <cglm/ivec4.h>
@@ -323,6 +324,17 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
                          reconstructed_tangents);
   }
 
+  // Check for special animated mesh joints
+  const cgltf_node* animated_mesh_node = NULL;
+  if (!joints)
+  {
+    const cgltf_node* node = find_node_for_mesh(input_file, output_mesh->input_mesh);
+    if (anim_does_joint_exist_for_node(node))
+    {
+      animated_mesh_node = node;
+    }
+  }
+
   for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
   {
     // Position (required)
@@ -392,9 +404,15 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       for (cgltf_size i = 0; i < 4; ++i)
       {
         const cgltf_size glb_joint_index = output_mesh->joints[vertex_index][i];
-        const cgltf_node* glb_joint = skin->joints[glb_joint_index];
-        output_mesh->joints[vertex_index][i] = calculate_aem_joint_index_from_glb_joint(glb_joint);
+        output_mesh->joints[vertex_index][i] = anim_calculate_joint_index_for_node(skin->joints[glb_joint_index]);
       }
+    }
+    else if (animated_mesh_node)
+    {
+      output_mesh->joints[vertex_index][0] = anim_calculate_joint_index_for_node(animated_mesh_node);
+
+      output_mesh->joints[vertex_index][1] = output_mesh->joints[vertex_index][2] =
+        output_mesh->joints[vertex_index][3] = -1;
     }
     else
     {
@@ -408,6 +426,13 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       const cgltf_bool result =
         cgltf_accessor_read_float(weights->data, vertex_index, output_mesh->weights[vertex_index], 4);
       assert(result);
+    }
+    else if (animated_mesh_node)
+    {
+      output_mesh->weights[vertex_index][0] = 1.0f;
+
+      output_mesh->weights[vertex_index][1] = output_mesh->weights[vertex_index][2] =
+        output_mesh->weights[vertex_index][3] = 0.0f;
     }
     else
     {
@@ -428,23 +453,6 @@ uint32_t get_mesh_count()
 
 void setup_geometry_output(const cgltf_data* input_file)
 {
-  // Check that there are never two primitives that have triangles
-  for (cgltf_size mesh_index = 0; mesh_index < input_file->meshes_count; ++mesh_index)
-  {
-    const cgltf_mesh* mesh = &input_file->meshes[mesh_index];
-
-    bool has_triangles = false;
-    for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
-    {
-      const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
-      if (primitive->type == cgltf_primitive_type_triangles)
-      {
-        assert(!has_triangles);
-        has_triangles = true;
-      }
-    }
-  }
-
   // Count the required output meshes
   output_mesh_count = 0;
   for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
@@ -464,8 +472,8 @@ void setup_geometry_output(const cgltf_data* input_file)
 
       if (is_primitive_valid(primitive, positions, normals))
       {
+        // Count each valid primitive
         ++output_mesh_count;
-        break;
       }
     }
   }
@@ -483,22 +491,24 @@ void setup_geometry_output(const cgltf_data* input_file)
   // Count the mesh vertices and indices and allocate space for them
   {
     cgltf_size output_mesh_index = 0;
-    cgltf_size first_vertex = 0, first_index = 0;
+    cgltf_size first_mesh_vertex = 0, first_mesh_index = 0;
     for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
     {
       const cgltf_node* node = &input_file->nodes[node_index];
+      const cgltf_skin* skin = node->skin;
       const cgltf_mesh* mesh = node->mesh;
       if (!mesh)
       {
         continue;
       }
 
-      const cgltf_skin* skin = node->skin;
-
-      OutputMesh* output_mesh = &output_meshes[output_mesh_index];
-      output_mesh->vertex_count = output_mesh->index_count = 0;
+      // Count the vertices and indices of each valid primitive in this mesh
       for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
       {
+        OutputMesh* output_mesh = &output_meshes[output_mesh_index];
+        output_mesh->vertex_count = output_mesh->index_count = 0;
+        output_mesh->input_mesh = mesh;
+
         const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
 
         cgltf_attribute *positions = NULL, *normals = NULL, *tangents = NULL, *uvs = NULL, *joints = NULL,
@@ -510,8 +520,8 @@ void setup_geometry_output(const cgltf_data* input_file)
           continue;
         }
 
-        output_mesh->vertex_count += positions->data->count;
-        output_mesh->index_count += primitive->indices->count;
+        output_mesh->vertex_count = positions->data->count;
+        output_mesh->index_count = primitive->indices->count;
 
         assert(normals->data->count == output_mesh->vertex_count);
 
@@ -529,49 +539,35 @@ void setup_geometry_output(const cgltf_data* input_file)
         {
           assert(joints && weights);
         }
-      }
 
-      // Allocate vertices
-      output_mesh->positions = malloc(sizeof(*output_mesh->positions) * output_mesh->vertex_count);
-      output_mesh->normals = malloc(sizeof(*output_mesh->normals) * output_mesh->vertex_count);
-      output_mesh->tangents = malloc(sizeof(*output_mesh->tangents) * output_mesh->vertex_count);
-      output_mesh->bitangents = malloc(sizeof(*output_mesh->bitangents) * output_mesh->vertex_count);
-      output_mesh->uvs = malloc(sizeof(*output_mesh->uvs) * output_mesh->vertex_count);
-      output_mesh->joints = malloc(sizeof(*output_mesh->joints) * output_mesh->vertex_count);
-      output_mesh->weights = malloc(sizeof(*output_mesh->weights) * output_mesh->vertex_count);
+        // Allocate vertices
+        output_mesh->positions = malloc(sizeof(*output_mesh->positions) * output_mesh->vertex_count);
+        output_mesh->normals = malloc(sizeof(*output_mesh->normals) * output_mesh->vertex_count);
+        output_mesh->tangents = malloc(sizeof(*output_mesh->tangents) * output_mesh->vertex_count);
+        output_mesh->bitangents = malloc(sizeof(*output_mesh->bitangents) * output_mesh->vertex_count);
+        output_mesh->uvs = malloc(sizeof(*output_mesh->uvs) * output_mesh->vertex_count);
+        output_mesh->joints = malloc(sizeof(*output_mesh->joints) * output_mesh->vertex_count);
+        output_mesh->weights = malloc(sizeof(*output_mesh->weights) * output_mesh->vertex_count);
 
-      // Allocate indices
-      output_mesh->indices = malloc(sizeof(*output_mesh->indices) * output_mesh->index_count);
-      assert(output_mesh->indices);
+        // Allocate indices
+        output_mesh->indices = malloc(sizeof(*output_mesh->indices) * output_mesh->index_count);
+        assert(output_mesh->indices);
 
-      mat4 global_node_transform;
-      calculate_global_node_transform(node, global_node_transform);
+        mat4 global_node_transform;
+        calculate_global_node_transform(node, global_node_transform);
 
-      // Fill in the vertices and indices
-      for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
-      {
-        const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
-
-        cgltf_attribute *positions = NULL, *normals = NULL, *tangents = NULL, *uvs = NULL, *joints = NULL,
-                        *weights = NULL;
-        locate_attributes_for_primitive(primitive, &positions, &normals, &tangents, &uvs, &joints, &weights);
-
-        if (!is_primitive_valid(primitive, positions, normals))
+        // Fill in the vertices and indices
         {
-          continue;
+          add_vertices_to_output_mesh(output_mesh, input_file, skin, positions, normals, tangents, uvs, joints, weights,
+                                      primitive->indices, global_node_transform);
+
+          for (cgltf_size index = 0; index < primitive->indices->count; ++index)
+          {
+            output_mesh->indices[index] = cgltf_accessor_read_index(primitive->indices, index) + first_mesh_vertex;
+          }
         }
 
-        add_vertices_to_output_mesh(output_mesh, input_file, skin, positions, normals, tangents, uvs, joints, weights,
-                                    primitive->indices, global_node_transform);
-
-        for (cgltf_size index = 0; index < output_mesh->index_count; ++index)
-        {
-          output_mesh->indices[index] = cgltf_accessor_read_index(primitive->indices, index) + first_vertex;
-        }
-
-        output_mesh->first_index = first_index;
-
-        output_mesh->input_mesh = mesh;
+        output_mesh->first_index = first_mesh_index;
 
         // Material index
         if (primitive->material)
@@ -582,11 +578,11 @@ void setup_geometry_output(const cgltf_data* input_file)
         {
           output_mesh->material_index = -1;
         }
-      }
 
-      ++output_mesh_index;
-      first_vertex += output_mesh->vertex_count;
-      first_index += output_mesh->index_count;
+        ++output_mesh_index;
+        first_mesh_vertex += output_mesh->vertex_count;
+        first_mesh_index += output_mesh->index_count;
+      }
     }
   }
 }
