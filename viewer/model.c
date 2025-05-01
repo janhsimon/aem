@@ -151,6 +151,21 @@ float get_model_animation_duration(unsigned int animation_index)
   return aem_get_model_animation_duration(model, animation_index);
 }
 
+uint32_t get_model_joint_position_keyframe_count(uint32_t animation_index, uint32_t joint_index)
+{
+  return aem_get_model_joint_position_keyframe_count(model, animation_index, joint_index);
+}
+
+uint32_t get_model_joint_rotation_keyframe_count(uint32_t animation_index, uint32_t joint_index)
+{
+  return aem_get_model_joint_rotation_keyframe_count(model, animation_index, joint_index);
+}
+
+uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t joint_index)
+{
+  return aem_get_model_joint_scale_keyframe_count(model, animation_index, joint_index);
+}
+
 void evaluate_model_animation(int animation_index, float time)
 {
   aem_evaluate_model_animation(model, animation_index, time, **joint_transforms);

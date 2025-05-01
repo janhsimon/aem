@@ -8,6 +8,9 @@ set(SOURCE
 
   animation_module/animation_processor.c
   animation_module/animation_processor.h
+
+  animation_module/animation_sampler.c
+  animation_module/animation_sampler.h
   
   animation_module/joint_printer.c
   animation_module/joint_printer.h

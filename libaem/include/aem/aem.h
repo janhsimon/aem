@@ -106,6 +106,15 @@ uint32_t aem_get_model_animation_count(const struct AEMModel* model);
 const aem_string* aem_get_model_animation_name(const struct AEMModel* model, uint32_t animation_index);
 float aem_get_model_animation_duration(const struct AEMModel* model, uint32_t animation_index);
 
+uint32_t aem_get_model_joint_position_keyframe_count(const struct AEMModel* model,
+                                                     uint32_t animation_index,
+                                                     uint32_t joint_index);
+uint32_t aem_get_model_joint_rotation_keyframe_count(const struct AEMModel* model,
+                                                     uint32_t animation_index,
+                                                     uint32_t joint_index);
+uint32_t
+aem_get_model_joint_scale_keyframe_count(const struct AEMModel* model, uint32_t animation_index, uint32_t joint_index);
+
 // animation_index < 0 means bind pose
 void aem_evaluate_model_animation(const struct AEMModel* model,
                                   int32_t animation_index,

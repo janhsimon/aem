@@ -15,10 +15,7 @@ struct Joint
   AnalyzerNode* node;
   mat4 inverse_bind_matrix;
   int32_t parent_index;
-
-  vec3 pre_transform_translation;
-  versor pre_transform_rotation;
-  vec3 pre_transform_scale;
+  mat4 pre_transform;
 };
 
 typedef struct Joint Joint;

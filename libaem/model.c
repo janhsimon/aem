@@ -219,3 +219,23 @@ float aem_get_model_animation_duration(const struct AEMModel* model, uint32_t an
 {
   return model->animations[animation_index].duration;
 }
+
+uint32_t aem_get_model_joint_position_keyframe_count(const struct AEMModel* model,
+                                                     uint32_t animation_index,
+                                                     uint32_t joint_index)
+{
+  return model->sequences[animation_index * model->header.animation_count + joint_index].position_keyframe_count;
+}
+
+uint32_t aem_get_model_joint_rotation_keyframe_count(const struct AEMModel* model,
+                                                     uint32_t animation_index,
+                                                     uint32_t joint_index)
+{
+  return model->sequences[animation_index * model->header.animation_count + joint_index].rotation_keyframe_count;
+}
+
+uint32_t
+aem_get_model_joint_scale_keyframe_count(const struct AEMModel* model, uint32_t animation_index, uint32_t joint_index)
+{
+  return model->sequences[animation_index * model->header.animation_count + joint_index].scale_keyframe_count;
+}

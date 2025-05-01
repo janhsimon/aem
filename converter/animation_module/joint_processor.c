@@ -112,26 +112,19 @@ void calculate_joint_pre_transforms(Joint* joints, uint32_t joint_count)
     Joint* joint = &joints[joint_index];
 
     // Determine the combined transform from all GLB nodes leading up this joint that are not represented as a joint
-    mat4 pre_transform = GLM_MAT4_IDENTITY_INIT;
+    glm_mat4_identity(joint->pre_transform);
     {
       AnalyzerNode* n_ptr = joint->node->parent; // Starting with the parent
-      while (n_ptr && !n_ptr->is_represented)    // For every node that is not represented as a joint
+      while (n_ptr && !n_ptr->is_represented)       // For every parent node that is not animated
       {
         mat4 local_transform;
         calculate_local_node_transform(n_ptr->node, local_transform);
 
-        glm_mat4_mul(local_transform, pre_transform, pre_transform);
+        glm_mat4_mul(local_transform, joint->pre_transform, joint->pre_transform);
 
         n_ptr = n_ptr->parent;
       }
     }
-
-    // Decompose the pre transform matrix to translation, rotation and scale values
-    vec4 translation;
-    mat4 rotation;
-    glm_decompose(pre_transform, translation, rotation, joint->pre_transform_scale);
-    glm_vec3_copy(translation, joint->pre_transform_translation); // Convert vec4 to vec3
-    glm_mat4_quat(rotation, joint->pre_transform_rotation);       // Convert rotation matrix to quaternion
   }
 }
 

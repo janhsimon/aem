@@ -1,5 +1,6 @@
 #include "gui_skeleton.h"
 
+#include "model.h"
 #include "skeleton_state.h"
 
 #include <aem/aem.h>
@@ -18,6 +19,9 @@ struct Node
   struct Node** children;
   uint32_t child_count;
   uint32_t child_index; // Used when building the children array
+
+  uint32_t position_keyframe_count, rotation_keyframe_count,
+    scale_keyframe_count; // TODO: This is for the first animation only for now
 };
 
 static struct Node* nodes = NULL;
@@ -50,6 +54,10 @@ void init_gui_skeleton(struct SkeletonState* skeleton_state_, struct AEMJoint* j
 
     node->id = node_index;
     node->joint = &joints[node_index];
+
+    node->position_keyframe_count = get_model_joint_position_keyframe_count(0, node_index);
+    node->rotation_keyframe_count = get_model_joint_rotation_keyframe_count(0, node_index);
+    node->scale_keyframe_count = get_model_joint_scale_keyframe_count(0, node_index);
 
     const int32_t parent_index = node->joint->parent_joint_index;
     if (parent_index < 0)
@@ -116,6 +124,10 @@ static draw_skeleton_tree(const struct Node* node)
         }
       }
       igEndTable();
+
+      igText("Position keyframe count: %lu", node->position_keyframe_count);
+      igText("Rotation keyframe count: %lu", node->rotation_keyframe_count);
+      igText("Scale keyframe count: %lu", node->scale_keyframe_count);
     }
 
     igEndTooltip();

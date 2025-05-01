@@ -26,6 +26,9 @@ const struct AEMJoint* get_model_joints();
 uint32_t get_model_animation_count();
 char** get_model_animation_names();
 float get_model_animation_duration(unsigned int animation_index);
+uint32_t get_model_joint_position_keyframe_count(uint32_t animation_index, uint32_t joint_index);
+uint32_t get_model_joint_rotation_keyframe_count(uint32_t animation_index, uint32_t joint_index);
+uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t joint_index);
 void evaluate_model_animation(int animation_index, float time);
 
 void draw_model();
