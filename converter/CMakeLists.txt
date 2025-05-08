@@ -3,11 +3,17 @@ set(TARGET_NAME converter)
 set(SOURCE
   converter.c
 
+  animation_module/analyzer_node.c
+  animation_module/analyzer_node.h
+
+  animation_module/analyzer_node_printer.c
+  animation_module/analyzer_node_printer.h
+
   animation_module/animation_module.c
   animation_module/animation_module.h
 
-  animation_module/animation_processor.c
-  animation_module/animation_processor.h
+  animation_module/animation.c
+  animation_module/animation.h
 
   animation_module/animation_sampler.c
   animation_module/animation_sampler.h
@@ -15,20 +21,14 @@ set(SOURCE
   animation_module/joint_printer.c
   animation_module/joint_printer.h
 
-  animation_module/joint_processor.c
-  animation_module/joint_processor.h
+  animation_module/joint.c
+  animation_module/joint.h
 
-  animation_module/keyframe_processor.c
-  animation_module/keyframe_processor.h
-  
-  animation_module/node_analyzer.c
-  animation_module/node_analyzer.h
+  animation_module/keyframe.c
+  animation_module/keyframe.h
 
   animation_module/node_inspector.c
   animation_module/node_inspector.h
-
-  animation_module/node_printer.c
-  animation_module/node_printer.h
 
   config.h
 

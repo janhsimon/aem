@@ -17,7 +17,7 @@ bool anim_does_joint_exist_for_node(const cgltf_node* node);
 
 void anim_write_joints(FILE* output_file);
 void anim_write_animations(FILE* output_file);
-void anim_write_sequences(FILE* output_file);
+void anim_write_tracks(FILE* output_file);
 void anim_write_keyframes(FILE* output_file);
 
 void anim_free();

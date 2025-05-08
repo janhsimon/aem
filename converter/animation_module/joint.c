@@ -1,6 +1,6 @@
-#include "joint_processor.h"
+#include "joint.h"
 
-#include "node_analyzer.h"
+#include "analyzer_node.h"
 #include "node_inspector.h"
 
 #include "transform.h"
@@ -19,14 +19,14 @@ void calculate_joint_parent_indices(Joint* joints, uint32_t joint_count)
 
     joint->parent_index = -1;
 
-    AnalyzerNode* n_ptr = joint->node->parent;
+    AnalyzerNode* n_ptr = joint->analyzer_node->parent;
     while (n_ptr)
     {
       bool parent_found = false;
       for (uint32_t parent_joint_index = 0; parent_joint_index < joint_count; ++parent_joint_index)
       {
         Joint* parent_joint_candidate = &joints[parent_joint_index];
-        if (parent_joint_candidate->node == n_ptr)
+        if (parent_joint_candidate->analyzer_node == n_ptr)
         {
           joint->parent_index = (int32_t)parent_joint_index;
           parent_found = true;
@@ -50,18 +50,18 @@ void calculate_joint_inverse_bind_matrices(const cgltf_data* input_file, Joint* 
   {
     Joint* joint = &joints[joint_index];
 
-    if (joint->node->is_mesh)
+    if (joint->analyzer_node->is_mesh)
     {
-      assert(!joint->node->is_joint);
+      assert(!joint->analyzer_node->is_joint);
 
-      calculate_global_node_transform(joint->node->node, joint->inverse_bind_matrix);
+      calculate_global_node_transform(joint->analyzer_node->node, joint->inverse_bind_matrix);
       glm_mat4_inv(joint->inverse_bind_matrix, joint->inverse_bind_matrix);
     }
-    else if (joint->node->is_joint)
+    else if (joint->analyzer_node->is_joint)
     {
-      assert(!joint->node->is_mesh);
+      assert(!joint->analyzer_node->is_mesh);
 
-      const cgltf_skin* skin = calculate_skin_for_node(input_file, joint->node->node);
+      const cgltf_skin* skin = calculate_skin_for_node(input_file, joint->analyzer_node->node);
       assert(skin);
 
       // Find the root node in the skin which is sometimes given as skeleton, other times it needs to be manually found
@@ -82,7 +82,7 @@ void calculate_joint_inverse_bind_matrices(const cgltf_data* input_file, Joint* 
         bool found = false;
         for (cgltf_size i = 0; i < skin->joints_count; ++i)
         {
-          if (skin->joints[i] == joint->node->node)
+          if (skin->joints[i] == joint->analyzer_node->node)
           {
             joint_index_in_skin = i;
             found = true;
@@ -114,8 +114,8 @@ void calculate_joint_pre_transforms(Joint* joints, uint32_t joint_count)
     // Determine the combined transform from all GLB nodes leading up this joint that are not represented as a joint
     glm_mat4_identity(joint->pre_transform);
     {
-      AnalyzerNode* n_ptr = joint->node->parent; // Starting with the parent
-      while (n_ptr && !n_ptr->is_represented)       // For every parent node that is not animated
+      AnalyzerNode* n_ptr = joint->analyzer_node->parent; // Starting with the parent
+      while (n_ptr && !n_ptr->is_represented)             // For every parent node that is not animated
       {
         mat4 local_transform;
         calculate_local_node_transform(n_ptr->node, local_transform);
@@ -133,7 +133,7 @@ int32_t calculate_joint_index_for_node(const cgltf_node* node, Joint* joints, ui
   for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
   {
     Joint* joint = &joints[joint_index];
-    if (joint->node->node == node)
+    if (joint->analyzer_node->node == node)
     {
       return (int32_t)joint_index;
     }

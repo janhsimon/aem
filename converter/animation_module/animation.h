@@ -6,16 +6,15 @@ typedef struct cgltf_animation cgltf_animation;
 typedef struct cgltf_animation_channel cgltf_animation_channel;
 typedef struct cgltf_node cgltf_node;
 
+typedef struct Joint Joint;
+
 struct Animation
 {
   const cgltf_animation* animation;
   float duration; // In seconds
-  uint32_t sequence_index;
 };
 
 typedef struct Animation Animation;
-
-typedef struct Joint Joint;
 
 float calculate_animation_duration(const cgltf_animation* animation);
 

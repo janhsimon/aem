@@ -12,7 +12,7 @@ typedef struct AnalyzerNode AnalyzerNode;
 
 struct Joint
 {
-  AnalyzerNode* node;
+  AnalyzerNode* analyzer_node;
   mat4 inverse_bind_matrix;
   int32_t parent_index;
   mat4 pre_transform;

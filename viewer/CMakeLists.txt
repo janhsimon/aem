@@ -36,7 +36,7 @@ set(SOURCE
   model_renderer.c
   model_renderer.h
 
-  scene_state.h;
+  scene_state.h
 
   shader.c
   shader.h
@@ -52,7 +52,8 @@ set(SOURCE
   wireframe_overlay.h
 
   shaders/bone_overlay.vert.glsl
-  shaders/bone_overlay.frag.glsl
+  shaders/wireframe_overlay.vert.glsl
+  shaders/overlay.frag.glsl
 
   shaders/grid.vert.glsl
   shaders/grid.frag.glsl

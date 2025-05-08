@@ -153,7 +153,7 @@ float get_model_animation_duration(unsigned int animation_index)
 
 uint32_t get_model_joint_position_keyframe_count(uint32_t animation_index, uint32_t joint_index)
 {
-  return aem_get_model_joint_position_keyframe_count(model, animation_index, joint_index);
+  return aem_get_model_joint_translation_keyframe_count(model, animation_index, joint_index);
 }
 
 uint32_t get_model_joint_rotation_keyframe_count(uint32_t animation_index, uint32_t joint_index)
@@ -176,7 +176,8 @@ void draw_model()
   glBufferData(GL_UNIFORM_BUFFER, sizeof(mat4) * joint_count, joint_transforms, GL_DYNAMIC_DRAW);
 
   // Render each mesh
-  for (uint32_t mesh_index = 0; mesh_index < aem_get_model_mesh_count(model); ++mesh_index)
+  const uint32_t mesh_count = aem_get_model_mesh_count(model);
+  for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
     const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
@@ -224,7 +225,8 @@ void draw_model()
 
 void draw_model_wireframe_overlay()
 {
-  for (uint32_t mesh_index = 0; mesh_index < aem_get_model_mesh_count(model); ++mesh_index)
+  const uint32_t mesh_count = aem_get_model_mesh_count(model);
+  for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
 

@@ -82,39 +82,42 @@ static void get_keyframe_blend_quat(float time, struct Keyframe* keyframes, uint
 }
 
 static void get_joint_posed_transform(const struct AEMModel* model,
-                                      const struct Animation* animation,
+                                      uint32_t animation_index,
                                       uint32_t joint_index,
                                       float time,
                                       mat4 transform)
 {
   glm_mat4_identity(transform);
 
-  const struct Sequence* sequence = &model->sequences[animation->sequence_index + joint_index];
+  const struct Track* track = &model->tracks[animation_index * model->header.joint_count + joint_index];
 
-  const uint32_t position_keyframe_count = sequence->position_keyframe_count;
-  if (position_keyframe_count > 0)
+  const uint32_t translation_keyframe_count = track->translation_keyframe_count;
+  if (translation_keyframe_count > 0)
   {
-    struct Keyframe* position_keyframes = &model->keyframes[sequence->first_position_keyframe_index];
+    struct Keyframe* translation_keyframes = &model->keyframes[track->first_keyframe_index];
 
-    vec3 position;
-    get_keyframe_blend_vec3(time, position_keyframes, position_keyframe_count, &position);
-    glm_translate(transform, position);
+    vec3 translation;
+    get_keyframe_blend_vec3(time, translation_keyframes, translation_keyframe_count, &translation);
+    glm_translate(transform, translation);
   }
 
-  const uint32_t rotation_keyframe_count = sequence->rotation_keyframe_count;
+  const uint32_t rotation_keyframe_count = track->rotation_keyframe_count;
   if (rotation_keyframe_count > 0)
   {
-    struct Keyframe* rotation_keyframes = &model->keyframes[sequence->first_rotation_keyframe_index];
+    struct Keyframe* rotation_keyframes =
+      &model->keyframes[track->first_keyframe_index + track->translation_keyframe_count];
 
     versor rotation;
     get_keyframe_blend_quat(time, rotation_keyframes, rotation_keyframe_count, &rotation);
     glm_quat_rotate(transform, rotation, transform);
   }
 
-  const uint32_t scale_keyframe_count = sequence->scale_keyframe_count;
+  const uint32_t scale_keyframe_count = track->scale_keyframe_count;
   if (scale_keyframe_count > 0)
   {
-    struct Keyframe* scale_keyframes = &model->keyframes[sequence->first_scale_keyframe_index];
+    struct Keyframe* scale_keyframes =
+      &model
+         ->keyframes[track->first_keyframe_index + track->translation_keyframe_count + track->rotation_keyframe_count];
 
     vec3 scale;
     get_keyframe_blend_vec3(time, scale_keyframes, scale_keyframe_count, &scale);
@@ -137,15 +140,14 @@ void aem_evaluate_model_animation(const struct AEMModel* model,
     }
     else
     {
-      const struct Animation* animation = &model->animations[animation_index];
-      get_joint_posed_transform(model, animation, joint_index, time, transforms[joint_index]);
+      get_joint_posed_transform(model, animation_index, joint_index, time, transforms[joint_index]);
 
       struct AEMJoint* joint = &model->joints[joint_index];
       int32_t parent_joint_index = joint->parent_joint_index;
       while (parent_joint_index >= 0)
       {
         mat4 parent_transform;
-        get_joint_posed_transform(model, animation, parent_joint_index, time, parent_transform);
+        get_joint_posed_transform(model, animation_index, parent_joint_index, time, parent_transform);
         glm_mat4_mul(parent_transform, transforms[joint_index], transforms[joint_index]);
 
         parent_joint_index = model->joints[parent_joint_index].parent_joint_index;

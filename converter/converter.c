@@ -104,7 +104,7 @@ static bool export_file(char* filepath)
   write_materials(input_file, output_file);
   anim_write_joints(output_file);
   anim_write_animations(output_file);
-  anim_write_sequences(output_file);
+  anim_write_tracks(output_file);
   anim_write_keyframes(output_file);
 
   destroy_texture_output();

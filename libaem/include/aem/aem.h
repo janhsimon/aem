@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define AEM_VERTEX_SIZE 92  // Size of an AEM vertex in bytes
+#define AEM_VERTEX_SIZE 88  // Size of an AEM vertex in bytes
 #define AEM_INDEX_SIZE 4    // Size of an AEM index in bytes
 #define AEM_STRING_SIZE 128 // Size of an AEM string in bytes
 
@@ -70,7 +70,6 @@ struct AEMJoint
   aem_string name;
   float inverse_bind_matrix[16];
   int32_t parent_joint_index;
-  int32_t padding[3];
 };
 
 enum AEMResult aem_load_model(const char* filename, struct AEMModel** model);
@@ -106,9 +105,9 @@ uint32_t aem_get_model_animation_count(const struct AEMModel* model);
 const aem_string* aem_get_model_animation_name(const struct AEMModel* model, uint32_t animation_index);
 float aem_get_model_animation_duration(const struct AEMModel* model, uint32_t animation_index);
 
-uint32_t aem_get_model_joint_position_keyframe_count(const struct AEMModel* model,
-                                                     uint32_t animation_index,
-                                                     uint32_t joint_index);
+uint32_t aem_get_model_joint_translation_keyframe_count(const struct AEMModel* model,
+                                                        uint32_t animation_index,
+                                                        uint32_t joint_index);
 uint32_t aem_get_model_joint_rotation_keyframe_count(const struct AEMModel* model,
                                                      uint32_t animation_index,
                                                      uint32_t joint_index);

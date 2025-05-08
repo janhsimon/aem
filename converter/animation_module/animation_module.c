@@ -1,12 +1,12 @@
 #include "animation_module.h"
 
-#include "animation_processor.h"
+#include "analyzer_node.h"
+#include "analyzer_node_printer.h"
+#include "animation.h"
+#include "joint.h"
 #include "joint_printer.h"
-#include "joint_processor.h"
-#include "keyframe_processor.h"
-#include "node_analyzer.h"
+#include "keyframe.h"
 #include "node_inspector.h"
-#include "node_printer.h"
 
 #include "config.h"
 
@@ -97,7 +97,7 @@ void anim_create(const cgltf_data* input_file)
             continue;
           }
 
-          joints[joint_index].node = node;
+          joints[joint_index].analyzer_node = node;
 
           ++joint_index;
         }
@@ -132,7 +132,6 @@ void anim_create(const cgltf_data* input_file)
 
       output_animation->animation = input_animation;
       output_animation->duration = calculate_animation_duration(input_animation);
-      output_animation->sequence_index = (uint32_t)animation_index * joint_count;
     }
   }
 
@@ -187,7 +186,7 @@ bool anim_does_joint_exist_for_node(const cgltf_node* node)
   for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
   {
     Joint* joint = &joints[joint_index];
-    if (joint->node->node == node)
+    if (joint->analyzer_node->node == node)
     {
       return true;
     }
@@ -204,17 +203,12 @@ void anim_write_joints(FILE* output_file)
 
     char name[AEM_STRING_SIZE];
     {
-      sprintf(name, "%s", joint->node->node->name); // Null-terminates string
+      sprintf(name, "%s", joint->analyzer_node->node->name); // Null-terminates string
       fwrite(name, AEM_STRING_SIZE, 1, output_file);
     }
 
     fwrite(&joint->inverse_bind_matrix, sizeof(joint->inverse_bind_matrix), 1, output_file);
     fwrite(&joint->parent_index, sizeof(joint->parent_index), 1, output_file);
-
-    int32_t padding = 0;
-    fwrite(&padding, sizeof(padding), 1, output_file);
-    fwrite(&padding, sizeof(padding), 1, output_file);
-    fwrite(&padding, sizeof(padding), 1, output_file);
 
 #ifdef PRINT_JOINTS
     printf("Joint #%lu \"%s\":\n", joint_index, joint->node->node->name);
@@ -228,6 +222,7 @@ void anim_write_joints(FILE* output_file)
 
 void anim_write_animations(FILE* output_file)
 {
+  uint32_t keyframe_index = 0;
   for (uint32_t animation_index = 0; animation_index < animation_count; ++animation_index)
   {
     const Animation* animation = &animations[animation_index];
@@ -239,21 +234,17 @@ void anim_write_animations(FILE* output_file)
     }
 
     fwrite(&animation->duration, sizeof(animation->duration), 1, output_file);
-    fwrite(&animation->sequence_index, sizeof(animation->sequence_index), 1, output_file);
 
 #ifdef PRINT_ANIMATIONS
     printf("Animation #%lu: \"%s\"\n", animation_index, animation->animation->name);
     printf("\tDuration: %f\n", animation->duration);
-    printf("\tSequence index: %lu\n", animation->sequence_index);
 #endif
   }
 }
 
-void anim_write_sequences(FILE* output_file)
+void anim_write_tracks(FILE* output_file)
 {
-  cgltf_size sequence_counter = 0;
-  uint32_t keyframe_index = 0;
-
+  uint32_t track_counter = 0, keyframe_counter = 0;
   for (uint32_t animation_index = 0; animation_index < animation_count; ++animation_index)
   {
     const Animation* animation = &animations[animation_index];
@@ -263,44 +254,33 @@ void anim_write_sequences(FILE* output_file)
       Joint* joint = &joints[joint_index];
 
       cgltf_animation_channel *translation_channel, *rotation_channel, *scale_channel;
-      find_animation_channels_for_node(animation->animation, joint->node->node, &translation_channel, &rotation_channel,
-                                       &scale_channel);
+      find_animation_channels_for_node(animation->animation, joint->analyzer_node->node, &translation_channel,
+                                       &rotation_channel, &scale_channel);
 
       const uint32_t translation_keyframe_count = determine_keyframe_count_for_channel(translation_channel);
       const uint32_t rotation_keyframe_count = determine_keyframe_count_for_channel(rotation_channel);
       const uint32_t scale_keyframe_count = determine_keyframe_count_for_channel(scale_channel);
 
-      const uint32_t first_translation_keyframe_index = keyframe_index;
-      const uint32_t first_rotation_keyframe_index = first_translation_keyframe_index + translation_keyframe_count;
-      const uint32_t first_scale_keyframe_index = first_rotation_keyframe_index + rotation_keyframe_count;
+      const uint32_t first_keyframe_index = keyframe_counter;
 
-      fwrite(&first_translation_keyframe_index, sizeof(first_translation_keyframe_index), 1, output_file);
+      fwrite(&first_keyframe_index, sizeof(first_keyframe_index), 1, output_file);
       fwrite(&translation_keyframe_count, sizeof(translation_keyframe_count), 1, output_file);
-
-      fwrite(&first_rotation_keyframe_index, sizeof(first_rotation_keyframe_index), 1, output_file);
       fwrite(&rotation_keyframe_count, sizeof(rotation_keyframe_count), 1, output_file);
-
-      fwrite(&first_scale_keyframe_index, sizeof(first_scale_keyframe_index), 1, output_file);
       fwrite(&scale_keyframe_count, sizeof(scale_keyframe_count), 1, output_file);
 
-#ifdef PRINT_SEQUENCES
-      if (PRINT_SEQUENCES_COUNT == 0 || sequence_counter < PRINT_SEQUENCES_COUNT)
+#ifdef PRINT_TRACKS
+      if (PRINT_TRACK_COUNT == 0 || track_counter < PRINT_TRACK_COUNT)
       {
-        printf("Sequence #%llu:\n", sequence_counter);
-
-        printf("\tFirst translation keyframe index: %lu\n", first_translation_keyframe_index);
+        printf("Track #%lu:\n", track_counter);
+        printf("\tFirst keyframe index: %lu\n", first_keyframe_index);
         printf("\tTranslation keyframe count: %lu\n", translation_keyframe_count);
-
-        printf("\tFirst rotation keyframe index: %lu\n", first_rotation_keyframe_index);
         printf("\tRotation keyframe count: %lu\n", rotation_keyframe_count);
-
-        printf("\tFirst scale keyframe index: %lu\n", first_scale_keyframe_index);
-        printf("\tScale keyframe count: %lu\n", scale_keyframe_count);
+        printf("\tScale count: %lu\n", scale_keyframe_count);
       }
 #endif
 
-      keyframe_index += translation_keyframe_count + rotation_keyframe_count + scale_keyframe_count;
-      ++sequence_counter;
+      keyframe_counter += translation_keyframe_count + rotation_keyframe_count + scale_keyframe_count;
+      ++track_counter;
     }
   }
 }
@@ -315,7 +295,7 @@ void anim_write_keyframes(FILE* output_file)
     fwrite(&keyframe->data, sizeof(keyframe->data), 1, output_file);
 
 #ifdef PRINT_KEYFRAMES
-    if (PRINT_KEYFRAMES_COUNT == 0 || keyframe_index < PRINT_KEYFRAMES_COUNT)
+    if (PRINT_KEYFRAME_COUNT == 0 || keyframe_index < PRINT_KEYFRAME_COUNT)
     {
       printf("Keyframe #%lu: [ %f, %f, %f, %f ] @ %fs\n", keyframe_index, keyframe->data[0], keyframe->data[1],
              keyframe->data[2], keyframe->data[3], keyframe->time);

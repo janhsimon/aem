@@ -6,7 +6,7 @@ struct Header
 {
   uint64_t vertex_buffer_size, index_buffer_size, image_buffer_size;
   uint32_t level_count, texture_count, mesh_count, material_count;
-  uint32_t joint_count, animation_count, sequence_count, keyframe_count;
+  uint32_t joint_count, animation_count, track_count, keyframe_count;
 };
 
 struct Vertex
@@ -15,21 +15,18 @@ struct Vertex
   float uv[2];
   int32_t joint_indices[4];
   float joint_weights[4];
-  int32_t extra_joint_index;
 };
 
 struct Animation
 {
   aem_string name;
   float duration;
-  uint32_t sequence_index;
 };
 
-struct Sequence
+struct Track
 {
-  uint32_t first_position_keyframe_index, position_keyframe_count;
-  uint32_t first_rotation_keyframe_index, rotation_keyframe_count;
-  uint32_t first_scale_keyframe_index, scale_keyframe_count;
+  uint32_t first_keyframe_index;
+  uint32_t translation_keyframe_count, rotation_keyframe_count, scale_keyframe_count;
 };
 
 struct Keyframe
@@ -56,7 +53,7 @@ struct AEMModel
   struct AEMMaterial* materials;
   struct AEMJoint* joints;
   struct Animation* animations;
-  struct Sequence* sequences;
+  struct Track* tracks;
   struct Keyframe* keyframes;
 };
 

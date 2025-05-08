@@ -1,7 +1,7 @@
 #include "joint_printer.h"
 
-#include "joint_processor.h"
-#include "node_analyzer.h"
+#include "analyzer_node.h"
+#include "joint.h"
 
 #include <cgltf/cgltf.h>
 
@@ -25,19 +25,20 @@ static void print_joint_recursive(const Joint* joints, uint32_t joint_count, int
         printf("|-");
       }
 
-      printf("#%lu: \"%s\"", joint_index, joint->node->node->name);
+      const AnalyzerNode* analyzer_node = joint->analyzer_node;
+      printf("#%lu: \"%s\"", joint_index, analyzer_node->node->name);
 
-      if (joint->node->is_joint)
+      if (analyzer_node->is_joint)
       {
         printf(" [J]");
       }
 
-      if (joint->node->is_animated)
+      if (analyzer_node->is_animated)
       {
         printf(" [A]");
       }
 
-      if (joint->node->is_mesh)
+      if (analyzer_node->is_mesh)
       {
         printf(" [M]");
       }

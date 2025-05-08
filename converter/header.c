@@ -22,7 +22,7 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
 
   const uint32_t joint_count = anim_get_joint_count();
   const uint32_t animation_count = (uint32_t)input_file->animations_count;
-  const uint32_t sequence_count = animation_count * joint_count;
+  const uint32_t track_count = animation_count * joint_count;
   const uint32_t keyframe_count = anim_get_keyframe_count();
 
   // Write the magic number
@@ -42,7 +42,7 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
     fwrite(&material_count, sizeof(material_count), 1, output_file);
     fwrite(&joint_count, sizeof(joint_count), 1, output_file);
     fwrite(&animation_count, sizeof(animation_count), 1, output_file);
-    fwrite(&sequence_count, sizeof(sequence_count), 1, output_file);
+    fwrite(&track_count, sizeof(track_count), 1, output_file);
     fwrite(&keyframe_count, sizeof(keyframe_count), 1, output_file);
   }
 
@@ -57,7 +57,7 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
   printf("\tMaterial count: %u\n", material_count);
   printf("\tJoint count: %u\n", joint_count);
   printf("\tAnimation count: %u\n", animation_count);
-  printf("\tSequence count: %u\n", sequence_count);
+  printf("\tTrack count: %u\n", track_count);
   printf("\tKeyframe count: %u\n", keyframe_count);
 #endif
 }

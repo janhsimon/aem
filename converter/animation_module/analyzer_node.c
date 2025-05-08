@@ -1,4 +1,4 @@
-#include "node_analyzer.h"
+#include "analyzer_node.h"
 
 #include <cgltf/cgltf.h>
 

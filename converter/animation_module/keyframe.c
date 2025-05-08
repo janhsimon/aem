@@ -1,9 +1,9 @@
-#include "keyframe_processor.h"
+#include "keyframe.h"
 
-#include "animation_processor.h"
+#include "analyzer_node.h"
+#include "animation.h"
 #include "animation_sampler.h"
-#include "joint_processor.h"
-#include "node_analyzer.h"
+#include "joint.h"
 
 #include <cgltf/cgltf.h>
 
@@ -64,7 +64,7 @@ static void construct_translation_values(const Joint* joint,
   {
     glm_vec4_zero(out_values);
 
-    const cgltf_node* node = joint->node->node;
+    const cgltf_node* node = joint->analyzer_node->node;
     if (node->has_translation)
     {
       glm_vec3_copy(node->translation, out_values);
@@ -83,7 +83,7 @@ static void construct_rotation_values(const Joint* joint,
 {
   if (!rotation_channel || rotation_channel->sampler->input->count == 0)
   {
-    const cgltf_node* node = joint->node->node;
+    const cgltf_node* node = joint->analyzer_node->node;
     if (node->has_rotation)
     {
       glm_quat_copy(node->rotation, out_values);
@@ -107,7 +107,7 @@ construct_scale_values(const Joint* joint, const cgltf_animation_channel* scale_
   {
     glm_vec4_one(out_values);
 
-    const cgltf_node* node = joint->node->node;
+    const cgltf_node* node = joint->analyzer_node->node;
     if (node->has_scale)
     {
       glm_vec3_copy(node->scale, out_values);
@@ -197,7 +197,7 @@ uint32_t populate_keyframes(const cgltf_animation* animation, const Joint* joint
 {
   uint32_t keyframes_written = 0;
 
-  const cgltf_node* node = joint->node->node;
+  const cgltf_node* node = joint->analyzer_node->node;
 
   cgltf_animation_channel *translation_channel, *rotation_channel, *scale_channel;
   find_animation_channels_for_node(animation, node, &translation_channel, &rotation_channel, &scale_channel);

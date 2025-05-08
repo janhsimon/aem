@@ -627,12 +627,6 @@ void write_vertex_buffer(FILE* output_file)
       fwrite(output_mesh->joints[vertex_index], sizeof(output_mesh->joints[vertex_index]), 1, output_file);
       fwrite(output_mesh->weights[vertex_index], sizeof(output_mesh->weights[vertex_index]), 1, output_file);
 
-      // Extra joint index
-      {
-        const int32_t minus_one = -1;
-        fwrite(&minus_one, sizeof(minus_one), 1, output_file);
-      }
-
 #ifdef PRINT_VERTEX_BUFFER
       static uint64_t vertex_counter = 0;
       printf("Vertex #%llu:\n", vertex_counter++);
@@ -658,7 +652,6 @@ void write_vertex_buffer(FILE* output_file)
       printf("\tWeights: [ %f, %f, %f, %f ]\n", output_mesh->weights[vertex_index][0],
              output_mesh->weights[vertex_index][1], output_mesh->weights[vertex_index][2],
              output_mesh->weights[vertex_index][3]);
-
 #endif
     }
   }
@@ -666,25 +659,6 @@ void write_vertex_buffer(FILE* output_file)
 
 void write_index_buffer(FILE* output_file)
 {
-  /*cgltf_size index_counter = 0;
-  cgltf_size index_offset = 0;
-  for (cgltf_size mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
-  {
-    const struct MeshInfo* mesh_info = &mesh_infos[mesh_index];
-
-    for (cgltf_size index = 0; index < mesh_info->indices->count; ++index)
-    {
-      const uint32_t value = (uint32_t)(cgltf_accessor_read_index(mesh_info->indices, index) + index_offset);
-      fwrite(&value, sizeof(value), 1, output_file);
-
-#ifdef PRINT_INDEX_BUFFER
-      printf("Index #%llu: %u\n", index_counter++, value);
-#endif
-    }
-
-    index_offset += mesh_info->vertex_count;
-  }*/
-
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
     const OutputMesh* output_mesh = &output_meshes[mesh_index];
@@ -714,29 +688,6 @@ void write_meshes(FILE* output_file)
     printf("\tMaterial index: %d\n", material_index);
 #endif
   }
-
-  /* uint32_t index_offset = 0;
-   for (cgltf_size mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
-   {
-     const struct MeshInfo* mesh_info = &mesh_infos[mesh_index];
-
-     fwrite(&index_offset, sizeof(index_offset), 1, output_file);
-
-     const uint32_t index_count = (uint32_t)mesh_info->indices->count;
-     fwrite(&index_count, sizeof(index_count), 1, output_file);
-
-     const uint32_t material_index = mesh_info->material_index;
-     fwrite(&material_index, sizeof(material_index), 1, output_file);
-
- #ifdef PRINT_MESHES
-     printf("Mesh #%llu:\n", mesh_index);
-     printf("\tFirst index: %u\n", index_offset);
-     printf("\tIndex count: %u\n", index_count);
-     printf("\tMaterial index: %u\n", material_index);
- #endif
-
-     index_offset += index_count;
-   }*/
 }
 
 void destroy_geometry_output()

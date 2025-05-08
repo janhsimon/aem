@@ -18,15 +18,6 @@ layout(location = 4) in vec2 in_uv;
 layout(location = 5) in ivec4 in_joint_indices;
 layout(location = 6) in vec4 in_joint_weights;
 
-out VERT_TO_FRAG
-{
-  vec3 position; // In world space
-  vec3 normal;
-  vec3 tangent;
-  vec3 bitangent;
-  vec2 uv;
-} o;
-
 void main()
 {
   mat4 joint_transform = mat4(1.0);
@@ -38,13 +29,6 @@ void main()
     }
   }
 
-  o.position = (world * joint_transform * vec4(in_position, 1)).xyz;
-
-  o.normal = normalize((world * joint_transform * vec4(in_normal, 0)).xyz);
-  o.tangent = normalize((world * joint_transform * vec4(in_tangent, 0)).xyz);
-  o.bitangent = normalize((world * joint_transform * vec4(in_bitangent, 0)).xyz);
-
-  o.uv = in_uv;
-  
-  gl_Position = viewproj * vec4(o.position, 1);
+  vec3 position = (world * joint_transform * vec4(in_position, 1)).xyz;
+  gl_Position = viewproj * vec4(position, 1);
 }

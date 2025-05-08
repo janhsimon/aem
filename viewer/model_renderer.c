@@ -59,10 +59,6 @@ bool load_model_renderer()
     // Joint weights
     glEnableVertexAttribArray(6);
     glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, AEM_VERTEX_SIZE, (void*)(18 * 4));
-
-    // Extra joint index
-    glEnableVertexAttribArray(7);
-    glVertexAttribIPointer(7, 1, GL_INT, AEM_VERTEX_SIZE, (void*)(22 * 4));
   }
 
   // Generate shader program

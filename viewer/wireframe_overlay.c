@@ -13,8 +13,8 @@ bool generate_wireframe_overlay()
   // Generate shader program
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/bone_overlay.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/bone_overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!load_shader("shaders/wireframe_overlay.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !load_shader("shaders/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }

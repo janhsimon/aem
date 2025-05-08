@@ -1,7 +1,7 @@
-#include "animation_processor.h"
+#include "animation.h"
 
-#include "joint_processor.h"
-#include "node_analyzer.h"
+#include "analyzer_node.h"
+#include "joint.h"
 
 #include <cgltf/cgltf.h>
 
@@ -86,7 +86,7 @@ uint32_t determine_keyframe_count_for_animation(const cgltf_animation* animation
     const Joint* joint = &joints[joint_index];
 
     const cgltf_animation_channel *translation_channel, *rotation_channel, *scale_channel;
-    find_animation_channels_for_node(animation, joint->node->node, &translation_channel, &rotation_channel,
+    find_animation_channels_for_node(animation, joint->analyzer_node->node, &translation_channel, &rotation_channel,
                                      &scale_channel);
 
     keyframe_count += determine_keyframe_count_for_channel(translation_channel);
