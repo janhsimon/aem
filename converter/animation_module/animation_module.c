@@ -211,7 +211,7 @@ void anim_write_joints(FILE* output_file)
     fwrite(&joint->parent_index, sizeof(joint->parent_index), 1, output_file);
 
 #ifdef PRINT_JOINTS
-    printf("Joint #%lu \"%s\":\n", joint_index, joint->node->node->name);
+    printf("Joint #%lu \"%s\":\n", joint_index, joint->analyzer_node->node->name);
 
     printf("\tParent index: %d\n", joint->parent_index);
     printf("\tInverse bind matrix: ");

@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 
-static GLuint vertex_array, vertex_buffer, index_buffer, uniform_buffer;
+static GLuint vertex_array, vertex_buffer, index_buffer, joint_transform_buffer, joint_transform_texture;
 
 static GLuint shader_program;
 static GLint light_dir_uniform_location, camera_pos_uniform_location, world_uniform_location, viewproj_uniform_location;
@@ -25,7 +25,7 @@ bool load_model_renderer()
 
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &index_buffer);
-  glGenBuffers(1, &uniform_buffer);
+  glGenBuffers(1, &joint_transform_buffer);
 
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
@@ -92,16 +92,21 @@ bool load_model_renderer()
       normal_uv_transform_uniform_location = get_uniform_location(shader_program, "normal_uv_transform");
       orm_uv_transform_uniform_location = get_uniform_location(shader_program, "orm_uv_transform");
 
+      const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
+      glUniform1i(joint_transform_tex_uniform_location, 0);
+
       const GLint base_color_tex_uniform_location = get_uniform_location(shader_program, "base_color_tex");
-      glUniform1i(base_color_tex_uniform_location, 0);
+      glUniform1i(base_color_tex_uniform_location, 1);
 
       const GLint normal_tex_uniform_location = get_uniform_location(shader_program, "normal_tex");
-      glUniform1i(normal_tex_uniform_location, 1);
+      glUniform1i(normal_tex_uniform_location, 2);
 
       const GLint orm_tex_uniform_location = get_uniform_location(shader_program, "orm_tex");
-      glUniform1i(orm_tex_uniform_location, 2);
+      glUniform1i(orm_tex_uniform_location, 3);
     }
   }
+
+  glGenTextures(1, &joint_transform_texture);
 
   fallback_diffuse_texture = load_builtin_texture("textures/fallback_diffuse.png");
   fallback_normal_texture = load_builtin_texture("textures/fallback_normal.png");
@@ -114,7 +119,9 @@ void destroy_model_renderer()
 {
   glDeleteProgram(shader_program);
 
-  glDeleteBuffers(1, &uniform_buffer);
+  glDeleteTextures(1, &joint_transform_texture);
+
+  glDeleteBuffers(1, &joint_transform_buffer);
   glDeleteBuffers(1, &index_buffer);
   glDeleteBuffers(1, &vertex_buffer);
 
@@ -152,11 +159,11 @@ void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, model_index_buffer_size, model_index_buffer, GL_STATIC_DRAW);
 
-  glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer);
-  if (joint_count > 0)
-  {
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uniform_buffer, 0, sizeof(mat4) * joint_count);
-  }
+  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * joint_count, NULL, GL_DYNAMIC_DRAW);
+
+  glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
+  glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, joint_transform_buffer);
 }
 
 void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix)
@@ -175,6 +182,9 @@ void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_
 
   // Set view-projection matrix uniform
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
 }
 
 void set_material_uniforms(mat3 base_color_uv_transform, mat3 normal_uv_transform, mat3 orm_uv_transform)
