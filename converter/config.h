@@ -9,11 +9,11 @@
 // #define PRINT_INDEX_BUFFER
 // #define PRINT_IMAGE_BUFFER
 // #define PRINT_LEVELS
-#define PRINT_TEXTURES
-#define PRINT_MESHES
-#define PRINT_MATERIALS
-#define PRINT_NODES // GLB nodes from the input file
-#define PRINT_JOINTS
+// #define PRINT_TEXTURES
+// #define PRINT_MESHES
+// #define PRINT_MATERIALS
+// #define PRINT_NODES // GLB nodes from the input file
+// #define PRINT_JOINTS
 // #define PRINT_ANIMATIONS
 // #define PRINT_TRACKS
 // #define PRINT_KEYFRAMES

@@ -4,7 +4,8 @@
 
 struct Header
 {
-  uint64_t vertex_buffer_size, index_buffer_size, image_buffer_size;
+  uint32_t vertex_count, index_count;
+  uint64_t image_buffer_size;
   uint32_t level_count, texture_count, mesh_count, material_count;
   uint32_t joint_count, animation_count, track_count, keyframe_count;
 };

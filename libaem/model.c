@@ -36,10 +36,9 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
 
   fread(&(*model)->header, sizeof(struct Header), 1, (*model)->fp); // Header
 
-  const uint64_t vertex_buffer_size = (*model)->header.vertex_buffer_size;
-  const uint64_t index_buffer_size = (*model)->header.index_buffer_size;
+  const uint32_t vertex_buffer_size = (*model)->header.vertex_count * AEM_VERTEX_SIZE;
+  const uint32_t index_buffer_size = (*model)->header.index_count * AEM_INDEX_SIZE;
   const uint64_t image_buffer_size = (*model)->header.image_buffer_size;
-
   const uint32_t levels_size = (*model)->header.level_count * sizeof(struct AEMLevel);
   const uint32_t textures_size = (*model)->header.texture_count * sizeof(struct AEMTexture);
   const uint32_t meshes_size = (*model)->header.mesh_count * sizeof(struct AEMMesh);
@@ -110,8 +109,8 @@ void aem_print_model_info(struct AEMModel* model)
 {
   const struct Header* header = &model->header;
 
-  printf("Vertex buffer size: %llu bytes\n", header->vertex_buffer_size);
-  printf("Index buffer size: %llu bytes\n", header->index_buffer_size);
+  printf("Vertex count: %u\n", header->vertex_count);
+  printf("Index count: %u\n", header->index_count);
   printf("Image buffer size: %llu bytes\n", header->image_buffer_size);
   printf("Level count: %u\n", header->level_count);
   printf("Texture count: %u\n", header->texture_count);
@@ -128,9 +127,9 @@ void* aem_get_model_vertex_buffer(const struct AEMModel* model)
   return model->vertex_buffer;
 }
 
-uint64_t aem_get_model_vertex_buffer_size(const struct AEMModel* model)
+uint32_t aem_get_model_vertex_count(const struct AEMModel* model)
 {
-  return model->header.vertex_buffer_size;
+  return model->header.vertex_count;
 }
 
 void* aem_get_model_index_buffer(const struct AEMModel* model)
@@ -138,9 +137,9 @@ void* aem_get_model_index_buffer(const struct AEMModel* model)
   return model->index_buffer;
 }
 
-uint64_t aem_get_model_index_buffer_size(const struct AEMModel* model)
+uint32_t aem_get_model_index_count(const struct AEMModel* model)
 {
-  return model->header.index_buffer_size;
+  return model->header.index_count;
 }
 
 void* aem_get_model_image_buffer(const struct AEMModel* model)

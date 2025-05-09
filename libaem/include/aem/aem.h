@@ -79,10 +79,10 @@ void aem_free_model(struct AEMModel* model);
 void aem_print_model_info(struct AEMModel* model);
 
 void* aem_get_model_vertex_buffer(const struct AEMModel* model);
-uint64_t aem_get_model_vertex_buffer_size(const struct AEMModel* model);
+uint32_t aem_get_model_vertex_count(const struct AEMModel* model);
 
 void* aem_get_model_index_buffer(const struct AEMModel* model);
-uint64_t aem_get_model_index_buffer_size(const struct AEMModel* model);
+uint32_t aem_get_model_index_count(const struct AEMModel* model);
 
 void* aem_get_model_image_buffer(const struct AEMModel* model);
 uint64_t aem_get_model_image_buffer_size(const struct AEMModel* model);
