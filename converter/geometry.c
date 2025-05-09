@@ -446,6 +446,30 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
   }
 }
 
+uint32_t calculate_vertex_count()
+{
+  uint32_t vertex_count = 0;
+  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
+  {
+    const OutputMesh* mesh = &output_meshes[mesh_index];
+    vertex_count += mesh->vertex_count;
+  }
+
+  return vertex_count;
+}
+
+uint32_t calculate_index_count()
+{
+  uint32_t index_count = 0;
+  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
+  {
+    const OutputMesh* mesh = &output_meshes[mesh_index];
+    index_count += mesh->index_count;
+  }
+
+  return index_count;
+}
+
 uint32_t get_mesh_count()
 {
   return (uint32_t)output_mesh_count;
@@ -585,30 +609,6 @@ void setup_geometry_output(const cgltf_data* input_file)
       }
     }
   }
-}
-
-uint64_t calculate_vertex_buffer_size()
-{
-  cgltf_size vertex_buffer_size = 0;
-  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
-  {
-    const OutputMesh* output_mesh = &output_meshes[mesh_index];
-    vertex_buffer_size += output_mesh->vertex_count;
-  }
-
-  return (uint64_t)(vertex_buffer_size * AEM_VERTEX_SIZE);
-}
-
-uint64_t calculate_index_buffer_size()
-{
-  cgltf_size index_buffer_size = 0;
-  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
-  {
-    const OutputMesh* output_mesh = &output_meshes[mesh_index];
-    index_buffer_size += output_mesh->index_count;
-  }
-
-  return (uint64_t)(index_buffer_size * AEM_INDEX_SIZE);
 }
 
 void write_vertex_buffer(FILE* output_file)

@@ -64,9 +64,12 @@ bool load_model(const char* filepath, const char* path)
   animation_count = aem_get_model_animation_count(model);
 
   // Fill the buffers of the model renderer
-  fill_model_renderer_buffers(get_model_vertex_buffer_size(), get_model_vertex_buffer(), get_model_index_buffer_size(),
-                              get_model_index_buffer(), joint_count);
-
+  {
+    const uint32_t vertex_buffer_size = get_model_vertex_count() * AEM_VERTEX_SIZE;
+    const uint32_t index_buffer_size = get_model_index_count() * AEM_INDEX_SIZE;
+    fill_model_renderer_buffers(vertex_buffer_size, get_model_vertex_buffer(), index_buffer_size,
+                                get_model_index_buffer(), joint_count);
+  }
   return true;
 }
 
@@ -91,9 +94,9 @@ void* get_model_vertex_buffer()
   return aem_get_model_vertex_buffer(model);
 }
 
-uint64_t get_model_vertex_buffer_size()
+uint32_t get_model_vertex_count()
 {
-  return aem_get_model_vertex_buffer_size(model);
+  return aem_get_model_vertex_count(model);
 }
 
 void* get_model_index_buffer()
@@ -101,9 +104,9 @@ void* get_model_index_buffer()
   return aem_get_model_index_buffer(model);
 }
 
-uint64_t get_model_index_buffer_size()
+uint32_t get_model_index_count()
 {
-  return aem_get_model_index_buffer_size(model);
+  return aem_get_model_index_count(model);
 }
 
 void* get_model_image_buffer()

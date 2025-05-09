@@ -12,10 +12,10 @@ void finish_loading_model();
 void destroy_model();
 
 void* get_model_vertex_buffer();
-uint64_t get_model_vertex_buffer_size();
+uint32_t get_model_vertex_count();
 
 void* get_model_index_buffer();
-uint64_t get_model_index_buffer_size();
+uint32_t get_model_index_count();
 
 void* get_model_image_buffer();
 uint64_t get_model_image_buffer_size();
