@@ -173,7 +173,7 @@ void evaluate_model_animation(int animation_index, float time)
 
 void draw_model()
 {
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(mat4) * joint_count, joint_transforms, GL_DYNAMIC_DRAW);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * joint_count, joint_transforms, GL_DYNAMIC_DRAW);
 
   // Render each mesh
   const uint32_t mesh_count = aem_get_model_mesh_count(model);
@@ -182,7 +182,7 @@ void draw_model()
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
     const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
 
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE1);
     if (material && material->base_color_tex_index >= 0 && texture_handles[material->base_color_tex_index])
     {
       glBindTexture(GL_TEXTURE_2D, texture_handles[material->base_color_tex_index]);
@@ -192,7 +192,7 @@ void draw_model()
       glBindTexture(GL_TEXTURE_2D, get_fallback_diffuse_texture());
     }
 
-    glActiveTexture(GL_TEXTURE1);
+    glActiveTexture(GL_TEXTURE2);
     if (material && material->normal_tex_index >= 0 && texture_handles[material->normal_tex_index])
     {
       glBindTexture(GL_TEXTURE_2D, texture_handles[material->normal_tex_index]);
@@ -202,7 +202,7 @@ void draw_model()
       glBindTexture(GL_TEXTURE_2D, get_fallback_normal_texture());
     }
 
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE3);
     if (material && material->orm_tex_index >= 0 && texture_handles[material->orm_tex_index])
     {
       glBindTexture(GL_TEXTURE_2D, texture_handles[material->orm_tex_index]);

@@ -1,14 +1,8 @@
 #version 330 core
 
-#define MAX_JOINT_COUNT 128 // Seems to be okay if we exceed this number
-
-layout (std140) uniform Joints
-{
-    mat4 joint_transforms[MAX_JOINT_COUNT];
-};
-
 uniform mat4 world;
 uniform mat4 viewproj;
+uniform samplerBuffer joint_transform_tex;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
@@ -27,14 +21,23 @@ out VERT_TO_FRAG
   vec2 uv;
 } o;
 
+mat4 get_joint_transform(int index) {
+    return mat4(
+        texelFetch(joint_transform_tex, index * 4 + 0),
+        texelFetch(joint_transform_tex, index * 4 + 1),
+        texelFetch(joint_transform_tex, index * 4 + 2),
+        texelFetch(joint_transform_tex, index * 4 + 3)
+    );
+}
+
 void main()
 {
   mat4 joint_transform = mat4(1.0);
   if (in_joint_indices[0] >= 0) {
-    joint_transform = joint_transforms[in_joint_indices[0]] * in_joint_weights[0];
+    joint_transform = get_joint_transform(in_joint_indices[0]) * in_joint_weights[0];
     for (int i = 1; i < 4; ++i)
     {
-      joint_transform += joint_transforms[in_joint_indices[i]] * in_joint_weights[i];
+      joint_transform += get_joint_transform(in_joint_indices[i]) * in_joint_weights[i];
     }
   }
 

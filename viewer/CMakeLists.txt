@@ -52,7 +52,6 @@ set(SOURCE
   wireframe_overlay.h
 
   shaders/bone_overlay.vert.glsl
-  shaders/wireframe_overlay.vert.glsl
   shaders/overlay.frag.glsl
 
   shaders/grid.vert.glsl
