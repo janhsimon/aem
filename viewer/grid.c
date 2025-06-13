@@ -1,6 +1,6 @@
 #include "grid.h"
 
-#include "shader.h"
+#include <glad/gl.h>
 
 #define GRID_SIZE 100.0f
 
@@ -90,6 +90,9 @@ void destroy_grid()
 
 void draw_grid(const mat4 viewproj_matrix)
 {
+  // Blend the grid
+  glEnable(GL_BLEND);
+
   glBindVertexArray(vertex_array);
   glUseProgram(shader_program);
 
@@ -97,4 +100,7 @@ void draw_grid(const mat4 viewproj_matrix)
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
 
   glDrawArrays(GL_TRIANGLE_STRIP, 0, VERTEX_COUNT);
+
+  // Reset OpenGL state
+  glDisable(GL_BLEND);
 }

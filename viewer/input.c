@@ -40,7 +40,7 @@ void init_input(struct AnimationState* animation_state_,
 
 void cursor_pos_callback(GLFWwindow* window, double x, double y)
 {
-  if (display_state->gui && is_mouse_consumed())
+  if (display_state->show_gui && is_mouse_consumed())
   {
     return;
   }
@@ -82,7 +82,7 @@ void cursor_pos_callback(GLFWwindow* window, double x, double y)
 
 void scroll_callback(GLFWwindow* window, double x, double y)
 {
-  if (display_state->gui && is_mouse_consumed())
+  if (display_state->show_gui && is_mouse_consumed())
   {
     return;
   }
@@ -142,7 +142,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
   }
 
-  if (display_state->gui && is_mouse_consumed())
+  if (display_state->show_gui && is_mouse_consumed())
   {
     return;
   }
@@ -162,23 +162,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     else if (key == GLFW_KEY_U)
     {
-      display_state->gui = !display_state->gui;
+      display_state->show_gui = !display_state->show_gui;
     }
     else if (key == GLFW_KEY_G)
     {
-      display_state->grid = !display_state->grid;
+      display_state->show_grid = !display_state->show_grid;
     }
     else if (key == GLFW_KEY_S)
     {
-      display_state->skeleton = !display_state->skeleton;
+      display_state->show_skeleton = !display_state->show_skeleton;
     }
     else if (key == GLFW_KEY_W)
     {
-      display_state->wireframe = !display_state->wireframe;
+      display_state->show_wireframe = !display_state->show_wireframe;
     }
     else if (key == GLFW_KEY_R)
     {
       scene_state->auto_rotate_camera = !scene_state->auto_rotate_camera;
+    }
+    else if (key == GLFW_KEY_T)
+    {
+      display_state->render_transparent = !display_state->render_transparent;
     }
     else if (key == GLFW_KEY_MINUS)
     {

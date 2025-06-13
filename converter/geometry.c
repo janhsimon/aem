@@ -1,9 +1,9 @@
 #include "geometry.h"
 
 #include "config.h"
-#include "transform.h"
 
 #include "animation_module/animation_module.h"
+#include "material_module/material_module.h"
 
 #include <cglm/affine.h>
 #include <cglm/ivec4.h>
@@ -12,6 +12,7 @@
 #include <cglm/quat.h>
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
+
 #include <cgltf/cgltf.h>
 
 #include <aem/aem.h>
@@ -30,7 +31,7 @@ typedef struct
   uint32_t* indices;
 
   cgltf_size vertex_count, index_count, first_index;
-  int32_t material_index;
+  uint32_t material_index;
 } OutputMesh;
 
 static cgltf_size output_mesh_count;
@@ -44,6 +45,7 @@ static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
                                             cgltf_attribute** joints,
                                             cgltf_attribute** weights)
 {
+  cgltf_size num_uv_coords = 0;
   for (cgltf_size attribute_index = 0; attribute_index < primitive->attributes_count; ++attribute_index)
   {
     cgltf_attribute* attribute = &primitive->attributes[attribute_index];
@@ -71,9 +73,10 @@ static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
     }
     else if (attribute->type == cgltf_attribute_type_texcoord)
     {
-      if (uvs)
+      if (uvs && num_uv_coords == 0)
       {
         *uvs = attribute;
+        ++num_uv_coords;
       }
     }
     else if (attribute->type == cgltf_attribute_type_joints)
@@ -91,6 +94,11 @@ static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
       }
     }
   }
+
+  /*if (num_uv_coords > 1)
+  {
+    assert(false);
+  }*/
 }
 
 static cgltf_node* find_node_for_mesh_recursively(cgltf_node* node, const cgltf_mesh* mesh)
@@ -136,10 +144,13 @@ static void reconstruct_tangents(const cgltf_data* input_file,
                                  cgltf_accessor* normals,
                                  cgltf_accessor* uvs,
                                  cgltf_accessor* indices,
-                                 vec4* out)
+                                 vec4* original_tangents,
+                                 vec4* reconstructed_tangents)
 {
-  vec3* helper = malloc(sizeof(vec3) * output_mesh->vertex_count * 2);
+  const size_t helper_size = sizeof(vec3) * output_mesh->vertex_count * 2;
+  vec3* helper = malloc(helper_size);
   assert(helper);
+  memset(helper, 0, helper_size);
 
   // Method from https://terathon.com/blog/tangent-space.html
   for (cgltf_size triangle = 0; triangle < output_mesh->index_count; triangle += 3)
@@ -187,7 +198,12 @@ static void reconstruct_tangents(const cgltf_data* input_file,
     const float t1 = uv1[1] - uv0[1];
     const float t2 = uv2[1] - uv0[1];
 
-    const float r = 1.0f / (s1 * t2 - s2 * t1);
+    const float denom = s1 * t2 - s2 * t1;
+    if (fabsf(denom) < 1e-8f)
+    {
+      continue; // Skip degenerate triangle
+    }
+    const float r = 1.0f / denom;
 
     vec3 sdir;
     sdir[0] = (t2 * x1 - t1 * x2) * r;
@@ -210,10 +226,15 @@ static void reconstruct_tangents(const cgltf_data* input_file,
 
   for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
   {
+    glm_vec3_copy(helper[vertex_index], original_tangents[vertex_index]); // Copy before modification
+    glm_normalize(original_tangents[vertex_index]);
+
     vec3 normal;
     {
       const cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, normal, 3);
       assert(result);
+
+      glm_vec3_normalize(normal);
     }
 
     // Gram-Schmidt orthogonalize
@@ -223,18 +244,17 @@ static void reconstruct_tangents(const cgltf_data* input_file,
       vec3 ndot;
       glm_vec3_scale(normal, dot, ndot);
 
-      glm_vec3_sub(helper[vertex_index], ndot, out[vertex_index]);
-      glm_vec3_normalize(out[vertex_index]);
+      glm_vec3_sub(helper[vertex_index], ndot, reconstructed_tangents[vertex_index]);
+      glm_vec3_normalize(reconstructed_tangents[vertex_index]);
     }
 
     // Calculate handedness
     {
       vec3 cross;
-      glm_vec3_cross(normal, helper[vertex_index], cross);
+      glm_vec3_cross(normal, original_tangents[vertex_index], cross);
 
       const float dot = glm_dot(cross, helper[vertex_index + output_mesh->vertex_count]);
-
-      out[vertex_index][3] = (dot < 0.0f) ? -1.0f : 1.0f;
+      reconstructed_tangents[vertex_index][3] = (dot < 0.0f) ? -1.0f : 1.0f;
     }
   }
 
@@ -295,8 +315,9 @@ is_primitive_valid(const cgltf_primitive* primitive, const cgltf_attribute* posi
 }
 
 static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
-                                        cgltf_data* input_file,
-                                        cgltf_skin* skin,
+                                        cgltf_material* material,
+                                        const cgltf_data* input_file,
+                                        const cgltf_skin* skin,
                                         cgltf_attribute* positions,
                                         cgltf_attribute* normals,
                                         cgltf_attribute* tangents,
@@ -314,13 +335,16 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
   glm_vec3_normalize(global_node_rotation[2]);
 
   // Reconstruct tangents if they are not included and uvs exist
-  vec4* reconstructed_tangents = NULL;
+  vec4 *original_tangents = NULL, *reconstructed_tangents = NULL;
   if (!tangents && uvs)
   {
+    original_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
+    assert(original_tangents);
+
     reconstructed_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
     assert(reconstructed_tangents);
 
-    reconstruct_tangents(input_file, output_mesh, positions->data, normals->data, uvs->data, indices,
+    reconstruct_tangents(input_file, output_mesh, positions->data, normals->data, uvs->data, indices, original_tangents,
                          reconstructed_tangents);
   }
 
@@ -368,6 +392,10 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       {
         glm_vec4_copy(reconstructed_tangents[vertex_index], tangent);
       }
+      else
+      {
+        glm_vec4_zero(tangent);
+      }
 
       glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
       glm_mat3_mulv(global_node_rotation, output_mesh->tangents[vertex_index], output_mesh->tangents[vertex_index]);
@@ -375,8 +403,21 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
 
     // Bitangent (constructed)
     {
-      glm_cross(output_mesh->normals[vertex_index], output_mesh->tangents[vertex_index],
-                output_mesh->bitangents[vertex_index]);
+      vec3 used_tangent;
+      if (tangents)
+      {
+        glm_cross(output_mesh->normals[vertex_index], tangent, output_mesh->bitangents[vertex_index]);
+      }
+      else if (original_tangents)
+      {
+        glm_cross(output_mesh->normals[vertex_index], original_tangents[vertex_index],
+                  output_mesh->bitangents[vertex_index]);
+      }
+      else
+      {
+        glm_vec3_zero(output_mesh->bitangents[vertex_index]);
+      }
+
       glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
     }
 
@@ -385,6 +426,21 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     {
       const cgltf_bool result = cgltf_accessor_read_float(uvs->data, vertex_index, output_mesh->uvs[vertex_index], 2);
       assert(result);
+
+      vec2 original_uvs;
+      glm_vec2_copy(output_mesh->uvs[vertex_index], original_uvs);
+
+      // Bake the mesh's material texture transform into the UVs at this point
+      mat3 transform;
+      if (mat_get_texture_transform_for_material(material, transform))
+      {
+        vec3 baked_uv;
+        glm_vec2_copy(output_mesh->uvs[vertex_index], baked_uv);
+        baked_uv[2] = 1.0f;
+
+        glm_mat3_mulv(transform, baked_uv, baked_uv);
+        glm_vec2_copy(baked_uv, output_mesh->uvs[vertex_index]);
+      }
     }
     else
     {
@@ -438,6 +494,11 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     {
       glm_vec4_zero(output_mesh->weights[vertex_index]);
     }
+  }
+
+  if (original_tangents)
+  {
+    free(original_tangents);
   }
 
   if (reconstructed_tangents)
@@ -518,9 +579,9 @@ void setup_geometry_output(const cgltf_data* input_file)
     cgltf_size first_mesh_vertex = 0, first_mesh_index = 0;
     for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
     {
-      const cgltf_node* node = &input_file->nodes[node_index];
+      cgltf_node* node = &input_file->nodes[node_index];
       const cgltf_skin* skin = node->skin;
-      const cgltf_mesh* mesh = node->mesh;
+      cgltf_mesh* mesh = node->mesh;
       if (!mesh)
       {
         continue;
@@ -578,12 +639,12 @@ void setup_geometry_output(const cgltf_data* input_file)
         assert(output_mesh->indices);
 
         mat4 global_node_transform;
-        calculate_global_node_transform(node, global_node_transform);
+        anim_calculate_global_node_transform(node, global_node_transform);
 
         // Fill in the vertices and indices
         {
-          add_vertices_to_output_mesh(output_mesh, input_file, skin, positions, normals, tangents, uvs, joints, weights,
-                                      primitive->indices, global_node_transform);
+          add_vertices_to_output_mesh(output_mesh, primitive->material, input_file, skin, positions, normals, tangents,
+                                      uvs, joints, weights, primitive->indices, global_node_transform);
 
           for (cgltf_size index = 0; index < primitive->indices->count; ++index)
           {
@@ -596,11 +657,11 @@ void setup_geometry_output(const cgltf_data* input_file)
         // Material index
         if (primitive->material)
         {
-          output_mesh->material_index = cgltf_material_index(input_file, primitive->material);
+          output_mesh->material_index = (uint32_t)cgltf_material_index(input_file, primitive->material);
         }
         else
         {
-          output_mesh->material_index = -1;
+          output_mesh->material_index = input_file->materials_count; // Special last default material
         }
 
         ++output_mesh_index;
@@ -613,6 +674,7 @@ void setup_geometry_output(const cgltf_data* input_file)
 
 void write_vertex_buffer(FILE* output_file)
 {
+  static uint64_t vertex_counter = 0;
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
     const OutputMesh* output_mesh = &output_meshes[mesh_index];
@@ -628,30 +690,32 @@ void write_vertex_buffer(FILE* output_file)
       fwrite(output_mesh->weights[vertex_index], sizeof(output_mesh->weights[vertex_index]), 1, output_file);
 
 #ifdef PRINT_VERTEX_BUFFER
-      static uint64_t vertex_counter = 0;
-      printf("Vertex #%llu:\n", vertex_counter++);
+      if (PRINT_VERTEX_BUFFER_COUNT == 0 || vertex_counter < PRINT_VERTEX_BUFFER_COUNT)
+      {
+        printf("Vertex #%llu:\n", vertex_counter++);
 
-      printf("\tPosition: [ %f, %f, %f ]\n", output_mesh->positions[vertex_index][0],
-             output_mesh->positions[vertex_index][1], output_mesh->positions[vertex_index][2]);
+        printf("\tPosition: [ %f, %f, %f ]\n", output_mesh->positions[vertex_index][0],
+               output_mesh->positions[vertex_index][1], output_mesh->positions[vertex_index][2]);
 
-      printf("\tNormal: [ %f, %f, %f ]\n", output_mesh->normals[vertex_index][0], output_mesh->normals[vertex_index][1],
-             output_mesh->normals[vertex_index][2]);
+        printf("\tNormal: [ %f, %f, %f ]\n", output_mesh->normals[vertex_index][0],
+               output_mesh->normals[vertex_index][1], output_mesh->normals[vertex_index][2]);
 
-      printf("\tTangent: [ %f, %f, %f ]\n", output_mesh->tangents[vertex_index][0],
-             output_mesh->tangents[vertex_index][1], output_mesh->tangents[vertex_index][2]);
+        printf("\tTangent: [ %f, %f, %f ]\n", output_mesh->tangents[vertex_index][0],
+               output_mesh->tangents[vertex_index][1], output_mesh->tangents[vertex_index][2]);
 
-      printf("\tBitangent: [ %f, %f, %f ]\n", output_mesh->bitangents[vertex_index][0],
-             output_mesh->bitangents[vertex_index][1], output_mesh->bitangents[vertex_index][2]);
+        printf("\tBitangent: [ %f, %f, %f ]\n", output_mesh->bitangents[vertex_index][0],
+               output_mesh->bitangents[vertex_index][1], output_mesh->bitangents[vertex_index][2]);
 
-      printf("\tUV: [ %f, %f ]\n", output_mesh->uvs[vertex_index][0], output_mesh->uvs[vertex_index][1]);
+        printf("\tUV: [ %f, %f ]\n", output_mesh->uvs[vertex_index][0], output_mesh->uvs[vertex_index][1]);
 
-      printf("\tJoints: [ %d, %d, %d, %d ]\n", output_mesh->joints[vertex_index][0],
-             output_mesh->joints[vertex_index][1], output_mesh->joints[vertex_index][2],
-             output_mesh->joints[vertex_index][3]);
+        printf("\tJoints: [ %d, %d, %d, %d ]\n", output_mesh->joints[vertex_index][0],
+               output_mesh->joints[vertex_index][1], output_mesh->joints[vertex_index][2],
+               output_mesh->joints[vertex_index][3]);
 
-      printf("\tWeights: [ %f, %f, %f, %f ]\n", output_mesh->weights[vertex_index][0],
-             output_mesh->weights[vertex_index][1], output_mesh->weights[vertex_index][2],
-             output_mesh->weights[vertex_index][3]);
+        printf("\tWeights: [ %f, %f, %f, %f ]\n", output_mesh->weights[vertex_index][0],
+               output_mesh->weights[vertex_index][1], output_mesh->weights[vertex_index][2],
+               output_mesh->weights[vertex_index][3]);
+      }
 #endif
     }
   }
@@ -678,7 +742,7 @@ void write_meshes(FILE* output_file)
     const uint32_t index_count = (uint32_t)output_mesh->index_count;
     fwrite(&index_count, sizeof(index_count), 1, output_file);
 
-    const int32_t material_index = output_mesh->material_index;
+    const uint32_t material_index = output_mesh->material_index;
     fwrite(&material_index, sizeof(material_index), 1, output_file);
 
 #ifdef PRINT_MESHES

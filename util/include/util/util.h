@@ -1,20 +1,22 @@
 #pragma once
 
+#include <aem/aem.h>
+
+#include <glad/gl.h>
+
 #include <stdbool.h>
 
-// Console output (exporter only)
-void indent(unsigned int indent_count, const char* marker, const char* last_marker);
-void print_checkbox(const char* title, bool condition);
-
-// Math (exporter only)
-int is_mat4_identity(const float* mat);
-
 // Filenames
-char* filename_from_filepath(char* filepath); // Exporter
-char* path_from_filepath(const char* filepath); // Exporter and viewer
-char* basename_from_filename(char* filename); // Exporter
-char* extension_from_filepath(char* filepath); // Exporter
+char* filename_from_filepath(char* filepath); // Converter
+char* path_from_filepath(const char* filepath); // Converter and viewer
+char* basename_from_filename(char* filename); // Converter
+char* extension_from_filepath(char* filepath); // Converter
 
 // File loading
-char* load_text_file(const char* filepath, long* length); // Exporter and viewer
-void preprocess_list_file(char* list, long length); // Preprocess to eliminate whitespaces and skip comments (exporter)
+char* load_text_file(const char* filepath, long* length); // Converter and viewer
+void preprocess_list_file(char* list, long length); // Preprocess to eliminate whitespaces and skip comments (converter)
+
+// Shaders
+bool load_shader(const char* filename, GLenum type, GLuint* shader);
+bool generate_shader_program(GLuint vertex_shader, GLuint fragment_shader, GLuint* shader_program);
+GLint get_uniform_location(GLuint shader_program, const char* name);

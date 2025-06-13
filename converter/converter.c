@@ -2,10 +2,9 @@
 
 #include "geometry.h"
 #include "header.h"
-#include "material.h"
-#include "texture.h"
 
 #include "animation_module/animation_module.h"
+#include "material_module/material_module.h"
 
 #include <util/util.h>
 
@@ -52,11 +51,6 @@ static bool export_file(char* filepath)
       printf("ERROR: Input file does not contain nodes.");
       return false;
     }
-    else if (scene->nodes_count > 1)
-    {
-      printf("ERROR: Input file contains multiple root nodes.");
-      return false;
-    }
   }
 
   // Load the buffers of the input file
@@ -86,30 +80,25 @@ static bool export_file(char* filepath)
     free(basename);
   }
 
-  // The animation module needs to be initialized first as the geometry module needs it during setup to determine the
-  // correct joint indices for skeletal animations
+  // The animation and material modules need to be initialized first as the geometry module needs them during setup
   anim_create(input_file);
-
+  mat_create(input_file, path);
   setup_geometry_output(input_file);
-  setup_texture_output(input_file);
 
   write_header(input_file, output_file);
-
   write_vertex_buffer(output_file);
   write_index_buffer(output_file);
-  write_image_buffer(path, output_file);
-  write_levels(output_file);
-  write_textures(output_file);
+  mat_write_image_buffer(output_file);
+  mat_write_textures(output_file);
   write_meshes(output_file);
-  write_materials(input_file, output_file);
+  mat_write_materials(output_file);
   anim_write_joints(output_file);
   anim_write_animations(output_file);
   anim_write_tracks(output_file);
   anim_write_keyframes(output_file);
 
-  destroy_texture_output();
+  mat_free();
   destroy_geometry_output();
-
   anim_free();
 
   cgltf_free(input_file);

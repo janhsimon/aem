@@ -18,7 +18,7 @@ void init_gui(struct GLFWwindow* window,
 bool is_mouse_consumed();
 bool is_keyboard_consumed();
 
-void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, const struct AEMJoint* joints, uint32_t joint_count);
+void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, struct AEMJoint* joints, uint32_t joint_count);
 
 void update_gui(int screen_width, int screen_height, char** animation_names, float animation_duration);
 void render_gui();

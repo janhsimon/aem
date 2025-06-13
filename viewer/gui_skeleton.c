@@ -102,7 +102,7 @@ static draw_skeleton_tree(const struct Node* node)
     flags |= ImGuiTreeNodeFlags_Leaf;
   }
 
-  const char name[256];
+  char name[256];
   sprintf(name, "#%u: \"%s\"", node->id, node->joint->name);
   const bool open = igTreeNodeEx_Str(name, flags);
 

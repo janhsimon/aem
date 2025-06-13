@@ -1,6 +1,6 @@
 #include "joint_overlay.h"
 
-#include "shader.h"
+#include <glad/gl.h>
 
 #define VERTEX_SIZE 12 // The size of a joint overlay vertex in bytes
 

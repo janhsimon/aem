@@ -1,6 +1,5 @@
 #include "model_renderer.h"
 
-#include "shader.h"
 #include "texture.h"
 
 #include <aem/aem.h>
@@ -12,11 +11,9 @@
 static GLuint vertex_array, vertex_buffer, index_buffer, joint_transform_buffer, joint_transform_texture;
 
 static GLuint shader_program;
-static GLint light_dir_uniform_location, camera_pos_uniform_location, world_uniform_location, viewproj_uniform_location;
-static GLint base_color_uv_transform_uniform_location, normal_uv_transform_uniform_location,
-  orm_uv_transform_uniform_location;
-
-static GLuint fallback_diffuse_texture, fallback_normal_texture, fallback_orm_texture;
+static GLint pass_uniform_location, ambient_color_uniform_location, light_dir_uniform_location, light_color_uniform_location,
+  camera_pos_uniform_location, render_mode_uniform_location, postprocessing_mode_uniform_location,
+  world_uniform_location, viewproj_uniform_location;
 
 bool load_model_renderer()
 {
@@ -85,12 +82,13 @@ bool load_model_renderer()
       world_uniform_location = get_uniform_location(shader_program, "world");
       viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
 
+      pass_uniform_location = get_uniform_location(shader_program, "render_pass");
+      ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
       light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
+      light_color_uniform_location = get_uniform_location(shader_program, "light_color");
       camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
-
-      base_color_uv_transform_uniform_location = get_uniform_location(shader_program, "base_color_uv_transform");
-      normal_uv_transform_uniform_location = get_uniform_location(shader_program, "normal_uv_transform");
-      orm_uv_transform_uniform_location = get_uniform_location(shader_program, "orm_uv_transform");
+      render_mode_uniform_location = get_uniform_location(shader_program, "render_mode");
+      postprocessing_mode_uniform_location = get_uniform_location(shader_program, "postprocessing_mode");
 
       const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
       glUniform1i(joint_transform_tex_uniform_location, 0);
@@ -101,16 +99,12 @@ bool load_model_renderer()
       const GLint normal_tex_uniform_location = get_uniform_location(shader_program, "normal_tex");
       glUniform1i(normal_tex_uniform_location, 2);
 
-      const GLint orm_tex_uniform_location = get_uniform_location(shader_program, "orm_tex");
-      glUniform1i(orm_tex_uniform_location, 3);
+      const GLint pbr_tex_uniform_location = get_uniform_location(shader_program, "pbr_tex");
+      glUniform1i(pbr_tex_uniform_location, 3);
     }
   }
 
   glGenTextures(1, &joint_transform_texture);
-
-  fallback_diffuse_texture = load_builtin_texture("textures/fallback_diffuse.png");
-  fallback_normal_texture = load_builtin_texture("textures/fallback_normal.png");
-  fallback_orm_texture = load_builtin_texture("textures/fallback_orm.png");
 
   return true;
 }
@@ -126,25 +120,6 @@ void destroy_model_renderer()
   glDeleteBuffers(1, &vertex_buffer);
 
   glDeleteVertexArrays(1, &vertex_array);
-
-  glDeleteTextures(1, &fallback_diffuse_texture);
-  glDeleteTextures(1, &fallback_normal_texture);
-  glDeleteTextures(1, &fallback_orm_texture);
-}
-
-GLuint get_fallback_diffuse_texture()
-{
-  return fallback_diffuse_texture;
-}
-
-GLuint get_fallback_normal_texture()
-{
-  return fallback_normal_texture;
-}
-
-GLuint get_fallback_orm_texture()
-{
-  return fallback_orm_texture;
 }
 
 void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
@@ -166,30 +141,33 @@ void fill_model_renderer_buffers(GLsizeiptr model_vertex_buffer_size,
   glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, joint_transform_buffer);
 }
 
-void prepare_model_draw(const vec3 light_dir, const vec3 camera_pos, mat4 world_matrix, mat4 viewproj_matrix)
+void prepare_model_draw(RenderMode render_mode,
+                        PostprocessingMode postprocessing_mode,
+                        const vec4 ambient_color,
+                        const vec3 light_dir,
+                        const vec4 light_color,
+                        const vec3 camera_pos,
+                        mat4 world_matrix,
+                        mat4 viewproj_matrix)
 {
   glBindVertexArray(vertex_array);
   glUseProgram(shader_program);
 
-  // Set light direction uniform
+  // Set uniforms
+  glUniform4fv(ambient_color_uniform_location, 1, ambient_color);
   glUniform3fv(light_dir_uniform_location, 1, light_dir);
-
-  // Set camera position uniform
+  glUniform4fv(light_color_uniform_location, 1, light_color);
   glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
-
-  // Set world matrix uniform
+  glUniform1i(render_mode_uniform_location, (GLint)render_mode);
+  glUniform1i(postprocessing_mode_uniform_location, (GLint)postprocessing_mode);
   glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
-
-  // Set view-projection matrix uniform
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
 }
 
-void set_material_uniforms(mat3 base_color_uv_transform, mat3 normal_uv_transform, mat3 orm_uv_transform)
+void set_pass(RenderPass pass)
 {
-  glUniformMatrix3fv(base_color_uv_transform_uniform_location, 1, GL_FALSE, (float*)base_color_uv_transform);
-  glUniformMatrix3fv(normal_uv_transform_uniform_location, 1, GL_FALSE, (float*)normal_uv_transform);
-  glUniformMatrix3fv(orm_uv_transform_uniform_location, 1, GL_FALSE, (float*)orm_uv_transform);
+  glUniform1i(pass_uniform_location, (GLint)pass);
 }

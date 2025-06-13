@@ -34,35 +34,31 @@ enum AEMTextureWrapMode
   AEMTextureWrapMode_ClampToEdge
 };
 
-struct AEMLevel
-{
-  uint64_t offset, size; // Into image buffer
-};
-
 struct AEMTexture
 {
+  uint64_t offset; // Into image buffer
   uint32_t width, height;
-  uint32_t channel_count;
-  uint32_t first_level, level_count;
   enum AEMTextureWrapMode wrap_mode[2]; // 0: x, 1: y
 };
 
 struct AEMMesh
 {
   uint32_t first_index, index_count;
-  int32_t material_index;
+  uint32_t material_index;
+};
+
+enum AEMMaterialType
+{
+  AEMMaterialType_Opaque,
+  AEMMaterialType_Transparent
 };
 
 struct AEMMaterial
 {
-  int32_t base_color_tex_index;
-  float base_color_uv_transform[9];
-
-  int32_t normal_tex_index;
-  float normal_uv_transform[9];
-
-  int32_t orm_tex_index;
-  float orm_uv_transform[9];
+  uint32_t base_color_texture_index;
+  uint32_t normal_texture_index;
+  uint32_t pbr_texture_index;
+  enum AEMMaterialType type;
 };
 
 struct AEMJoint
@@ -87,16 +83,14 @@ uint32_t aem_get_model_index_count(const struct AEMModel* model);
 void* aem_get_model_image_buffer(const struct AEMModel* model);
 uint64_t aem_get_model_image_buffer_size(const struct AEMModel* model);
 
-const struct AEMLevel* aem_get_model_levels(const struct AEMModel* model, uint32_t* level_count);
 const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, uint32_t* texture_count);
 
-const struct AEMLevel* aem_get_model_level(const struct AEMModel* model, uint32_t level_index);
-void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, const struct AEMLevel* level);
+// void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, const struct AEMLevel* level);
 
 uint32_t aem_get_model_mesh_count(const struct AEMModel* model);
 const struct AEMMesh* aem_get_model_mesh(const struct AEMModel* model, uint32_t mesh_index);
 
-const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, int32_t material_index);
+const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, uint32_t material_index);
 
 uint32_t aem_get_model_joint_count(const struct AEMModel* model);
 struct AEMJoint* aem_get_model_joints(const struct AEMModel* model);
