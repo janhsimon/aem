@@ -1,6 +1,6 @@
-#include "bone_overlay.h"
+#include "wireframe_overlay.h"
 
-#include "shader.h"
+#include <glad/gl.h>
 
 static const vec4 color = { 0.8f, 0.8f, 0.8f, 1.0f };
 

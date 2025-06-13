@@ -38,7 +38,7 @@ void find_animation_channels_for_node(const cgltf_animation* animation,
 
   for (cgltf_size channel_index = 0; channel_index < animation->channels_count; ++channel_index)
   {
-    const cgltf_animation_channel* channel = &animation->channels[channel_index];
+    cgltf_animation_channel* channel = &animation->channels[channel_index];
     if (channel->target_node != node)
     {
       continue;

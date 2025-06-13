@@ -3,11 +3,14 @@ set(TARGET_NAME util)
 set(SOURCE
   include/util/util.h
 
-  util.c
+  filename.c
+  text.c
+  shader.c
 )
 
 set(DEPENDENCIES
-  cglm
+  glad
+  libaem
 )
 
 add_library(${TARGET_NAME} STATIC)

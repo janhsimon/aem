@@ -124,7 +124,7 @@ uint32_t get_model_joint_count()
   return joint_count;
 }
 
-const struct AEMJoint* get_model_joints()
+struct AEMJoint* get_model_joints()
 {
   return joints;
 }
@@ -174,11 +174,13 @@ void evaluate_model_animation(int animation_index, float time)
   aem_evaluate_model_animation(model, animation_index, time, **joint_transforms);
 }
 
-void draw_model()
+void draw_model_opaque()
 {
   glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * joint_count, joint_transforms, GL_DYNAMIC_DRAW);
 
-  // Render each mesh
+  // Draw the opaque fragments from all meshes
+  set_pass(RenderPass_Opaque);
+
   const uint32_t mesh_count = aem_get_model_mesh_count(model);
   for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
   {
@@ -186,44 +188,55 @@ void draw_model()
     const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
 
     glActiveTexture(GL_TEXTURE1);
-    if (material && material->base_color_tex_index >= 0 && texture_handles[material->base_color_tex_index])
-    {
-      glBindTexture(GL_TEXTURE_2D, texture_handles[material->base_color_tex_index]);
-    }
-    else
-    {
-      glBindTexture(GL_TEXTURE_2D, get_fallback_diffuse_texture());
-    }
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->base_color_texture_index]);
 
     glActiveTexture(GL_TEXTURE2);
-    if (material && material->normal_tex_index >= 0 && texture_handles[material->normal_tex_index])
-    {
-      glBindTexture(GL_TEXTURE_2D, texture_handles[material->normal_tex_index]);
-    }
-    else
-    {
-      glBindTexture(GL_TEXTURE_2D, get_fallback_normal_texture());
-    }
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->normal_texture_index]);
 
     glActiveTexture(GL_TEXTURE3);
-    if (material && material->orm_tex_index >= 0 && texture_handles[material->orm_tex_index])
-    {
-      glBindTexture(GL_TEXTURE_2D, texture_handles[material->orm_tex_index]);
-    }
-    else
-    {
-      glBindTexture(GL_TEXTURE_2D, get_fallback_orm_texture());
-    }
-
-    if (material)
-    {
-      set_material_uniforms(material->base_color_uv_transform, material->normal_uv_transform,
-                            material->orm_uv_transform);
-    }
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->pbr_texture_index]);
 
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
                    (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
   }
+}
+
+void draw_model_transparent()
+{
+  // Draw the transparent fragments from all non-opaque meshes
+  set_pass(RenderPass_Transparent);
+
+  // Don't write depth (but do still test it) and enable blending
+  glDepthMask(GL_FALSE);
+  glEnable(GL_BLEND);
+
+  const uint32_t mesh_count = aem_get_model_mesh_count(model);
+  for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
+  {
+    const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
+    const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
+
+    if (material->type != AEMMaterialType_Transparent)
+    {
+      continue;
+    }
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->base_color_texture_index]);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->normal_texture_index]);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, texture_handles[material->pbr_texture_index]);
+
+    glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
+                   (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
+  }
+
+  // Reset OpenGL state
+  glDepthMask(GL_TRUE);
+  glDisable(GL_BLEND);
 }
 
 void draw_model_wireframe_overlay()

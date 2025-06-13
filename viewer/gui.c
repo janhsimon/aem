@@ -75,7 +75,7 @@ bool is_keyboard_consumed()
   return io->WantCaptureKeyboard;
 }
 
-void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, const struct AEMJoint* joints, uint32_t joint_count)
+void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, struct AEMJoint* joints, uint32_t joint_count)
 {
   init_gui_skeleton(skeleton_state, joints, joint_count);
 }
@@ -106,6 +106,83 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
       igEndMenu();
     }
 
+    if (igBeginMenu("Render Mode", true))
+    {
+      if (igMenuItem_Bool("Full", "", display_state->render_mode == RenderMode_Full, true))
+      {
+        display_state->render_mode = RenderMode_Full;
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Vertex Position", "", display_state->render_mode == RenderMode_VertexPosition, true))
+      {
+        display_state->render_mode = RenderMode_VertexPosition;
+      }
+      if (igMenuItem_Bool("Vertex Normal", "", display_state->render_mode == RenderMode_VertexNormal, true))
+      {
+        display_state->render_mode = RenderMode_VertexNormal;
+      }
+      if (igMenuItem_Bool("Vertex Tangent", "", display_state->render_mode == RenderMode_VertexTangent, true))
+      {
+        display_state->render_mode = RenderMode_VertexTangent;
+      }
+      if (igMenuItem_Bool("Vertex Bitangent", "", display_state->render_mode == RenderMode_VertexBitangent, true))
+      {
+        display_state->render_mode = RenderMode_VertexBitangent;
+      }
+      if (igMenuItem_Bool("Vertex UV", "", display_state->render_mode == RenderMode_VertexUV, true))
+      {
+        display_state->render_mode = RenderMode_VertexUV;
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Base Color Texture", "", display_state->render_mode == RenderMode_TextureBaseColor, true))
+      {
+        display_state->render_mode = RenderMode_TextureBaseColor;
+      }
+
+      if (igMenuItem_Bool("Opacity Texture", "", display_state->render_mode == RenderMode_TextureOpacity, true))
+      {
+        display_state->render_mode = RenderMode_TextureOpacity;
+      }
+
+      if (igMenuItem_Bool("Normal Texture", "", display_state->render_mode == RenderMode_TextureNormal, true))
+      {
+        display_state->render_mode = RenderMode_TextureNormal;
+      }
+
+      if (igMenuItem_Bool("Roughness Texture", "", display_state->render_mode == RenderMode_TextureRoughness, true))
+      {
+        display_state->render_mode = RenderMode_TextureRoughness;
+      }
+
+      if (igMenuItem_Bool("Occlusion Texture", "", display_state->render_mode == RenderMode_TextureOcclusion, true))
+      {
+        display_state->render_mode = RenderMode_TextureOcclusion;
+      }
+
+      if (igMenuItem_Bool("Metalness Texture", "", display_state->render_mode == RenderMode_TextureMetalness, true))
+      {
+        display_state->render_mode = RenderMode_TextureMetalness;
+      }
+
+      if (igMenuItem_Bool("Emissive Texture", "", display_state->render_mode == RenderMode_TextureEmissive, true))
+      {
+        display_state->render_mode = RenderMode_TextureEmissive;
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Combined Normal", "", display_state->render_mode == RenderMode_CombinedNormal, true))
+      {
+        display_state->render_mode = RenderMode_CombinedNormal;
+      }
+
+      igEndMenu();
+    }
+
     if (igBeginMenu("Animation", true))
     {
       // Loop
@@ -122,6 +199,10 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
 
     if (igBeginMenu("View", true))
     {
+      igMenuItem_BoolPtr("Render Transparent", "T", &display_state->render_transparent, true);
+
+      igSeparator();
+
       // Scene scale
       igSliderInt("##SceneScale", &scene_state->scale, 1, 500, "Scene Scale: %d%%", 0);
       igSeparator();
@@ -147,24 +228,68 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
 
       igColorEdit3("Background Color", scene_state->background_color, ImGuiColorEditFlags_NoInputs);
 
+      igColorEdit3("Ambient Color", scene_state->ambient_color, ImGuiColorEditFlags_NoInputs);
+      igSliderFloat("##AmbientIntensity", &scene_state->ambient_color[3], 0.0f, 5.0f, "Ambient Intensity: %.2f", 0);
+
+      igColorEdit3("Light Color", scene_state->light_color, ImGuiColorEditFlags_NoInputs);
+      igSliderFloat("##LightIntensity", &scene_state->light_color[3], 0.0f, 100.0f, "Light Intensity: %.2f", 0);
+
       igSeparator();
 
       // Show flags
-      if (igMenuItem_Bool("Show GUI", "U", display_state->gui, true))
+      if (igMenuItem_Bool("Show GUI", "U", display_state->show_gui, true))
       {
-        display_state->gui = !display_state->gui;
+        display_state->show_gui = !display_state->show_gui;
       }
-      if (igMenuItem_Bool("Show Grid", "G", display_state->grid, true))
+      if (igMenuItem_Bool("Show Grid", "G", display_state->show_grid, true))
       {
-        display_state->grid = !display_state->grid;
+        display_state->show_grid = !display_state->show_grid;
       }
-      if (igMenuItem_Bool("Show Skeleton", "S", display_state->skeleton, true))
+      if (igMenuItem_Bool("Show Skeleton", "S", display_state->show_skeleton, true))
       {
-        display_state->skeleton = !display_state->skeleton;
+        display_state->show_skeleton = !display_state->show_skeleton;
       }
-      if (igMenuItem_Bool("Show Wireframe", "W", display_state->wireframe, true))
+      if (igMenuItem_Bool("Show Wireframe", "W", display_state->show_wireframe, true))
       {
-        display_state->wireframe = !display_state->wireframe;
+        display_state->show_wireframe = !display_state->show_wireframe;
+      }
+
+      igEndMenu();
+    }
+
+    if (igBeginMenu("Postprocessing", true))
+    {
+      if (igMenuItem_Bool("Linear", "", display_state->postprocessing_mode == PostprocessingMode_Linear, true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_Linear;
+      }
+
+      if (igMenuItem_Bool("sRGB", "", display_state->postprocessing_mode == PostprocessingMode_sRGB, true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_sRGB;
+      }
+
+      if (igMenuItem_Bool("sRGB + Reinhard", "", display_state->postprocessing_mode == PostprocessingMode_sRGB_Reinhard,
+                          true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_sRGB_Reinhard;
+      }
+
+      if (igMenuItem_Bool("sRGB + Reinhard X", "",
+                          display_state->postprocessing_mode == PostprocessingMode_sRGB_ReinhardX, true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_sRGB_ReinhardX;
+      }
+
+      if (igMenuItem_Bool("sRGB + ACES", "", display_state->postprocessing_mode == PostprocessingMode_sRGB_ACES, true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_sRGB_ACES;
+      }
+
+      if (igMenuItem_Bool("sRGB + Filmic", "", display_state->postprocessing_mode == PostprocessingMode_sRGB_Filmic,
+                          true))
+      {
+        display_state->postprocessing_mode = PostprocessingMode_sRGB_Filmic;
       }
 
       igEndMenu();
@@ -174,7 +299,7 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
   }
 
   // Skeleton window
-  if (display_state->skeleton)
+  if (display_state->show_skeleton)
   {
     update_gui_skeleton(screen_width, screen_height);
   }
@@ -270,7 +395,7 @@ void update_gui(int screen_width, int screen_height, char** animation_names, flo
   }
 
   // End the frame if there won't be rendering later
-  if (!display_state->gui)
+  if (!display_state->show_gui)
   {
     igEndFrame();
   }

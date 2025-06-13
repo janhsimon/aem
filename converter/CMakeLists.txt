@@ -30,6 +30,24 @@ set(SOURCE
   animation_module/node_inspector.c
   animation_module/node_inspector.h
 
+  material_module/material_inspector.c
+  material_module/material_inspector.h
+
+  material_module/material_module.c
+  material_module/material_module.h
+
+  material_module/render_material.c
+  material_module/render_material.h
+
+  material_module/render_texture.c
+  material_module/render_texture.h
+
+  material_module/texture_processor.c
+  material_module/texture_processor.h
+
+  material_module/texture_transform.c
+  material_module/texture_transform.h
+
   config.h
 
   geometry.c
@@ -38,24 +56,26 @@ set(SOURCE
   header.c
   header.h
 
-  material.c
-  material.h
-
-  texture.c
-  texture.h
-  
-  transform.c
-  transform.h
+  shaders/texture.vert.glsl
+  shaders/texture.frag.glsl
 )
 
 set(DEPENDENCIES
   cglm
   cgltf
+  glad
+  glfw
   libaem
   nfdx
   stb
   util
 )
+
+if(WIN32)
+  set(EXTRA_BINS
+    "${CMAKE_SOURCE_DIR}/external/glfw/lib/win/glfw3.dll"
+  )
+endif()
 
 add_executable(${TARGET_NAME})
 target_sources(${TARGET_NAME} PRIVATE ${SOURCE})
@@ -63,3 +83,12 @@ target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 target_link_libraries(${TARGET_NAME} PRIVATE ${DEPENDENCIES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE})
+set_property(TARGET ${TARGET_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${TARGET_NAME}>")
+
+# Copy extra binaries
+foreach (EXTRA_BIN ${EXTRA_BINS})
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${EXTRA_BIN} "$<TARGET_FILE_DIR:${TARGET_NAME}>")
+endforeach()
+
+# Copy assets
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")

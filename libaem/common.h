@@ -6,8 +6,9 @@ struct Header
 {
   uint32_t vertex_count, index_count;
   uint64_t image_buffer_size;
-  uint32_t level_count, texture_count, mesh_count, material_count;
+  uint32_t texture_count, mesh_count, material_count;
   uint32_t joint_count, animation_count, track_count, keyframe_count;
+  uint32_t padding;
 };
 
 struct Vertex
@@ -48,7 +49,6 @@ struct AEMModel
   uint32_t* index_buffer;
   uint8_t* image_buffer;
 
-  struct AEMLevel* levels;
   struct AEMTexture* textures;
   struct AEMMesh* meshes;
   struct AEMMaterial* materials;
@@ -58,12 +58,12 @@ struct AEMModel
   struct Keyframe* keyframes;
 };
 
-struct AEMTextureData
-{
-  uint32_t base_width, base_height;
-  uint32_t mip_level_count;
-  uint64_t* mip_offsets; // Offsets into data, one offets per mip level, in bytes
-  uint64_t* mip_sizes;   // One size per mip level, in bytes
-
-  void* data;
-};
+//struct AEMTextureData
+//{
+//  uint32_t base_width, base_height;
+//  uint32_t mip_level_count;
+//  uint64_t* mip_offsets; // Offsets into data, one offets per mip level, in bytes
+//  uint64_t* mip_sizes;   // One size per mip level, in bytes
+//
+//  void* data;
+//};

@@ -137,10 +137,13 @@ int main(int argc, char* argv[])
   activate_animation(&animation_state, -1); // Bind pose
 
   // Initialize display state
-  display_state.gui = true;
-  display_state.grid = true;
-  display_state.skeleton = false;
-  display_state.wireframe = false;
+  display_state.show_gui = true;
+  display_state.show_grid = true;
+  display_state.show_skeleton = false;
+  display_state.show_wireframe = false;
+  display_state.render_mode = RenderMode_Full;
+  display_state.render_transparent = true;
+  display_state.postprocessing_mode = PostprocessingMode_sRGB;
 
   // Initialize scene state
   scene_state.scale = 100;
@@ -148,6 +151,10 @@ int main(int argc, char* argv[])
   scene_state.auto_rotate_camera = false;
   scene_state.auto_rotate_camera_speed = 100;
   scene_state.background_color[0] = scene_state.background_color[1] = scene_state.background_color[2] = 0.0f;
+  scene_state.ambient_color[0] = scene_state.ambient_color[1] = scene_state.ambient_color[2] = 1.0f; // RGB color
+  scene_state.ambient_color[3] = 0.03f;                                                              // Intensity
+  scene_state.light_color[0] = scene_state.light_color[1] = scene_state.light_color[2] = 1.0f;       // RGB color
+  scene_state.light_color[3] = 10.0f;                                                                // Intensity
 
   // Create window and load OpenGL
   {
@@ -184,12 +191,11 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    glEnable(GL_DEPTH_TEST);
-
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    glEnable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
 
     glEnable(GL_MULTISAMPLE);
 
@@ -242,7 +248,7 @@ int main(int argc, char* argv[])
         animation_duration = get_model_animation_duration(animation_state.current_index);
       }
 
-      if (display_state.gui)
+      if (display_state.show_gui)
       {
         update_gui(window_width, window_height, animation_names, animation_duration);
       }
@@ -285,29 +291,36 @@ int main(int argc, char* argv[])
 
       if (model_loaded)
       {
-        prepare_model_draw(light_dir, camera_pos, world_matrix, viewproj_matrix);
-        draw_model();
+        prepare_model_draw(display_state.render_mode, display_state.postprocessing_mode, scene_state.ambient_color,
+                           light_dir, scene_state.light_color, camera_pos, world_matrix, viewproj_matrix);
 
-        if (display_state.wireframe)
+        draw_model_opaque();
+
+        if (display_state.render_transparent)
+        {
+          draw_model_transparent();
+        }
+
+        if (display_state.show_wireframe)
         {
           begin_draw_wireframe_overlay(world_matrix, viewproj_matrix);
           draw_model_wireframe_overlay();
         }
       }
 
-      if (display_state.grid)
+      if (display_state.show_grid)
       {
         draw_grid(viewproj_matrix);
       }
 
-      if (model_loaded && display_state.skeleton)
+      if (model_loaded && display_state.show_skeleton)
       {
         const bool bind_pose = animation_state.current_index < 0 ? true : false;
         draw_model_bone_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
         draw_model_joint_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
       }
 
-      if (display_state.gui)
+      if (display_state.show_gui)
       {
         render_gui();
       }

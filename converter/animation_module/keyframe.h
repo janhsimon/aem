@@ -14,4 +14,4 @@ struct Keyframe
 
 typedef struct Keyframe Keyframe;
 
-uint32_t populate_keyframes(const cgltf_animation* animation, const Joint* joint, Keyframe* keyframes);
+uint32_t populate_keyframes(const cgltf_animation* animation, Joint* joint, Keyframe* keyframes);

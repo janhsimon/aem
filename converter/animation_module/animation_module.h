@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cglm/types.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,6 +16,8 @@ uint32_t anim_get_keyframe_count();
 
 int32_t anim_calculate_joint_index_for_node(const cgltf_node* node);
 bool anim_does_joint_exist_for_node(const cgltf_node* node);
+
+void anim_calculate_global_node_transform(cgltf_node* node, mat4 transform);
 
 void anim_write_joints(FILE* output_file);
 void anim_write_animations(FILE* output_file);

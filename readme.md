@@ -6,13 +6,13 @@ It describes game-ready 3D models with everything they need - no more, no less:
 - Vertex normals, tangents and bitangents for lighting and normal mapping
 - Single-channel UV coordinates for texture mapping
 - Separate index data to use with an index buffer
-- Standard PBR material system with base color, normal, occlusion, roughness and metalness maps
-- Skeletal animations
+- Standard PBR material system with base color, opacity, normal, roughness, metalness, occlusion and emissive information packed efficiently into three texture maps
+- Skeletal and node-based animations
 
 This repository contains:
 - `libaem`: A minimal and dependency-free C library that can load and animate *AEM* models efficiently
 - `converter`: A command-line tool that can convert GLB files into *AEM*s
-- `viewer`: A viewer application that illustrates how to load and render *AEM* models with `libaem` and OpenGL 3.3 and can be used to inspect *AEM* models
+- `viewer`: A viewer application that illustrates how to load and render *AEM* models with `libaem` and OpenGL 3.3 and can be used to inspect and debug *AEM* models
 
 
 # Specification
@@ -32,13 +32,15 @@ This repository contains:
 | 3      | 1    | Version number       | Unsigned integer |
 | 4      | 4    | Number of vertices   | Unsigned integer |
 | 8      | 4    | Number of indices    | Unsigned integer |
-| 12     | 4    | Number of textures   | Unsigned integer |
-| 16     | 4    | Number of meshes     | Unsigned integer |
-| 20     | 4    | Number of materials  | Unsigned integer |
-| 24     | 4    | Number of joints     | Unsigned integer |
-| 28     | 4    | Number of animations | Unsigned integer |
-| 32     | 4    | Number of tracks     | Unsigned integer |
-| 36     | 4    | Number of keyframes  | Unsigned integer |
+| 12     | 8    | Size of image buffer | Unsigned integer |
+| 20     | 4    | Number of textures   | Unsigned integer |
+| 24     | 4    | Number of meshes     | Unsigned integer |
+| 28     | 4    | Number of materials  | Unsigned integer |
+| 32     | 4    | Number of joints     | Unsigned integer |
+| 36     | 4    | Number of animations | Unsigned integer |
+| 40     | 4    | Number of tracks     | Unsigned integer |
+| 44     | 4    | Number of keyframes  | Unsigned integer |
+| 48     | 4    | Padding              | None             |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -88,16 +90,30 @@ The joint indices 1-4 index into the [joint section](#joint-section). The sum of
 The indices index into the [vertex section](#vertex-section).
 
 
+## Image Buffer Section
+
+| Offset | Size | Description | Data Type     |
+| ------ | ---- | ----------- | ------------- |
+| 0      | 4    | Image byte  | Unsigned byte |
+| ...    | ...  | (repeat)    | ...           |
+
+(The field above is repeated for each byte of the image buffer in the file.)
+
+
 ## Texture Section
 
-| Offset | Size | Description | Data Type |
-| ------ | ---- | ----------- | --------- |
-| 0      | 128  | Filename    | String    |
-| ...    | ...  | (repeat)    | ...       |
+| Offset | Size | Description | Data Type        |
+| ------ | ---- | ----------- | ---------------- |
+| 0      | 8    | Offset      | Unsigned integer |
+| 8      | 4    | Width       | Unsigned integer |
+| 12     | 4    | Height      | Unsigned integer |
+| 16     | 4    | Wrap mode X | Unsigned integer |
+| 20     | 4    | Wrap mode Y | Unsigned integer |
+| ...    | ...  | (repeat)    | ...              |
 
 (The field above is repeated for each texture in the file.)
 
-The filename for a texture is supplied with a null-terminated string of at most 128 characters (including the null terminator). Longer filenames are not supported.
+The offset indexes into the [image buffer section](#image-buffer-section) and describes where the first MIP layer of the texture begins in the buffer. Note that the buffer contains all the remaining MIP layers after the first one until, and including, the last MIP layer with dimensions of 1x1 pixel directly afterwards. The width and height describe the dimensions of the first MIP layer of the texture in pixels. Wrap mode X and Y describe how the texture should wrap along the respective axis. A value of 0 indicates repeating, 1 mirrored repeating and 2 clamping to the edge of the texture.
 
 
 ## Mesh Section
@@ -111,21 +127,22 @@ The filename for a texture is supplied with a null-terminated string of at most 
 
 (The field above is repeated for each mesh in the file.)
 
-Meshes consist of a range of indices in the [index section](#index-section). The material indices index into the [material section](#material-section).
+Meshes consist of a range of indices in the [index section](#index-section). The material indices index into the [material section](#material-section). Note that each mesh is guaranteed to have a valid material but multiple meshes may reference one and the same material.
 
 
 ## Material Section
 
 | Offset | Size | Description              | Data Type        |
 | ------ | ---- | ------------------------ | ---------------- |
-| 0      | 4    | Base color texture index | Signed integer   |
-| 4      | 4    | Normal texture index     | Signed integer   |
-| 8      | 4    | ORM texture index        | Signed integer   |
+| 0      | 4    | Base color texture index | Unsigned integer |
+| 4      | 4    | Normal texture index     | Unsigned integer |
+| 8      | 4    | PBR texture index        | Unsigned integer |
+| 12     | 4    | Type                     | Unsigned integer |
 | ...    | ...  | (repeat)                 | ...              |
 
 (The fields above are repeated for each material in the file.)
 
-The texture indices index into the [material section](#material-section). An index of 255 indicates that the respective texture is not defined. In that case, your application should fall back to an appropriate default texture. (For example a solid 127/127/255 texture to use when a mesh in the model does not come with an actual normal map.) ORM stands for Occlusion, Roughness and Metalness: A texture image where red represents occlusion, green represents roughness and the blue channel represents metalness.
+The texture indices index into the [texture section](#texture-section). Note that each texture is guaranteed to exist for each material but multiple materials may reference one and the same texture. PBR texture include roughness information in the red, occlusion information in the green, metalness information in the blue and emissive information in the alpha channel.
 
 
 ## Joint Section

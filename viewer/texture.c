@@ -4,8 +4,8 @@
 
 #include <glad/gl.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include <math.h>
+#include <stdlib.h>
 
 static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
 {
@@ -19,33 +19,6 @@ static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
   }
 
   return GL_REPEAT;
-}
-
-GLuint load_builtin_texture(const char* filepath)
-{
-  int width, height, channels;
-  stbi_uc* data = stbi_load(filepath, &width, &height, &channels, 4);
-  if (!data)
-  {
-    printf("Failed to load built-in texture \"%s\"\n", filepath);
-    return 0;
-  }
-
-  printf("Loaded built-in texture \"%s\" (%dx%dx%d)\n", filepath, width, height, channels);
-
-  GLuint texture;
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-  stbi_image_free(data);
-
-  return texture;
 }
 
 GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture* texture)
@@ -70,57 +43,63 @@ GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture*
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  for (uint32_t level_index = 0; level_index < texture->level_count; ++level_index)
+  const uint32_t level_count = 1 + floor(log2(max(texture->width, texture->height)));
+  uint64_t offset = 0;
+  for (uint32_t level_index = 0; level_index < level_count; ++level_index)
   {
+    const uint32_t level_width = max(1, texture->width >> level_index);
+    const uint32_t level_height = max(1, texture->height >> level_index);
+
     /*uint32_t mip_width, mip_height;
     uint64_t mip_size;
     void* mip_data;
     aem_get_texture_mip_data(texture_data, mip_index, &mip_width, &mip_height, &mip_size, &mip_data);*/
 
-    const struct AEMLevel* level = aem_get_model_level(model, texture->first_level + level_index);
-    void* level_data = aem_get_model_image_buffer_data_for_level(model, level);
+    /*const struct AEMLevel* level = aem_get_model_level(model, texture->first_level + level_index);
+    void* level_data = aem_get_model_image_buffer_data_for_level(model, level);*/
 
-    const uint32_t level_width = max(texture->width >> level_index, 1);
-    const uint32_t level_height = max(texture->height >> level_index, 1);
+    uint8_t* data = (uint8_t*)aem_get_model_image_buffer(model);
 
     // if (texture->compression == AEMTextureCompression_None)
+    //{
+    /*if (texture->channel_count == 1)
     {
-      if (texture->channel_count == 1)
-      {
-        glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RED, GL_UNSIGNED_BYTE,
-                     level_data);
-      }
-      else if (texture->channel_count == 2)
-      {
-        glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RG, GL_UNSIGNED_BYTE,
-                     level_data);
-      }
-      else if (texture->channel_count == 3)
-      {
-        glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     level_data);
-      }
-      else if (texture->channel_count == 4)
-      {
-        glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                     level_data);
-      }
-      else
-      {
-        assert(0);
-      }
+      glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RED, GL_UNSIGNED_BYTE,
+                   level_data);
     }
-    /*else if (texture->compression == AEMTextureCompression_BC5)
+    else if (texture->channel_count == 2)
     {
-      glCompressedTexImage2D(GL_TEXTURE_2D, mip_index, GL_COMPRESSED_RG_RGTC2, mip_width, mip_height, 0, mip_size,
-                             mip_data);
+      glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RG, GL_UNSIGNED_BYTE,
+                   level_data);
     }
+    else if (texture->channel_count == 3)
+    {
+      glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                   level_data);
+    }
+    else if (texture->channel_count == 4)
+    {*/
+    glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 &data[texture->offset + offset]);
+    /*}
     else
     {
-      glCompressedTexImage2D(GL_TEXTURE_2D, mip_index, GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, mip_width, mip_height, 0,
-                             mip_size, mip_data);
+      assert(0);
     }*/
+
+    offset += level_width * level_height * 4;
   }
+  /*else if (texture->compression == AEMTextureCompression_BC5)
+  {
+    glCompressedTexImage2D(GL_TEXTURE_2D, mip_index, GL_COMPRESSED_RG_RGTC2, mip_width, mip_height, 0, mip_size,
+                           mip_data);
+  }
+  else
+  {
+    glCompressedTexImage2D(GL_TEXTURE_2D, mip_index, GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, mip_width, mip_height, 0,
+                           mip_size, mip_data);
+  }*/
+  //}
 
   // aem_free_texture_data(texture_data);
 

@@ -3,8 +3,6 @@
 #include "analyzer_node.h"
 #include "node_inspector.h"
 
-#include "transform.h"
-
 #include <cgltf/cgltf.h>
 
 #include <cglm/affine.h>
@@ -65,7 +63,7 @@ void calculate_joint_inverse_bind_matrices(const cgltf_data* input_file, Joint* 
       assert(skin);
 
       // Find the root node in the skin which is sometimes given as skeleton, other times it needs to be manually found
-      const cgltf_node* skin_root = skin->skeleton;
+      cgltf_node* skin_root = skin->skeleton;
       if (!skin_root)
       {
         skin_root = calculate_root_node_for_skin(skin);

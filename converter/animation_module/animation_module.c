@@ -156,7 +156,7 @@ void anim_create(const cgltf_data* input_file)
 
       for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
       {
-        const Joint* joint = &joints[joint_index];
+        Joint* joint = &joints[joint_index];
 
         const cgltf_size keyframes_written =
           populate_keyframes(animation->animation, joint, &keyframes[keyframe_index]);
@@ -193,6 +193,11 @@ bool anim_does_joint_exist_for_node(const cgltf_node* node)
   }
 
   return false;
+}
+
+void anim_calculate_global_node_transform(cgltf_node* node, mat4 transform)
+{
+  calculate_global_node_transform(node, transform);
 }
 
 void anim_write_joints(FILE* output_file)

@@ -39,7 +39,6 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   const uint32_t vertex_buffer_size = (*model)->header.vertex_count * AEM_VERTEX_SIZE;
   const uint32_t index_buffer_size = (*model)->header.index_count * AEM_INDEX_SIZE;
   const uint64_t image_buffer_size = (*model)->header.image_buffer_size;
-  const uint32_t levels_size = (*model)->header.level_count * sizeof(struct AEMLevel);
   const uint32_t textures_size = (*model)->header.texture_count * sizeof(struct AEMTexture);
   const uint32_t meshes_size = (*model)->header.mesh_count * sizeof(struct AEMMesh);
   const uint32_t materials_size = (*model)->header.material_count * sizeof(struct AEMMaterial);
@@ -48,8 +47,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   const uint32_t tracks_size = (*model)->header.track_count * sizeof(struct Track);
   const uint32_t keyframes_size = (*model)->header.keyframe_count * sizeof(struct Keyframe);
 
-  const uint32_t load_time_data_size =
-    vertex_buffer_size + index_buffer_size + image_buffer_size + levels_size + textures_size;
+  const uint64_t load_time_data_size = vertex_buffer_size + index_buffer_size + image_buffer_size + textures_size;
   (*model)->load_time_data = malloc(load_time_data_size);
   if (!(*model)->load_time_data)
   {
@@ -75,9 +73,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
     (*model)->vertex_buffer = (struct Vertex*)(*model)->load_time_data;
     (*model)->index_buffer = (uint32_t*)((uint8_t*)(*model)->vertex_buffer + vertex_buffer_size);
     (*model)->image_buffer = (uint8_t*)(*model)->index_buffer + index_buffer_size;
-
-    (*model)->levels = (struct AEMLevel*)((uint8_t*)(*model)->image_buffer + image_buffer_size);
-    (*model)->textures = (struct AEMTexture*)((uint8_t*)(*model)->levels + levels_size);
+    (*model)->textures = (struct AEMTexture*)((uint8_t*)(*model)->image_buffer + image_buffer_size);
   }
 
   // Run-time data
@@ -112,7 +108,7 @@ void aem_print_model_info(struct AEMModel* model)
   printf("Vertex count: %u\n", header->vertex_count);
   printf("Index count: %u\n", header->index_count);
   printf("Image buffer size: %llu bytes\n", header->image_buffer_size);
-  printf("Level count: %u\n", header->level_count);
+  // printf("Level count: %u\n", header->level_count);
   printf("Texture count: %u\n", header->texture_count);
   printf("Mesh count: %u\n", header->mesh_count);
   printf("Material count: %u\n", header->material_count);
@@ -162,7 +158,7 @@ const struct AEMMesh* aem_get_model_mesh(const struct AEMModel* model, uint32_t 
   return &model->meshes[mesh_index];
 }
 
-const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, int32_t material_index)
+const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, uint32_t material_index)
 {
   if (material_index < 0 || material_index >= model->header.material_count)
   {
@@ -172,11 +168,11 @@ const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, i
   return &model->materials[material_index];
 }
 
-const struct AEMLevel* aem_get_model_levels(const struct AEMModel* model, uint32_t* level_count)
-{
-  *level_count = model->header.level_count;
-  return model->levels;
-}
+// const struct AEMLevel* aem_get_model_levels(const struct AEMModel* model, uint32_t* level_count)
+//{
+//   *level_count = model->header.level_count;
+//   return model->levels;
+// }
 
 const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, uint32_t* texture_count)
 {
@@ -184,15 +180,15 @@ const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, ui
   return model->textures;
 }
 
-const struct AEMLevel* aem_get_model_level(const struct AEMModel* model, uint32_t level_index)
-{
-  return &model->levels[level_index];
-}
-
-void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, const struct AEMLevel* level)
-{
-  return (void*)&model->image_buffer[level->offset];
-}
+// const struct AEMLevel* aem_get_model_level(const struct AEMModel* model, uint32_t level_index)
+//{
+//   return &model->levels[level_index];
+// }
+//
+// void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, const struct AEMLevel* level)
+//{
+//   return (void*)&model->image_buffer[level->offset];
+// }
 
 uint32_t aem_get_model_joint_count(const struct AEMModel* model)
 {

@@ -1,6 +1,6 @@
 #include "bone_overlay.h"
 
-#include "shader.h"
+#include <glad/gl.h>
 
 #define VERTEX_COUNT 6
 #define VERTEX_SIZE 12 // The size of a bone overlay vertex in bytes
