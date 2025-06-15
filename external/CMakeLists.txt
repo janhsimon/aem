@@ -1,4 +1,3 @@
-add_subdirectory(assimp)
 add_subdirectory(cglm)
 add_subdirectory(cgltf)
 add_subdirectory(cimgui)
