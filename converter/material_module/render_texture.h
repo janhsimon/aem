@@ -24,26 +24,7 @@ typedef enum
   PBRWorkflow_SpecularGlossiness
 } PBRWorkflow;
 
-// typedef struct
-//{
-//   cgltf_image* images[RENDER_TEXTURE_IMAGE_COUNT];
-//   RenderTextureType type;
-//
-//   vec4 color;
-//
-//   AlphaMode alpha_mode;
-//   float alpha_mask_threshold;
-//
-//   PBRWorkflow pbr_workflow;
-//
-//   cgltf_wrap_mode wrap_mode[2]; // 0: x, 1: y
-//
-//   uint32_t width, height;
-//   uint8_t* data;
-//   uint64_t data_size;
-// } RenderTexture;
-
-typedef struct
+struct RenderTexture
 {
   RenderTextureType type;
 
@@ -71,13 +52,10 @@ typedef struct
   };
 
   cgltf_wrap_mode wrap_mode[2]; // 0: x, 1: y
+};
+typedef struct RenderTexture RenderTexture;
 
-  uint32_t width, height;
-  uint8_t* data;
-  uint64_t data_size;
-} RenderTexture;
-
-void print_render_textures(const RenderTexture* render_textures, uint32_t render_texture_count);
+void print_render_textures(const RenderTexture* render_textures, uint32_t texture_count);
 
 enum AEMTextureWrapMode cgltf_texture_wrap_mode_to_aem(cgltf_wrap_mode wrap_mode);
 

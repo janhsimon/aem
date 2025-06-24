@@ -9,7 +9,6 @@
 typedef unsigned char aem_string[AEM_STRING_SIZE];
 
 struct AEMModel;
-// struct AEMTextureData;
 
 enum AEMResult
 {
@@ -20,13 +19,6 @@ enum AEMResult
   AEMResult_InvalidVersion
 };
 
-// enum AEMTextureCompression
-//{
-//   AEMTextureCompression_None,
-//   AEMTextureCompression_BC5, // For normal maps only
-//   AEMTextureCompression_BC7
-// };
-
 enum AEMTextureWrapMode
 {
   AEMTextureWrapMode_Repeat,
@@ -34,11 +26,20 @@ enum AEMTextureWrapMode
   AEMTextureWrapMode_ClampToEdge
 };
 
+enum AEMTextureCompression
+{
+  AEMTextureCompression_None, // Uncompressed
+  AEMTextureCompression_BC5,  // RG for normal maps
+  AEMTextureCompression_BC7   // RGBA for base color and PBR maps
+};
+
 struct AEMTexture
 {
   uint64_t offset; // Into image buffer
   uint32_t width, height;
   enum AEMTextureWrapMode wrap_mode[2]; // 0: x, 1: y
+  enum AEMTextureCompression compression;
+  uint32_t padding;
 };
 
 struct AEMMesh
@@ -85,7 +86,13 @@ uint64_t aem_get_model_image_buffer_size(const struct AEMModel* model);
 
 const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, uint32_t* texture_count);
 
-// void* aem_get_model_image_buffer_data_for_level(const struct AEMModel* model, const struct AEMLevel* level);
+uint32_t aem_get_model_texture_level_count(uint32_t texture_base_width, uint32_t texture_base_height);
+
+void aem_get_model_texture_level_data(const struct AEMTexture* texture,
+                                      uint32_t level_index,
+                                      uint32_t* level_width,
+                                      uint32_t* level_height,
+                                      uint64_t* level_size);
 
 uint32_t aem_get_model_mesh_count(const struct AEMModel* model);
 const struct AEMMesh* aem_get_model_mesh(const struct AEMModel* model, uint32_t mesh_index);
@@ -113,14 +120,3 @@ void aem_evaluate_model_animation(const struct AEMModel* model,
                                   int32_t animation_index,
                                   float time,
                                   float* joint_transforms);
-
-// enum AEMResult aem_load_texture_data(const char* filename, struct AEMTextureData** texture_data);
-// void aem_free_texture_data(struct AEMTextureData* texture_data);
-
-// uint32_t aem_get_texture_mip_level_count(const struct AEMTextureData* texture_data);
-// void aem_get_texture_mip_data(const struct AEMTextureData* texture_data,
-//                               uint32_t mip_index,
-//                               uint32_t* mip_width,
-//                               uint32_t* mip_height,
-//                               uint64_t* mip_size,
-//                               void** mip_data);

@@ -55,9 +55,9 @@ static void print_image(const cgltf_image* image, const char* name)
   printf("\tLocation: %s\n", image->buffer_view ? "Internal" : "External");
 }
 
-void print_render_textures(const RenderTexture* render_textures, uint32_t render_texture_count)
+void print_render_textures(const RenderTexture* render_textures, uint32_t texture_count)
 {
-  for (cgltf_size texture_index = 0; texture_index < render_texture_count; ++texture_index)
+  for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
     const RenderTexture* texture = &render_textures[texture_index];
 

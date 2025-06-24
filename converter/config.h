@@ -1,5 +1,8 @@
 #pragma once
 
+// Compress textures for faster load times, but takes significantly longer to convert
+#define COMPRESS_TEXTURES
+
 // Skip optional steps to improve performance
 // #define SKIP_INPUT_VALIDATION // Provided by cgltf
 
@@ -8,9 +11,9 @@
 // #define PRINT_VERTEX_BUFFER
 // #define PRINT_INDEX_BUFFER
 // #define PRINT_IMAGE_BUFFER
- #define PRINT_TEXTURES
+// #define PRINT_TEXTURES
 // #define PRINT_MESHES
- #define PRINT_MATERIALS
+// #define PRINT_MATERIALS
 // #define PRINT_NODES // GLB nodes from the input file
 // #define PRINT_JOINTS
 // #define PRINT_ANIMATIONS

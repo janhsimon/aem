@@ -1,6 +1,8 @@
-#include "material_module.h"
+#include "texture_processor.h"
 
+#include "output_texture.h"
 #include "render_texture.h"
+#include "texture_compressor.h"
 #include "texture_transform.h"
 
 #include "config.h"
@@ -22,8 +24,50 @@
 
 #include <assert.h>
 
+#define MIN_TEXTURE_SIZE 1 // The size of a texture that had no image GLB inputs (only numeric parameters)
+
 static GLint texture_type_uniform_location, color_uniform_location, alpha_mode_uniform_location,
   alpha_mask_threshold_uniform_location, pbr_workflow_uniform_location, texture_bound_uniform_location;
+
+static GLint aem_texture_type_to_gl_internal_format(RenderTextureType type)
+{
+  if (type == RenderTextureType_Normal)
+  {
+    return GL_RG8;
+  }
+
+  return GL_RGBA8;
+}
+
+static GLint aem_texture_type_to_gl_format(RenderTextureType type)
+{
+  if (type == RenderTextureType_Normal)
+  {
+    return GL_RG;
+  }
+
+  return GL_RGBA;
+}
+
+static uint32_t aem_texture_type_to_channel_count(RenderTextureType type)
+{
+  if (type == RenderTextureType_Normal)
+  {
+    return 2;
+  }
+
+  return 4;
+}
+
+static enum AEMTextureCompression render_texture_type_to_texture_compression(RenderTextureType type)
+{
+  if (type == RenderTextureType_Normal)
+  {
+    return AEMTextureCompression_BC5;
+  }
+
+  return AEMTextureCompression_BC7;
+}
 
 static GLuint load_opengl_texture(const RenderTexture* render_texture,
                                   const cgltf_image* image,
@@ -73,7 +117,10 @@ static GLuint load_opengl_texture(const RenderTexture* render_texture,
   return tex;
 }
 
-void process_textures(const char* path, RenderTexture* render_textures, uint32_t render_texture_count)
+void process_textures(const char* path,
+                      RenderTexture* render_textures,
+                      OutputTexture* output_textures,
+                      uint32_t texture_count)
 {
   // Start renderer
   GLFWwindow* window = NULL;
@@ -145,11 +192,13 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
   }
 
-  for (cgltf_size texture_index = 0; texture_index < render_texture_count; ++texture_index)
+  for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
+    OutputTexture* output_texture = &output_textures[texture_index];
     RenderTexture* render_texture = &render_textures[texture_index];
 
-    render_texture->width = render_texture->height = 1; // Avoid zero size in case no image or images exist
+    output_texture->base_width = output_texture->base_height =
+      MIN_TEXTURE_SIZE; // Avoid zero size in case no image or images exist
 
     // Create source textures for each image, note their maximum dimensions and keep track of which textures exist
     GLuint source_textures[3];
@@ -160,12 +209,8 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
       if (image)
       {
         source_textures[0] =
-          load_opengl_texture(render_texture, image, &render_texture->width, &render_texture->height, path);
+          load_opengl_texture(render_texture, image, &output_texture->base_width, &output_texture->base_height, path);
         source_texture_exists[0] = true;
-      }
-      else
-      {
-        render_texture->width = render_texture->height = 1;
       }
     }
     else if (render_texture->type == RenderTextureType_Normal)
@@ -174,12 +219,8 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
       if (image)
       {
         source_textures[0] =
-          load_opengl_texture(render_texture, image, &render_texture->width, &render_texture->height, path);
+          load_opengl_texture(render_texture, image, &output_texture->base_width, &output_texture->base_height, path);
         source_texture_exists[0] = true;
-      }
-      else
-      {
-        render_texture->width = render_texture->height = 1;
       }
     }
     else if (render_texture->type == RenderTextureType_PBR)
@@ -187,52 +228,55 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
       const cgltf_image* metallic_roughness_image = render_texture->pbr.metallic_roughness_image;
       if (metallic_roughness_image)
       {
-        source_textures[0] = load_opengl_texture(render_texture, metallic_roughness_image, &render_texture->width,
-                                                 &render_texture->height, path);
+        source_textures[0] = load_opengl_texture(render_texture, metallic_roughness_image, &output_texture->base_width,
+                                                 &output_texture->base_height, path);
         source_texture_exists[0] = true;
       }
 
       const cgltf_image* occlusion_image = render_texture->pbr.occlusion_image;
       if (occlusion_image)
       {
-        source_textures[1] =
-          load_opengl_texture(render_texture, occlusion_image, &render_texture->width, &render_texture->height, path);
+        source_textures[1] = load_opengl_texture(render_texture, occlusion_image, &output_texture->base_width,
+                                                 &output_texture->base_height, path);
         source_texture_exists[1] = true;
       }
 
       const cgltf_image* emissive_image = render_texture->pbr.emissive_image;
       if (emissive_image)
       {
-        source_textures[2] =
-          load_opengl_texture(render_texture, emissive_image, &render_texture->width, &render_texture->height, path);
+        source_textures[2] = load_opengl_texture(render_texture, emissive_image, &output_texture->base_width,
+                                                 &output_texture->base_height, path);
         source_texture_exists[2] = true;
       }
     }
 
-    // Determine the number of mip levels required
-    const cgltf_size mip_level_count =
-      1 + (cgltf_size)floor(log2f((float)max(render_texture->width, render_texture->height)));
+    // With the correct dimensions for the texture, it is now possible to determine the number of required mip levels
+    output_texture->level_count =
+      aem_get_model_texture_level_count(output_texture->base_width, output_texture->base_height);
 
     // Create target texture with mip levels and count the size of the image data
     GLuint target_texture;
+    GLint target_texture_gl_format = aem_texture_type_to_gl_format(render_texture->type);
+    uint32_t target_texture_channel_count = aem_texture_type_to_channel_count(render_texture->type);
     {
       glGenTextures(1, &target_texture);
       glBindTexture(GL_TEXTURE_2D, target_texture);
 
-      for (cgltf_size level_index = 0; level_index < mip_level_count; ++level_index)
+      output_texture->data_size = 0;
+      for (uint32_t level_index = 0; level_index < output_texture->level_count; ++level_index)
       {
-        const uint32_t level_width = max(1, render_texture->width >> level_index);
-        const uint32_t level_height = max(1, render_texture->height >> level_index);
-        glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA8, level_width, level_height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                     NULL);
+        const uint32_t level_width = max(1, output_texture->base_width >> level_index);
+        const uint32_t level_height = max(1, output_texture->base_height >> level_index);
+        glTexImage2D(GL_TEXTURE_2D, level_index, aem_texture_type_to_gl_internal_format(render_texture->type),
+                     level_width, level_height, 0, target_texture_gl_format, GL_UNSIGNED_BYTE, NULL);
 
-        render_texture->data_size += level_width * level_height * 4;
+        output_texture->data_size += level_width * level_height * target_texture_channel_count;
       }
 
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     }
 
-    render_texture->data = malloc(render_texture->data_size);
+    output_texture->data = malloc(output_texture->data_size);
 
     // Bind the source textures for each image
     for (cgltf_size texture_index = 0; texture_index < 3; ++texture_index)
@@ -268,7 +312,7 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
       glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target_texture, 0);
       assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-      glViewport(0, 0, render_texture->width, render_texture->height);
+      glViewport(0, 0, output_texture->base_width, output_texture->base_height);
 
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
@@ -280,17 +324,17 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
     // Read pixels for each mip level
     {
       cgltf_size offset = 0;
-      for (cgltf_size level_index = 0; level_index < mip_level_count; ++level_index)
+      for (uint32_t level_index = 0; level_index < output_texture->level_count; ++level_index)
       {
-        const uint32_t level_width = max(1, render_texture->width >> level_index);
-        const uint32_t level_height = max(1, render_texture->height >> level_index);
+        const uint32_t level_width = max(1, output_texture->base_width >> level_index);
+        const uint32_t level_height = max(1, output_texture->base_height >> level_index);
 
-        uint8_t* level_data = &render_texture->data[offset];
+        uint8_t* level_data = &output_texture->data[offset];
 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target_texture, level_index);
         assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 
-        glReadPixels(0, 0, level_width, level_height, GL_RGBA, GL_UNSIGNED_BYTE, level_data);
+        glReadPixels(0, 0, level_width, level_height, target_texture_gl_format, GL_UNSIGNED_BYTE, level_data);
 
 #ifdef DUMP_TEXTURES
         if (DUMP_TEXTURE_COUNT == 0 || texture_index < DUMP_TEXTURE_COUNT)
@@ -300,27 +344,27 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
             char buffer[256];
             if (render_texture->type == RenderTextureType_BaseColor)
             {
-              sprintf(buffer, "%s\\texture%llu_level%llu_basecolor.png", path, texture_index, level_index);
+              sprintf(buffer, "%s\\texture%llu_level%u_basecolor.png", path, texture_index, level_index);
             }
             else if (render_texture->type == RenderTextureType_Normal)
             {
-              sprintf(buffer, "%s\\texture%llu_level%llu_normal.png", path, texture_index, level_index);
+              sprintf(buffer, "%s\\texture%llu_level%u_normal.png", path, texture_index, level_index);
             }
             else if (render_texture->type == RenderTextureType_PBR)
             {
-              sprintf(buffer, "%s\\texture%llu_level%llu_pbr.png", path, texture_index, level_index);
+              sprintf(buffer, "%s\\texture%llu_level%u_pbr.png", path, texture_index, level_index);
             }
             else
             {
               assert(false);
             }
 
-            stbi_write_png(buffer, level_width, level_height, 4, level_data, 0);
+            stbi_write_png(buffer, level_width, level_height, target_texture_channel_count, level_data, 0);
           }
         }
 #endif
 
-        offset += level_width * level_height * 4;
+        offset += level_width * level_height * target_texture_channel_count;
       }
     }
 
@@ -335,6 +379,13 @@ void process_textures(const char* path, RenderTexture* render_textures, uint32_t
         glDeleteTextures(2, &source_textures[1]);
       }
     }
+
+// Compress texture if desired
+#ifdef COMPRESS_TEXTURES
+    compress_texture(output_texture, render_texture_type_to_texture_compression(render_texture->type));
+#else
+    output_texture->compression = AEMTextureCompression_None;
+#endif
   }
 
   // Cleanup the remaining resources

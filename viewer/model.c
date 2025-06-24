@@ -109,16 +109,6 @@ uint32_t get_model_index_count()
   return aem_get_model_index_count(model);
 }
 
-void* get_model_image_buffer()
-{
-  return aem_get_model_image_buffer(model);
-}
-
-uint64_t get_model_image_buffer_size()
-{
-  return aem_get_model_image_buffer_size(model);
-}
-
 uint32_t get_model_joint_count()
 {
   return joint_count;
@@ -154,7 +144,7 @@ float get_model_animation_duration(unsigned int animation_index)
   return aem_get_model_animation_duration(model, animation_index);
 }
 
-uint32_t get_model_joint_position_keyframe_count(uint32_t animation_index, uint32_t joint_index)
+uint32_t get_model_joint_translation_keyframe_count(uint32_t animation_index, uint32_t joint_index)
 {
   return aem_get_model_joint_translation_keyframe_count(model, animation_index, joint_index);
 }

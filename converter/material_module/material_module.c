@@ -1,6 +1,7 @@
 #include "material_module.h"
 
 #include "material_inspector.h"
+#include "output_texture.h"
 #include "render_material.h"
 #include "render_texture.h"
 #include "texture_processor.h"
@@ -17,7 +18,8 @@ static RenderMaterial* render_materials = NULL;
 static cgltf_size render_material_count = 0;
 
 static RenderTexture* render_textures = NULL;
-static cgltf_size render_texture_count = 0;
+static OutputTexture* output_textures = NULL;
+static cgltf_size texture_count = 0;
 
 void mat_create(const cgltf_data* input_file, const char* path)
 {
@@ -50,16 +52,24 @@ void mat_create(const cgltf_data* input_file, const char* path)
   // Allocate and default initialize the render material list
   render_materials = malloc(sizeof(*render_materials) * render_material_count);
 
-  // Allocate and zero out the render texture list
+  // Allocate and zero out the render texture list, also allocate the output texture list
   {
-    render_texture_count = render_material_count * 3;
-    const cgltf_size size = sizeof(*render_textures) * render_texture_count;
-    render_textures = malloc(size);
-    memset(render_textures, 0, size);
+    texture_count = render_material_count * 3;
+
+    {
+      const cgltf_size size = sizeof(*render_textures) * texture_count;
+      render_textures = malloc(size);
+      memset(render_textures, 0, size);
+    }
+
+    {
+      const cgltf_size size = sizeof(*output_textures) * texture_count;
+      output_textures = malloc(size);
+    }
   }
 
   // Populate the render materials and textures
-  render_texture_count = 0;
+  texture_count = 0;
   for (cgltf_size material_index = 0; material_index < input_file->materials_count; ++material_index)
   {
     cgltf_material* material = &input_file->materials[material_index];
@@ -103,13 +113,13 @@ void mat_create(const cgltf_data* input_file, const char* path)
       const cgltf_texture* texture = base_color_alpha_texture_view ? base_color_alpha_texture_view->texture : NULL;
       const int32_t existing_index =
         get_existing_base_color_render_texture_index(texture, color, alpha_mode, alpha_mask_threshold, render_textures,
-                                                     render_texture_count);
+                                                     texture_count);
       if (existing_index < 0)
       {
         add_base_color_render_texture(texture, color, alpha_mode, alpha_mask_threshold,
-                                      &render_textures[render_texture_count]);
-        render_material->base_color_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+                                      &render_textures[texture_count]);
+        render_material->base_color_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -122,13 +132,12 @@ void mat_create(const cgltf_data* input_file, const char* path)
     // Normal
     {
       const cgltf_texture* texture = normal_texture_view ? normal_texture_view->texture : NULL;
-      const int32_t existing_index =
-        get_existing_normal_render_texture_index(texture, render_textures, render_texture_count);
+      const int32_t existing_index = get_existing_normal_render_texture_index(texture, render_textures, texture_count);
       if (existing_index < 0)
       {
-        add_normal_render_texture(texture, &render_textures[render_texture_count]);
-        render_material->normal_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+        add_normal_render_texture(texture, &render_textures[texture_count]);
+        render_material->normal_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -173,13 +182,13 @@ void mat_create(const cgltf_data* input_file, const char* path)
 
       const int32_t existing_index =
         get_existing_pbr_render_texture_index(metallic_roughness_texture, occlusion_texture, emissive_texture, factors,
-                                              workflow, render_textures, render_texture_count);
+                                              workflow, render_textures, texture_count);
       if (existing_index < 0)
       {
         add_pbr_render_texture(metallic_roughness_texture, occlusion_texture, emissive_texture, factors, workflow,
-                               &render_textures[render_texture_count]);
-        render_material->pbr_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+                               &render_textures[texture_count]);
+        render_material->pbr_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -211,13 +220,12 @@ void mat_create(const cgltf_data* input_file, const char* path)
 
       const int32_t existing_index =
         get_existing_base_color_render_texture_index(NULL, color, alpha_mode, alpha_mask_threshold, render_textures,
-                                                     render_texture_count);
+                                                     texture_count);
       if (existing_index < 0)
       {
-        add_base_color_render_texture(NULL, color, alpha_mode, alpha_mask_threshold,
-                                      &render_textures[render_texture_count]);
-        render_material->base_color_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+        add_base_color_render_texture(NULL, color, alpha_mode, alpha_mask_threshold, &render_textures[texture_count]);
+        render_material->base_color_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -227,13 +235,12 @@ void mat_create(const cgltf_data* input_file, const char* path)
 
     // Normal
     {
-      const int32_t existing_index =
-        get_existing_normal_render_texture_index(NULL, render_textures, render_texture_count);
+      const int32_t existing_index = get_existing_normal_render_texture_index(NULL, render_textures, texture_count);
       if (existing_index < 0)
       {
-        add_normal_render_texture(NULL, &render_textures[render_texture_count]);
-        render_material->normal_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+        add_normal_render_texture(NULL, &render_textures[texture_count]);
+        render_material->normal_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -245,13 +252,13 @@ void mat_create(const cgltf_data* input_file, const char* path)
     {
       vec4 factors = { 0.5f, 1.0f, 0.0f, 0.0f };
       PBRWorkflow workflow = PBRWorkflow_MetallicRoughness;
-      const int32_t existing_index = get_existing_pbr_render_texture_index(NULL, NULL, NULL, factors, workflow,
-                                                                           render_textures, render_texture_count);
+      const int32_t existing_index =
+        get_existing_pbr_render_texture_index(NULL, NULL, NULL, factors, workflow, render_textures, texture_count);
       if (existing_index < 0)
       {
-        add_pbr_render_texture(NULL, NULL, NULL, factors, workflow, &render_textures[render_texture_count]);
-        render_material->pbr_texture_index = (uint32_t)render_texture_count;
-        ++render_texture_count;
+        add_pbr_render_texture(NULL, NULL, NULL, factors, workflow, &render_textures[texture_count]);
+        render_material->pbr_texture_index = (uint32_t)texture_count;
+        ++texture_count;
       }
       else
       {
@@ -265,14 +272,20 @@ void mat_create(const cgltf_data* input_file, const char* path)
 #endif
 
 #ifdef PRINT_TEXTURES
-  print_render_textures(render_textures, render_texture_count);
+  print_render_textures(render_textures, texture_count);
 #endif
 
-  process_textures(path, render_textures, render_texture_count);
+  process_textures(path, render_textures, output_textures, texture_count);
+
+#ifdef PRINT_TEXTURES
+  print_output_textures(output_textures, texture_count);
+#endif
 }
 
 void mat_free()
 {
+  free(output_textures);
+
   free(render_textures);
   free(render_materials);
 }
@@ -296,9 +309,9 @@ bool mat_get_texture_transform_for_material(const cgltf_material* material, mat3
 uint64_t mat_calculate_image_buffer_size()
 {
   uint64_t size = 0;
-  for (cgltf_size texture_index = 0; texture_index < render_texture_count; ++texture_index)
+  for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const RenderTexture* texture = &render_textures[texture_index];
+    const OutputTexture* texture = &output_textures[texture_index];
     size += texture->data_size;
   }
 
@@ -307,7 +320,7 @@ uint64_t mat_calculate_image_buffer_size()
 
 uint32_t mat_get_texture_count()
 {
-  return (uint32_t)render_texture_count;
+  return (uint32_t)texture_count;
 }
 
 uint32_t mat_get_material_count()
@@ -317,9 +330,9 @@ uint32_t mat_get_material_count()
 
 void mat_write_image_buffer(FILE* output_file)
 {
-  for (cgltf_size texture_index = 0; texture_index < render_texture_count; ++texture_index)
+  for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const RenderTexture* texture = &render_textures[texture_index];
+    const OutputTexture* texture = &output_textures[texture_index];
     fwrite(texture->data, texture->data_size, 1, output_file);
   }
 }
@@ -327,22 +340,28 @@ void mat_write_image_buffer(FILE* output_file)
 void mat_write_textures(FILE* output_file)
 {
   uint64_t offset = 0;
-  for (cgltf_size texture_index = 0; texture_index < render_texture_count; ++texture_index)
+  for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
-    const RenderTexture* texture = &render_textures[texture_index];
+    const OutputTexture* output_texture = &output_textures[texture_index];
+    const RenderTexture* render_texture = &render_textures[texture_index];
 
     fwrite(&offset, sizeof(offset), 1, output_file);
-    fwrite(&texture->width, sizeof(texture->width), 1, output_file);
-    fwrite(&texture->height, sizeof(texture->height), 1, output_file);
+    fwrite(&output_texture->base_width, sizeof(output_texture->base_width), 1, output_file);
+    fwrite(&output_texture->base_height, sizeof(output_texture->base_height), 1, output_file);
 
     enum AEMTextureWrapMode mode[2];
-    mode[0] = cgltf_texture_wrap_mode_to_aem(texture->wrap_mode[0]);
-    mode[1] = cgltf_texture_wrap_mode_to_aem(texture->wrap_mode[1]);
+    mode[0] = cgltf_texture_wrap_mode_to_aem(render_texture->wrap_mode[0]);
+    mode[1] = cgltf_texture_wrap_mode_to_aem(render_texture->wrap_mode[1]);
 
     fwrite(&mode[0], sizeof(mode[0]), 1, output_file);
     fwrite(&mode[1], sizeof(mode[1]), 1, output_file);
 
-    offset += texture->data_size;
+    fwrite(&output_texture->compression, sizeof(output_texture->compression), 1, output_file);
+
+    const uint32_t padding = 0;
+    fwrite(&padding, sizeof(padding), 1, output_file);
+
+    offset += output_texture->data_size;
   }
 }
 

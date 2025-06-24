@@ -17,9 +17,6 @@ uint32_t get_model_vertex_count();
 void* get_model_index_buffer();
 uint32_t get_model_index_count();
 
-void* get_model_image_buffer();
-uint64_t get_model_image_buffer_size();
-
 uint32_t get_model_joint_count();
 struct AEMJoint* get_model_joints();
 

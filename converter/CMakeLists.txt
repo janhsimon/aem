@@ -36,11 +36,17 @@ set(SOURCE
   material_module/material_module.c
   material_module/material_module.h
 
+  material_module/output_texture.c
+  material_module/output_texture.h
+
   material_module/render_material.c
   material_module/render_material.h
 
   material_module/render_texture.c
   material_module/render_texture.h
+
+  material_module/texture_compressor.c
+  material_module/texture_compressor.h
 
   material_module/texture_processor.c
   material_module/texture_processor.h
@@ -65,6 +71,7 @@ set(DEPENDENCIES
   cgltf
   glad
   glfw
+  ktx
   libaem
   nfdx
   stb
@@ -74,6 +81,7 @@ set(DEPENDENCIES
 if(WIN32)
   set(EXTRA_BINS
     "${CMAKE_SOURCE_DIR}/external/glfw/lib/win/glfw3.dll"
+    "${CMAKE_SOURCE_DIR}/external/ktx/lib/win/ktx.dll"
   )
 endif()
 

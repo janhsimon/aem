@@ -142,8 +142,13 @@ void main()
   vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space
 
   float opacity = base_color_sample.a;
-  if (render_pass == RENDER_PASS_OPAQUE && opacity < 1.0) {
-    discard;  
+  if (render_pass == RENDER_PASS_OPAQUE) {
+    if (opacity < 1.0 - 0.01) {
+      discard;  
+    }
+    else {
+      opacity = 1.0;
+    }
   }
   else if (render_pass == RENDER_PASS_TRANSPARENT && opacity >= 1.0) {
     discard;
