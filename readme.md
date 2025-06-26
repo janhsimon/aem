@@ -7,6 +7,7 @@ It describes game-ready 3D models with everything they need - no more, no less:
 - Single-channel UV coordinates for texture mapping
 - Separate index data to use with an index buffer
 - Standard PBR material system with base color, opacity, normal, roughness, metalness, occlusion and emissive information packed efficiently into three texture maps
+- Optional BC7 and BC5 texture compression
 - Skeletal and node-based animations
 
 This repository contains:
@@ -26,21 +27,20 @@ This repository contains:
 
 ## File Header
 
-| Offset | Size | Description          | Data Type        |
-| ------ | ---- | -------------------- | ---------------- |
-| 0      | 3    | Magic number         | String           |
-| 3      | 1    | Version number       | Unsigned integer |
-| 4      | 4    | Number of vertices   | Unsigned integer |
-| 8      | 4    | Number of indices    | Unsigned integer |
-| 12     | 8    | Size of image buffer | Unsigned integer |
-| 20     | 4    | Number of textures   | Unsigned integer |
-| 24     | 4    | Number of meshes     | Unsigned integer |
-| 28     | 4    | Number of materials  | Unsigned integer |
-| 32     | 4    | Number of joints     | Unsigned integer |
-| 36     | 4    | Number of animations | Unsigned integer |
-| 40     | 4    | Number of tracks     | Unsigned integer |
-| 44     | 4    | Number of keyframes  | Unsigned integer |
-| 48     | 4    | Padding              | None             |
+| Offset | Size | Description                   | Data Type        |
+| ------ | ---- | ----------------------------- | ---------------- |
+| 0      | 3    | Magic number                  | String           |
+| 3      | 1    | Version number                | Unsigned integer |
+| 4      | 4    | Number of vertices            | Unsigned integer |
+| 8      | 4    | Number of indices             | Unsigned integer |
+| 12     | 4    | Size of image buffer in bytes | Unsigned integer |
+| 16     | 4    | Number of textures            | Unsigned integer |
+| 20     | 4    | Number of meshes              | Unsigned integer |
+| 24     | 4    | Number of materials           | Unsigned integer |
+| 28     | 4    | Number of joints              | Unsigned integer |
+| 32     | 4    | Number of animations          | Unsigned integer |
+| 36     | 4    | Number of tracks              | Unsigned integer |
+| 40     | 4    | Number of keyframes           | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -92,10 +92,10 @@ The indices index into the [vertex section](#vertex-section).
 
 ## Image Buffer Section
 
-| Offset | Size | Description | Data Type     |
-| ------ | ---- | ----------- | ------------- |
-| 0      | 4    | Image byte  | Unsigned byte |
-| ...    | ...  | (repeat)    | ...           |
+| Offset | Size | Description | Data Type |
+| ------ | ---- | ----------- | --------- |
+| 0      | 1    | Image byte  | Byte      |
+| ...    | ...  | (repeat)    | ...       |
 
 (The field above is repeated for each byte of the image buffer in the file.)
 
@@ -104,16 +104,17 @@ The indices index into the [vertex section](#vertex-section).
 
 | Offset | Size | Description | Data Type        |
 | ------ | ---- | ----------- | ---------------- |
-| 0      | 8    | Offset      | Unsigned integer |
-| 8      | 4    | Width       | Unsigned integer |
-| 12     | 4    | Height      | Unsigned integer |
-| 16     | 4    | Wrap mode X | Unsigned integer |
-| 20     | 4    | Wrap mode Y | Unsigned integer |
+| 0      | 4    | Offset      | Unsigned integer |
+| 4      | 4    | Width       | Unsigned integer |
+| 8      | 4    | Height      | Unsigned integer |
+| 12     | 4    | Wrap mode X | Unsigned integer |
+| 16     | 4    | Wrap mode Y | Unsigned integer |
+| 20     | 4    | Compression | Unsigned integer |
 | ...    | ...  | (repeat)    | ...              |
 
 (The field above is repeated for each texture in the file.)
 
-The offset indexes into the [image buffer section](#image-buffer-section) and describes where the first MIP layer of the texture begins in the buffer. Note that the buffer contains all the remaining MIP layers after the first one until, and including, the last MIP layer with dimensions of 1x1 pixel directly afterwards. The width and height describe the dimensions of the first MIP layer of the texture in pixels. Wrap mode X and Y describe how the texture should wrap along the respective axis. A value of 0 indicates repeating, 1 mirrored repeating and 2 clamping to the edge of the texture.
+The offset indexes into the [image buffer section](#image-buffer-section) and describes where the first MIP layer of the texture begins in the buffer. Note that the buffer contains all the remaining MIP layers after the first one until, and including, the last MIP layer with dimensions of 1x1 pixel directly afterwards. The width and height describe the dimensions of the first MIP layer of the texture in pixels. Wrap mode X and Y describe how the texture should wrap along the respective axis. A value of 0 indicates repeating, 1 mirrored repeating and 2 clamping to the edge of the texture. Compression describes the type of compression used for this texture. A value of 0 indices no compression, 1 represents BC5 (RG) compression and 2 stands for BC7 (RGBA) compression.
 
 
 ## Mesh Section
@@ -142,7 +143,7 @@ Meshes consist of a range of indices in the [index section](#index-section). The
 
 (The fields above are repeated for each material in the file.)
 
-The texture indices index into the [texture section](#texture-section). Note that each texture is guaranteed to exist for each material but multiple materials may reference one and the same texture. PBR texture include roughness information in the red, occlusion information in the green, metalness information in the blue and emissive information in the alpha channel.
+The texture indices index into the [texture section](#texture-section). Note that each texture is guaranteed to exist for each material but multiple materials may reference one and the same texture. PBR texture include roughness information in the red, occlusion information in the green, metalness information in the blue and emissive information in the alpha channel. Type distinguishes between opaque and transparent materials. 0 represents opaque and 1 transparent materials.
 
 
 ## Joint Section
