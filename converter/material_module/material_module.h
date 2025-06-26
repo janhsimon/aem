@@ -15,7 +15,7 @@ void mat_free();
 
 bool mat_get_texture_transform_for_material(const cgltf_material* material, mat3 transform);
 
-uint64_t mat_calculate_image_buffer_size();
+uint32_t mat_calculate_image_buffer_size();
 uint32_t mat_get_texture_count();
 uint32_t mat_get_material_count();
 

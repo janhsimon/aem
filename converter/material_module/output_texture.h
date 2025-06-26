@@ -9,7 +9,7 @@ struct OutputTexture
   uint32_t base_width, base_height;
   uint32_t level_count;
   uint8_t* data;
-  uint64_t data_size;
+  uint32_t data_size;
   enum AEMTextureCompression compression;
 };
 typedef struct OutputTexture OutputTexture;

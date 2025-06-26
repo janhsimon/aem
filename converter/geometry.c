@@ -674,7 +674,7 @@ void setup_geometry_output(const cgltf_data* input_file)
 
 void write_vertex_buffer(FILE* output_file)
 {
-  static uint64_t vertex_counter = 0;
+  static uint32_t vertex_counter = 0;
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
     const OutputMesh* output_mesh = &output_meshes[mesh_index];
@@ -692,7 +692,7 @@ void write_vertex_buffer(FILE* output_file)
 #ifdef PRINT_VERTEX_BUFFER
       if (PRINT_VERTEX_BUFFER_COUNT == 0 || vertex_counter < PRINT_VERTEX_BUFFER_COUNT)
       {
-        printf("Vertex #%llu:\n", vertex_counter++);
+        printf("Vertex #%u:\n", vertex_counter++);
 
         printf("\tPosition: [ %f, %f, %f ]\n", output_mesh->positions[vertex_index][0],
                output_mesh->positions[vertex_index][1], output_mesh->positions[vertex_index][2]);

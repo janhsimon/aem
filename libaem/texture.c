@@ -12,7 +12,7 @@ void aem_get_model_texture_level_data(const struct AEMTexture* texture,
                                       uint32_t level_index,
                                       uint32_t* level_width,
                                       uint32_t* level_height,
-                                      uint64_t* level_size)
+                                      uint32_t* level_size)
 {
   *level_width = max(1, texture->width >> level_index);
   *level_height = max(1, texture->height >> level_index);

@@ -187,7 +187,7 @@ void draw_model_opaque()
     glBindTexture(GL_TEXTURE_2D, texture_handles[material->pbr_texture_index]);
 
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
-                   (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
+                   (void*)(uintptr_t)(mesh->first_index * AEM_INDEX_SIZE));
   }
 }
 
@@ -221,7 +221,7 @@ void draw_model_transparent()
     glBindTexture(GL_TEXTURE_2D, texture_handles[material->pbr_texture_index]);
 
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
-                   (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
+                   (void*)(uintptr_t)(mesh->first_index * AEM_INDEX_SIZE));
   }
 
   // Reset OpenGL state
@@ -236,7 +236,7 @@ void draw_model_wireframe_overlay()
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
-                   (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
+                   (void*)(uintptr_t)(mesh->first_index * AEM_INDEX_SIZE));
   }
 }
 

@@ -38,7 +38,7 @@ GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture*
   for (uint32_t level_index = 0; level_index < level_count; ++level_index)
   {
     uint32_t level_width, level_height;
-    uint64_t level_size;
+    uint32_t level_size;
     aem_get_model_texture_level_data(texture, level_index, &level_width, &level_height, &level_size);
 
     if (texture->compression == AEMTextureCompression_None)

@@ -12,7 +12,7 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
 {
   const uint32_t vertex_count = calculate_vertex_count();
   const uint32_t index_count = calculate_index_count();
-  const uint64_t image_buffer_size = mat_calculate_image_buffer_size();
+  const uint32_t image_buffer_size = mat_calculate_image_buffer_size();
   const uint32_t texture_count = mat_get_texture_count();
   const uint32_t mesh_count = get_mesh_count();
   const uint32_t material_count = mat_get_material_count();
@@ -39,16 +39,13 @@ void write_header(const struct cgltf_data* input_file, FILE* output_file)
     fwrite(&animation_count, sizeof(animation_count), 1, output_file);
     fwrite(&track_count, sizeof(track_count), 1, output_file);
     fwrite(&keyframe_count, sizeof(keyframe_count), 1, output_file);
-
-    uint32_t padding = 0;
-    fwrite(&padding, sizeof(padding), 1, output_file);
   }
 
 #ifdef PRINT_HEADER
   printf("Header:\n");
   printf("\tVertex count: %u\n", vertex_count);
   printf("\tIndex count: %u\n", index_count);
-  printf("\tImage buffer size: %llu bytes\n", image_buffer_size);
+  printf("\tImage buffer size: %u bytes\n", image_buffer_size);
   printf("\tTexture count: %u\n", texture_count);
   printf("\tMesh count: %u\n", mesh_count);
   printf("\tMaterial count: %u\n", material_count);
