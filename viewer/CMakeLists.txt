@@ -56,6 +56,10 @@ set(SOURCE
 
   shaders/model.vert.glsl
   shaders/model.frag.glsl
+
+  shaders/wireframe.vert.glsl
+  shaders/wireframe.geo.glsl
+  shaders/wireframe.frag.glsl
 )
 
 set(DEPENDENCIES

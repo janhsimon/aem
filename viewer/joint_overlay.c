@@ -1,5 +1,7 @@
 #include "joint_overlay.h"
 
+#include <util/util.h>
+
 #include <glad/gl.h>
 
 #define VERTEX_SIZE 12 // The size of a joint overlay vertex in bytes
@@ -14,11 +16,7 @@ static GLint color_uniform_location;
 
 bool generate_joint_overlay()
 {
-  float vertices[3];
-
-  vertices[0] = 0.0f;
-  vertices[1] = 0.0f;
-  vertices[2] = 0.0f;
+  const float vertices[3] = { 0.0f, 0.0f, 0.0f }; // TODO: This is not necessary, can be done in vertex shader
 
   // Generate bone overlay vertex array
   {
@@ -49,7 +47,7 @@ bool generate_joint_overlay()
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }

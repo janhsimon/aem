@@ -67,7 +67,7 @@ bool load_model_renderer()
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }

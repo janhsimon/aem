@@ -157,7 +157,7 @@ void process_textures(const char* path,
     }
 
     {
-      const bool result = generate_shader_program(vertex_shader, fragment_shader, &shader_program);
+      const bool result = generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program);
       assert(result);
     }
 

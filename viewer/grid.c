@@ -1,5 +1,7 @@
 #include "grid.h"
 
+#include <util/util.h>
+
 #include <glad/gl.h>
 
 #define GRID_SIZE 100.0f
@@ -60,7 +62,7 @@ bool generate_grid()
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }

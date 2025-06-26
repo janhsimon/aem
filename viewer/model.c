@@ -235,11 +235,8 @@ void draw_model_wireframe_overlay()
   for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
                    (void*)((uint64_t)(mesh->first_index) * AEM_INDEX_SIZE));
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
 }
 

@@ -1,5 +1,7 @@
 #include "bone_overlay.h"
 
+#include <util/util.h>
+
 #include <glad/gl.h>
 
 #define VERTEX_COUNT 6
@@ -98,7 +100,7 @@ bool generate_bone_overlay()
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &shader_program))
+    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }

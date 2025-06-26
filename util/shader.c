@@ -36,11 +36,20 @@ bool load_shader(const char* filename, GLenum type, GLuint* shader)
   return true;
 }
 
-bool generate_shader_program(GLuint vertex_shader, GLuint fragment_shader, GLuint* shader_program)
+bool generate_shader_program(GLuint vertex_shader,
+                             GLuint fragment_shader,
+                             GLuint* geometry_shader,
+                             GLuint* shader_program)
 {
   *shader_program = glCreateProgram();
+
   glAttachShader(*shader_program, vertex_shader);
   glAttachShader(*shader_program, fragment_shader);
+
+  if (geometry_shader)
+  {
+    glAttachShader(*shader_program, *geometry_shader);
+  }
 
   glLinkProgram(*shader_program);
 
