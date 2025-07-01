@@ -1,13 +1,9 @@
 #include "model.h"
 
-#include "bone_overlay.h"
-#include "joint_overlay.h"
 #include "model_renderer.h"
 #include "texture.h"
 
 #include <aem/aem.h>
-
-#include <cglm/quat.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -229,7 +225,7 @@ void draw_model_transparent()
   glDisable(GL_BLEND);
 }
 
-void draw_model_wireframe_overlay()
+void draw_model_wireframe()
 {
   const uint32_t mesh_count = aem_get_model_mesh_count(model);
   for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
@@ -237,123 +233,5 @@ void draw_model_wireframe_overlay()
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
     glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
                    (void*)(uintptr_t)(mesh->first_index * AEM_INDEX_SIZE));
-  }
-}
-
-void draw_model_joint(uint32_t joint_index,
-                      bool bind_pose,
-                      mat4 world_matrix,
-                      mat4 viewproj_matrix,
-                      int32_t selected_joint_index)
-{
-  struct AEMJoint* joint = &joints[joint_index];
-
-  mat4 joint_matrix;
-  {
-    mat4 inverse_bind_matrix;
-    glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
-    glm_mat4_inv(inverse_bind_matrix, joint_matrix); // From model space origin to joint in bind pose
-  }
-
-  if (!bind_pose)
-  {
-    // Transform from joint in bind pose to joint in animated pose
-    glm_mat4_mul(joint_transforms[joint_index], joint_matrix, joint_matrix);
-  }
-
-  glm_mat4_mul(world_matrix, joint_matrix, joint_matrix);
-  draw_joint_overlay(joint_matrix, viewproj_matrix, joint_index == selected_joint_index);
-}
-
-void draw_model_joint_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_joint_index)
-{
-  for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
-  {
-    if (joint_index == selected_joint_index)
-    {
-      continue;
-    }
-
-    draw_model_joint(joint_index, bind_pose, world_matrix, viewproj_matrix, selected_joint_index);
-  }
-
-  if (selected_joint_index >= 0)
-  {
-    draw_model_joint(selected_joint_index, bind_pose, world_matrix, viewproj_matrix, selected_joint_index);
-  }
-}
-
-void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_joint_index)
-{
-  for (unsigned int joint_index = 0; joint_index < joint_count; ++joint_index)
-  {
-    struct AEMJoint* joint = &joints[joint_index];
-
-    if (joint->parent_joint_index < 0)
-    {
-      continue;
-    }
-
-    mat4 child_matrix;
-    {
-      mat4 inverse_bind_matrix;
-      glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
-      glm_mat4_inv(inverse_bind_matrix, child_matrix); // From model space origin to joint in bind pose
-    }
-
-    if (!bind_pose)
-    {
-      // Transform from joint in bind pose to joint in animated pose
-      glm_mat4_mul(joint_transforms[joint_index], child_matrix, child_matrix);
-    }
-
-    struct AEMJoint* parent_joint = &joints[joint->parent_joint_index];
-
-    mat4 parent_matrix;
-    {
-      mat4 inverse_bind_matrix;
-      glm_mat4_make(parent_joint->inverse_bind_matrix, inverse_bind_matrix);
-      glm_mat4_inv(inverse_bind_matrix, parent_matrix); // From model space origin to joint in bind pose
-    }
-
-    if (!bind_pose)
-    {
-      // Transform from joint in bind pose to joint in animated pose
-      glm_mat4_mul(joint_transforms[joint->parent_joint_index], parent_matrix, parent_matrix);
-    }
-
-    vec3 child_pos, parent_pos;
-    glm_vec3_copy(child_matrix[3], child_pos);
-    glm_vec3_copy(parent_matrix[3], parent_pos);
-
-    mat4 bone_matrix;
-
-    // Translation
-    glm_translate_make(bone_matrix, parent_pos);
-
-    // Rotation
-    {
-      vec3 dir;
-      glm_vec3_sub(child_pos, parent_pos, dir);
-      glm_vec3_normalize(dir);
-
-      vec3 forward;
-      forward[0] = forward[1] = 0.0f;
-      forward[2] = 1.0f;
-
-      versor quat;
-      glm_quat_from_vecs(forward, dir, quat);
-      glm_quat_rotate(bone_matrix, quat, bone_matrix);
-    }
-
-    // Scale
-    {
-      const float scale = glm_vec3_distance(child_pos, parent_pos);
-      glm_scale_uni(bone_matrix, scale);
-    }
-
-    glm_mat4_mul(world_matrix, bone_matrix, bone_matrix);
-    const bool selected = (joint_index == selected_joint_index || joint->parent_joint_index == selected_joint_index);
-    draw_bone_overlay(bone_matrix, viewproj_matrix, selected);
   }
 }

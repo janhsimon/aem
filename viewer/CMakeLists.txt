@@ -4,9 +4,6 @@ set(SOURCE
   animation_state.c
   animation_state.h
 
-  bone_overlay.c
-  bone_overlay.h
-
   camera.c
   camera.h
 
@@ -23,9 +20,6 @@ set(SOURCE
 
   input.c
   input.h
-
-  joint_overlay.c
-  joint_overlay.h
 
   light.c
   light.h
@@ -45,11 +39,11 @@ set(SOURCE
 
   viewer.c
 
-  wireframe_overlay.c
-  wireframe_overlay.h
+  overlay/skeleton_overlay.c
+  overlay/skeleton_overlay.h
 
-  shaders/bone_overlay.vert.glsl
-  shaders/overlay.frag.glsl
+  overlay/wireframe_overlay.c
+  overlay/wireframe_overlay.h
 
   shaders/grid.vert.glsl
   shaders/grid.frag.glsl
@@ -57,9 +51,14 @@ set(SOURCE
   shaders/model.vert.glsl
   shaders/model.frag.glsl
 
-  shaders/wireframe.vert.glsl
-  shaders/wireframe.geo.glsl
-  shaders/wireframe.frag.glsl
+  shaders/overlay/skeleton.vert.glsl
+  shaders/overlay/skeleton_point.geo.glsl
+  shaders/overlay/skeleton_line.geo.glsl
+
+  shaders/overlay/wireframe.vert.glsl
+  shaders/overlay/wireframe.geo.glsl
+
+  shaders/overlay/overlay.frag.glsl
 )
 
 set(DEPENDENCIES

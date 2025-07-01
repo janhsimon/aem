@@ -1,17 +1,16 @@
 #include "animation_state.h"
-#include "bone_overlay.h"
 #include "camera.h"
 #include "display_state.h"
 #include "grid.h"
 #include "gui.h"
 #include "input.h"
-#include "joint_overlay.h"
 #include "light.h"
 #include "model.h"
 #include "model_renderer.h"
+#include "overlay/skeleton_overlay.h"
+#include "overlay/wireframe_overlay.h"
 #include "scene_state.h"
 #include "skeleton_state.h"
-#include "wireframe_overlay.h"
 
 #include <aem/aem.h>
 #include <cglm/affine.h>
@@ -112,7 +111,13 @@ void file_open_callback()
 
   evaluate_model_animation(animation_state.current_index, 0.0f);
 
-  gui_on_new_model_loaded(&skeleton_state, get_model_joints(), get_model_joint_count());
+  // Update the skeleton UI and overlay
+  {
+    struct AEMJoint* joints = get_model_joints();
+    uint32_t joint_count = get_model_joint_count();
+    gui_on_new_model_loaded(&skeleton_state, joints, joint_count);
+    skeleton_overlay_on_new_model_loaded(joints, joint_count);
+  }
 
   model_loaded = true;
 }
@@ -215,17 +220,12 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  if (!generate_bone_overlay())
-  {
-    return EXIT_FAILURE;
-  }
-
-  if (!generate_joint_overlay())
-  {
-    return EXIT_FAILURE;
-  }
-
   if (!generate_wireframe_overlay())
+  {
+    return EXIT_FAILURE;
+  }
+
+  if (!generate_skeleton_overlay())
   {
     return EXIT_FAILURE;
   }
@@ -304,7 +304,7 @@ int main(int argc, char* argv[])
         if (display_state.show_wireframe)
         {
           begin_draw_wireframe_overlay(world_matrix, viewproj_matrix);
-          draw_model_wireframe_overlay();
+          draw_model_wireframe();
         }
       }
 
@@ -315,9 +315,8 @@ int main(int argc, char* argv[])
 
       if (model_loaded && display_state.show_skeleton)
       {
-        const bool bind_pose = animation_state.current_index < 0 ? true : false;
-        draw_model_bone_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
-        draw_model_joint_overlay(bind_pose, world_matrix, viewproj_matrix, skeleton_state.selected_joint_index);
+        vec2 screen_resolution = { (float)window_width, (float)window_height };
+        draw_skeleton_overlay(world_matrix, viewproj_matrix, screen_resolution, skeleton_state.selected_joint_index);
       }
 
       if (display_state.show_gui)
@@ -342,8 +341,7 @@ int main(int argc, char* argv[])
   }
 
   destroy_wireframe_overlay();
-  destroy_joint_overlay();
-  destroy_bone_overlay();
+  destroy_skeleton_overlay();
   destroy_grid();
   destroy_model_renderer();
   destroy_gui();

@@ -12,9 +12,9 @@ bool generate_wireframe_overlay()
   // Generate shader program
   {
     GLuint vertex_shader, geometry_shader, fragment_shader;
-    if (!load_shader("shaders/wireframe.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/wireframe.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
-        !load_shader("shaders/wireframe.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!load_shader("shaders/overlay/wireframe.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !load_shader("shaders/overlay/wireframe.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
+        !load_shader("shaders/overlay/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }

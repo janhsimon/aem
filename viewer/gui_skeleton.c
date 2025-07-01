@@ -156,7 +156,15 @@ void update_gui_skeleton(int screen_width, int screen_height)
 
   igSetNextItemOpen(true, ImGuiCond_Once);
 
-  draw_skeleton_tree(&nodes[0]);
+  // Draw all root nodes recursively
+  for (uint32_t node_index = 0; node_index < node_count; ++node_index)
+  {
+    struct Node* node = &nodes[node_index];
+    if (node->joint->parent_joint_index < 0)
+    {
+      draw_skeleton_tree(&nodes[node_index]);
+    }
+  }
 
   igEnd();
 }

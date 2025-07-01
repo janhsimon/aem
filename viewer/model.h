@@ -30,6 +30,4 @@ void evaluate_model_animation(int animation_index, float time);
 
 void draw_model_opaque();
 void draw_model_transparent();
-void draw_model_wireframe_overlay();
-void draw_model_joint_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_bone_index);
-void draw_model_bone_overlay(bool bind_pose, mat4 world_matrix, mat4 viewproj_matrix, int32_t selected_bone_index);
+void draw_model_wireframe();
