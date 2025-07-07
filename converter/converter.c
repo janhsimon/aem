@@ -1,9 +1,9 @@
 #include "config.h"
 
-#include "geometry.h"
 #include "header.h"
 
 #include "animation_module/animation_module.h"
+#include "geometry_module/geometry_module.h"
 #include "material_module/material_module.h"
 
 #include <util/util.h>
@@ -18,7 +18,7 @@
 
 static bool export_file(char* filepath)
 {
-  printf("*** Exporting \"%s\" ***\n", filepath);
+  printf("*** Converting \"%s\" to AEM ***\n", filepath);
 
   // Open and parse the input file
   cgltf_options options = { 0 };
@@ -83,14 +83,14 @@ static bool export_file(char* filepath)
   // The animation and material modules need to be initialized first as the geometry module needs them during setup
   anim_create(input_file);
   mat_create(input_file, path);
-  setup_geometry_output(input_file);
+  geo_create(input_file);
 
   write_header(input_file, output_file);
-  write_vertex_buffer(output_file);
-  write_index_buffer(output_file);
+  geo_write_vertex_buffer(output_file);
+  geo_write_index_buffer(output_file);
   mat_write_image_buffer(output_file);
   mat_write_textures(output_file);
-  write_meshes(output_file);
+  geo_write_meshes(output_file);
   mat_write_materials(output_file);
   anim_write_joints(output_file);
   anim_write_animations(output_file);
@@ -98,7 +98,7 @@ static bool export_file(char* filepath)
   anim_write_keyframes(output_file);
 
   mat_free();
-  destroy_geometry_output();
+  geo_free();
   anim_free();
 
   cgltf_free(input_file);
@@ -106,7 +106,7 @@ static bool export_file(char* filepath)
 
   free(path);
 
-  printf("*** Successfully exported \"%s\" ***\n\n", output_filepath);
+  printf("*** Successfully written \"%s\" ***\n\n", output_filepath);
 
   return true;
 }

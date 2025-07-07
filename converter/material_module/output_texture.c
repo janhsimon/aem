@@ -8,11 +8,11 @@ const char* compression_to_string(enum AEMTextureCompression compression)
 {
   if (compression == AEMTextureCompression_BC7)
   {
-    return "BC7 (RGBA)";
+    return "BC7";
   }
   else if (compression == AEMTextureCompression_BC5)
   {
-    return "BC5 (RG)";
+    return "BC5";
   }
 
   return "None";
@@ -27,8 +27,9 @@ void print_output_textures(const OutputTexture* output_textures, uint32_t textur
     printf("Output texture #%llu:\n", texture_index);
 
     printf("\tBase resolution: %u x %u\n", texture->base_width, texture->base_height);
-    printf("\tSize: %llu bytes\n", texture->data_size);
+    printf("\tSize: %u bytes\n", texture->data_size);
     printf("\tLevel count: %u\n", texture->level_count);
+    printf("\tChannel count: %u\n", texture->channel_count);
     printf("\tCompression: %s\n", compression_to_string(texture->compression));
   }
 }

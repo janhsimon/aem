@@ -276,10 +276,11 @@ void process_textures(const char* path,
     output_texture->level_count =
       aem_get_model_texture_level_count(output_texture->base_width, output_texture->base_height);
 
+    output_texture->channel_count = aem_texture_type_to_channel_count(render_texture->type);
+
     // Create target texture with mip levels and count the size of the image data
     GLuint target_texture;
     GLint target_texture_gl_format = aem_texture_type_to_gl_format(render_texture->type);
-    uint32_t target_texture_channel_count = aem_texture_type_to_channel_count(render_texture->type);
     {
       glGenTextures(1, &target_texture);
       glBindTexture(GL_TEXTURE_2D, target_texture);
@@ -292,7 +293,7 @@ void process_textures(const char* path,
         glTexImage2D(GL_TEXTURE_2D, level_index, aem_texture_type_to_gl_internal_format(render_texture->type),
                      level_width, level_height, 0, target_texture_gl_format, GL_UNSIGNED_BYTE, NULL);
 
-        output_texture->data_size += level_width * level_height * target_texture_channel_count;
+        output_texture->data_size += level_width * level_height * output_texture->channel_count;
       }
 
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -391,7 +392,7 @@ void process_textures(const char* path,
         }
 #endif
 
-        offset += level_width * level_height * target_texture_channel_count;
+        offset += level_width * level_height * output_texture->channel_count;
       }
     }
 

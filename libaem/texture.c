@@ -21,7 +21,7 @@ void aem_get_model_texture_level_data(const struct AEMTexture* texture,
 
   if (texture->compression == AEMTextureCompression_None)
   {
-    *level_size = (*level_width) * (*level_height) * 4;
+    *level_size = (*level_width) * (*level_height) * texture->channel_count;
   }
   else
   {

@@ -68,12 +68,19 @@ get_level_size(uint32_t base_width, uint32_t base_height, uint32_t level_index, 
   const ktx_uint32_t level_width = MAX(base_width >> level_index, 1);
   const ktx_uint32_t level_height = MAX(base_height >> level_index, 1);
 
-  if (compression == AEMTextureCompression_BC5)
+  if (compression == AEMTextureCompression_BC7)
+  {
+    return level_width * level_height * 4;
+  }
+  else if (compression == AEMTextureCompression_BC5)
   {
     return level_width * level_height * 2;
   }
-
-  return level_width * level_height * 4;
+  else
+  {
+    assert(false);
+    return 0;
+  }
 }
 
 void compress_texture(OutputTexture* texture, enum AEMTextureCompression compression)

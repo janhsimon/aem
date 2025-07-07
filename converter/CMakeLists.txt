@@ -30,6 +30,18 @@ set(SOURCE
   animation_module/node_inspector.c
   animation_module/node_inspector.h
 
+  geometry_module/geometry_module.c
+  geometry_module/geometry_module.h
+
+  geometry_module/mesh_inspector.c
+  geometry_module/mesh_inspector.h
+
+  geometry_module/output_mesh.c
+  geometry_module/output_mesh.h
+
+  geometry_module/tangent_constructor.c
+  geometry_module/tangent_constructor.h
+
   material_module/material_inspector.c
   material_module/material_inspector.h
 
@@ -55,9 +67,6 @@ set(SOURCE
   material_module/texture_transform.h
 
   config.h
-
-  geometry.c
-  geometry.h
 
   header.c
   header.h

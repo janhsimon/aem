@@ -1,4 +1,8 @@
-#include "geometry.h"
+#include "geometry_module.h"
+
+#include "mesh_inspector.h"
+#include "output_mesh.h"
+#include "tangent_constructor.h"
 
 #include "config.h"
 
@@ -18,302 +22,9 @@
 #include <aem/aem.h>
 
 #include <assert.h>
-#include <string.h>
-
-typedef struct
-{
-  cgltf_mesh* input_mesh;
-
-  vec3 *positions, *normals, *tangents, *bitangents;
-  vec2* uvs;
-  ivec4* joints;
-  vec4* weights;
-
-  uint32_t* indices;
-
-  cgltf_size vertex_count, index_count, first_index;
-  uint32_t material_index;
-} OutputMesh;
 
 static cgltf_size output_mesh_count;
 static OutputMesh* output_meshes = NULL;
-
-static void locate_attributes_for_primitive(const cgltf_primitive* primitive,
-                                            cgltf_attribute** positions,
-                                            cgltf_attribute** normals,
-                                            cgltf_attribute** tangents,
-                                            cgltf_attribute** uvs,
-                                            cgltf_attribute** joints,
-                                            cgltf_attribute** weights)
-{
-  cgltf_size num_uv_coords = 0;
-  for (cgltf_size attribute_index = 0; attribute_index < primitive->attributes_count; ++attribute_index)
-  {
-    cgltf_attribute* attribute = &primitive->attributes[attribute_index];
-
-    if (attribute->type == cgltf_attribute_type_position)
-    {
-      if (positions)
-      {
-        *positions = attribute;
-      }
-    }
-    else if (attribute->type == cgltf_attribute_type_normal)
-    {
-      if (normals)
-      {
-        *normals = attribute;
-      }
-    }
-    else if (attribute->type == cgltf_attribute_type_tangent)
-    {
-      if (tangents)
-      {
-        *tangents = attribute;
-      }
-    }
-    else if (attribute->type == cgltf_attribute_type_texcoord)
-    {
-      if (uvs && num_uv_coords == 0)
-      {
-        *uvs = attribute;
-        ++num_uv_coords;
-      }
-    }
-    else if (attribute->type == cgltf_attribute_type_joints)
-    {
-      if (joints)
-      {
-        *joints = attribute;
-      }
-    }
-    else if (attribute->type == cgltf_attribute_type_weights)
-    {
-      if (weights)
-      {
-        *weights = attribute;
-      }
-    }
-  }
-
-  /*if (num_uv_coords > 1)
-  {
-    assert(false);
-  }*/
-}
-
-static cgltf_node* find_node_for_mesh_recursively(cgltf_node* node, const cgltf_mesh* mesh)
-{
-  if (node->mesh == mesh)
-  {
-    return node;
-  }
-
-  for (cgltf_size child_index = 0; child_index < node->children_count; ++child_index)
-  {
-    struct cgltf_node* child = node->children[child_index];
-
-    struct cgltf_node* result = find_node_for_mesh_recursively(child, mesh);
-    if (result)
-    {
-      return result;
-    }
-  }
-
-  return NULL;
-}
-
-static cgltf_node* find_node_for_mesh(const cgltf_data* input_file, const cgltf_mesh* mesh)
-{
-  for (cgltf_size node_index = 0; node_index < input_file->nodes_count; ++node_index)
-  {
-    struct cgltf_node* node = &input_file->nodes[node_index];
-
-    cgltf_node* result = find_node_for_mesh_recursively(node, mesh);
-    if (result)
-    {
-      return result;
-    }
-  }
-
-  return NULL;
-}
-
-static void reconstruct_tangents(const cgltf_data* input_file,
-                                 OutputMesh* output_mesh,
-                                 cgltf_accessor* positions,
-                                 cgltf_accessor* normals,
-                                 cgltf_accessor* uvs,
-                                 cgltf_accessor* indices,
-                                 vec4* original_tangents,
-                                 vec4* reconstructed_tangents)
-{
-  const size_t helper_size = sizeof(vec3) * output_mesh->vertex_count * 2;
-  vec3* helper = malloc(helper_size);
-  assert(helper);
-  memset(helper, 0, helper_size);
-
-  // Method from https://terathon.com/blog/tangent-space.html
-  for (cgltf_size triangle = 0; triangle < output_mesh->index_count; triangle += 3)
-  {
-    // Retrieve the indices that make up this triangle
-    const cgltf_size index0 = cgltf_accessor_read_index(indices, triangle + 0);
-    const cgltf_size index1 = cgltf_accessor_read_index(indices, triangle + 1);
-    const cgltf_size index2 = cgltf_accessor_read_index(indices, triangle + 2);
-
-    // Retrieve the positions for the vertices of this triangle
-    vec3 position0, position1, position2;
-    {
-      cgltf_bool result = cgltf_accessor_read_float(positions, index0, position0, 3);
-      assert(result);
-
-      result = cgltf_accessor_read_float(positions, index1, position1, 3);
-      assert(result);
-
-      result = cgltf_accessor_read_float(positions, index2, position2, 3);
-      assert(result);
-    }
-
-    // Retrieve the uvs for the vertices of this triangle
-    vec2 uv0, uv1, uv2;
-    {
-      cgltf_bool result = cgltf_accessor_read_float(uvs, index0, uv0, 2);
-      assert(result);
-
-      result = cgltf_accessor_read_float(uvs, index1, uv1, 2);
-      assert(result);
-
-      result = cgltf_accessor_read_float(uvs, index2, uv2, 2);
-      assert(result);
-    }
-
-    const float x1 = position1[0] - position0[0];
-    const float x2 = position2[0] - position0[0];
-    const float y1 = position1[1] - position0[1];
-    const float y2 = position2[1] - position0[1];
-    const float z1 = position1[2] - position0[2];
-    const float z2 = position2[2] - position0[2];
-
-    const float s1 = uv1[0] - uv0[0];
-    const float s2 = uv2[0] - uv0[0];
-    const float t1 = uv1[1] - uv0[1];
-    const float t2 = uv2[1] - uv0[1];
-
-    const float denom = s1 * t2 - s2 * t1;
-    if (fabsf(denom) < 1e-8f)
-    {
-      continue; // Skip degenerate triangle
-    }
-    const float r = 1.0f / denom;
-
-    vec3 sdir;
-    sdir[0] = (t2 * x1 - t1 * x2) * r;
-    sdir[1] = (t2 * y1 - t1 * y2) * r;
-    sdir[2] = (t2 * z1 - t1 * z2) * r;
-
-    vec3 tdir;
-    tdir[0] = (s1 * x2 - s2 * x1) * r;
-    tdir[1] = (s1 * y2 - s2 * y1) * r;
-    tdir[2] = (s1 * z2 - s2 * z1) * r;
-
-    glm_vec3_add(helper[index0], sdir, helper[index0]);
-    glm_vec3_add(helper[index1], sdir, helper[index1]);
-    glm_vec3_add(helper[index2], sdir, helper[index2]);
-
-    glm_vec3_add(helper[index0 + output_mesh->vertex_count], tdir, helper[index0 + output_mesh->vertex_count]);
-    glm_vec3_add(helper[index1 + output_mesh->vertex_count], tdir, helper[index1 + output_mesh->vertex_count]);
-    glm_vec3_add(helper[index2 + output_mesh->vertex_count], tdir, helper[index2 + output_mesh->vertex_count]);
-  }
-
-  for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
-  {
-    glm_vec3_copy(helper[vertex_index], original_tangents[vertex_index]); // Copy before modification
-    glm_normalize(original_tangents[vertex_index]);
-
-    vec3 normal;
-    {
-      const cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, normal, 3);
-      assert(result);
-
-      glm_vec3_normalize(normal);
-    }
-
-    // Gram-Schmidt orthogonalize
-    {
-      const float dot = glm_dot(normal, helper[vertex_index]);
-
-      vec3 ndot;
-      glm_vec3_scale(normal, dot, ndot);
-
-      glm_vec3_sub(helper[vertex_index], ndot, reconstructed_tangents[vertex_index]);
-      glm_vec3_normalize(reconstructed_tangents[vertex_index]);
-    }
-
-    // Calculate handedness
-    {
-      vec3 cross;
-      glm_vec3_cross(normal, original_tangents[vertex_index], cross);
-
-      const float dot = glm_dot(cross, helper[vertex_index + output_mesh->vertex_count]);
-      reconstructed_tangents[vertex_index][3] = (dot < 0.0f) ? -1.0f : 1.0f;
-    }
-  }
-
-  free(helper);
-}
-
-static bool check_node_for_instancing(const cgltf_data* input_file, const cgltf_node* node, bool* mesh_referenced)
-{
-  const cgltf_mesh* mesh = node->mesh;
-  if (mesh)
-  {
-    for (cgltf_size mesh_index = 0; mesh_index < input_file->meshes_count; ++mesh_index)
-    {
-      if (mesh == &input_file->meshes[mesh_index])
-      {
-        if (mesh_referenced[mesh_index])
-        {
-          return true;
-        }
-
-        mesh_referenced[mesh_index] = true;
-        break;
-      }
-    }
-  }
-
-  for (cgltf_size child_index = 0; child_index < node->children_count; ++child_index)
-  {
-    const cgltf_node* child = node->children[child_index];
-    if (check_node_for_instancing(input_file, child, mesh_referenced))
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-static bool
-is_primitive_valid(const cgltf_primitive* primitive, const cgltf_attribute* positions, const cgltf_attribute* normals)
-{
-  if (primitive->type != cgltf_primitive_type_triangles)
-  {
-    return false;
-  }
-
-  if (!positions || !normals)
-  {
-    return false;
-  }
-
-  if (!primitive->indices || primitive->indices->count < 3)
-  {
-    return false;
-  }
-
-  return true;
-}
 
 static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
                                         cgltf_material* material,
@@ -508,36 +219,7 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
   }
 }
 
-uint32_t calculate_vertex_count()
-{
-  uint32_t vertex_count = 0;
-  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
-  {
-    const OutputMesh* mesh = &output_meshes[mesh_index];
-    vertex_count += mesh->vertex_count;
-  }
-
-  return vertex_count;
-}
-
-uint32_t calculate_index_count()
-{
-  uint32_t index_count = 0;
-  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
-  {
-    const OutputMesh* mesh = &output_meshes[mesh_index];
-    index_count += mesh->index_count;
-  }
-
-  return index_count;
-}
-
-uint32_t get_mesh_count()
-{
-  return (uint32_t)output_mesh_count;
-}
-
-void setup_geometry_output(const cgltf_data* input_file)
+void geo_create(const cgltf_data* input_file)
 {
   // Count the required output meshes
   output_mesh_count = 0;
@@ -673,7 +355,36 @@ void setup_geometry_output(const cgltf_data* input_file)
   }
 }
 
-void write_vertex_buffer(FILE* output_file)
+uint32_t geo_calculate_vertex_count()
+{
+  uint32_t vertex_count = 0;
+  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
+  {
+    const OutputMesh* mesh = &output_meshes[mesh_index];
+    vertex_count += mesh->vertex_count;
+  }
+
+  return vertex_count;
+}
+
+uint32_t geo_calculate_index_count()
+{
+  uint32_t index_count = 0;
+  for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
+  {
+    const OutputMesh* mesh = &output_meshes[mesh_index];
+    index_count += mesh->index_count;
+  }
+
+  return index_count;
+}
+
+uint32_t geo_get_mesh_count()
+{
+  return (uint32_t)output_mesh_count;
+}
+
+void geo_write_vertex_buffer(FILE* output_file)
 {
   static uint32_t vertex_counter = 0;
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
@@ -722,7 +433,7 @@ void write_vertex_buffer(FILE* output_file)
   }
 }
 
-void write_index_buffer(FILE* output_file)
+void geo_write_index_buffer(FILE* output_file)
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
@@ -731,7 +442,7 @@ void write_index_buffer(FILE* output_file)
   }
 }
 
-void write_meshes(FILE* output_file)
+void geo_write_meshes(FILE* output_file)
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {
@@ -755,7 +466,7 @@ void write_meshes(FILE* output_file)
   }
 }
 
-void destroy_geometry_output()
+void geo_free()
 {
   for (cgltf_size mesh_index = 0; mesh_index < output_mesh_count; ++mesh_index)
   {

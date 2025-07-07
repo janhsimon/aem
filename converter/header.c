@@ -1,20 +1,20 @@
 #include "header.h"
 
 #include "config.h"
-#include "geometry.h"
 
 #include "animation_module/animation_module.h"
+#include "geometry_module/geometry_module.h"
 #include "material_module/material_module.h"
 
 #include <cgltf/cgltf.h>
 
 void write_header(const struct cgltf_data* input_file, FILE* output_file)
 {
-  const uint32_t vertex_count = calculate_vertex_count();
-  const uint32_t index_count = calculate_index_count();
+  const uint32_t vertex_count = geo_calculate_vertex_count();
+  const uint32_t index_count = geo_calculate_index_count();
   const uint32_t image_buffer_size = mat_calculate_image_buffer_size();
   const uint32_t texture_count = mat_get_texture_count();
-  const uint32_t mesh_count = get_mesh_count();
+  const uint32_t mesh_count = geo_get_mesh_count();
   const uint32_t material_count = mat_get_material_count();
   const uint32_t joint_count = anim_get_joint_count();
   const uint32_t animation_count = (uint32_t)input_file->animations_count;

@@ -38,6 +38,7 @@ struct AEMTexture
   uint32_t offset; // Into image buffer
   uint32_t width, height;
   enum AEMTextureWrapMode wrap_mode[2]; // 0: x, 1: y
+  uint32_t channel_count;
   enum AEMTextureCompression compression;
 };
 

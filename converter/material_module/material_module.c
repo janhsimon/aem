@@ -357,6 +357,7 @@ void mat_write_textures(FILE* output_file)
     fwrite(&mode[0], sizeof(mode[0]), 1, output_file);
     fwrite(&mode[1], sizeof(mode[1]), 1, output_file);
 
+    fwrite(&output_texture->channel_count, sizeof(output_texture->channel_count), 1, output_file);
     fwrite(&output_texture->compression, sizeof(output_texture->compression), 1, output_file);
 
     offset += output_texture->data_size;

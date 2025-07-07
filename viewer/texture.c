@@ -4,9 +4,11 @@
 
 #include <glad/gl.h>
 
+#include <assert.h>
 #include <math.h>
-#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
 {
@@ -20,6 +22,55 @@ static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
   }
 
   return GL_REPEAT;
+}
+
+static GLenum aem_texture_channel_count_to_gl_uncompressed_internal_format(uint32_t channel_count)
+{
+  if (channel_count == 2)
+  {
+    return GL_RG8;
+  }
+  else if (channel_count == 4)
+  {
+    return GL_RGBA8;
+  }
+
+  assert(false);
+  return 0;
+}
+
+static GLenum aem_texture_channel_count_to_gl_uncompressed_format(uint32_t channel_count)
+{
+  if (channel_count == 2)
+  {
+    return GL_RG;
+  }
+  else if (channel_count == 4)
+  {
+    return GL_RGBA;
+  }
+
+  assert(false);
+  return 0;
+}
+
+static GLenum aem_texture_to_gl_compressed_internal_format(const struct AEMTexture* texture)
+{
+  assert(texture->compression != AEMTextureCompression_None);
+
+  if (texture->compression == AEMTextureCompression_BC7)
+  {
+    assert(texture->channel_count == 4);
+    return GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
+  }
+  else if (texture->compression == AEMTextureCompression_BC5)
+  {
+    assert(texture->channel_count == 2);
+    return GL_COMPRESSED_RG_RGTC2;
+  }
+
+  assert(false);
+  return 0;
 }
 
 GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture* texture)
@@ -44,17 +95,19 @@ GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture*
 
     if (texture->compression == AEMTextureCompression_None)
     {
-      glTexImage2D(GL_TEXTURE_2D, level_index, GL_RGBA, level_width, level_height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+      const GLenum internal_format =
+        aem_texture_channel_count_to_gl_uncompressed_internal_format(texture->channel_count);
+      const GLenum format = aem_texture_channel_count_to_gl_uncompressed_format(texture->channel_count);
+
+      glTexImage2D(GL_TEXTURE_2D, level_index, internal_format, level_width, level_height, 0, format, GL_UNSIGNED_BYTE,
                    level_data);
     }
     else
     {
-      if (glGetError() != 0) { printf("ERROR PRE TEX\n"); }
-      const GLenum format = (texture->compression == AEMTextureCompression_BC7) ? GL_COMPRESSED_RGBA_BPTC_UNORM_ARB :
-                                                                                  GL_COMPRESSED_RG_RGTC2;
-      glCompressedTexImage2D(GL_TEXTURE_2D, level_index, format, level_width, level_height, 0, level_size, level_data);
-      if (glGetError() != 0) { printf("B\n"); }
+      const GLenum internal_format = aem_texture_to_gl_compressed_internal_format(texture);
 
+      glCompressedTexImage2D(GL_TEXTURE_2D, level_index, internal_format, level_width, level_height, 0, level_size,
+                             level_data);
     }
 
     level_data += level_size;

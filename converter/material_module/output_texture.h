@@ -11,6 +11,7 @@ struct OutputTexture
   uint8_t* data;
   uint32_t data_size;
   enum AEMTextureCompression compression;
+  uint32_t channel_count;
 };
 typedef struct OutputTexture OutputTexture;
 
