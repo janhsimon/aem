@@ -74,6 +74,7 @@ set(DEPENDENCIES
 
 if(WIN32)
   set(EXTRA_BINS
+    "${CMAKE_SOURCE_DIR}/external/cimgui/lib/win/cimgui.dll"
     "${CMAKE_SOURCE_DIR}/external/glfw/lib/win/glfw3.dll"
   )
 endif()
