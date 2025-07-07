@@ -6,6 +6,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
 {
@@ -48,9 +49,12 @@ GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture*
     }
     else
     {
+      if (glGetError() != 0) { printf("ERROR PRE TEX\n"); }
       const GLenum format = (texture->compression == AEMTextureCompression_BC7) ? GL_COMPRESSED_RGBA_BPTC_UNORM_ARB :
                                                                                   GL_COMPRESSED_RG_RGTC2;
       glCompressedTexImage2D(GL_TEXTURE_2D, level_index, format, level_width, level_height, 0, level_size, level_data);
+      if (glGetError() != 0) { printf("B\n"); }
+
     }
 
     level_data += level_size;

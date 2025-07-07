@@ -6,5 +6,5 @@ target_include_directories(${TARGET_NAME} INTERFACE "${CMAKE_CURRENT_LIST_DIR}/i
 if(WIN32)
   set_target_properties(${TARGET_NAME} PROPERTIES IMPORTED_IMPLIB "${CMAKE_CURRENT_LIST_DIR}/lib/win/ktx.lib")
 elseif(APPLE)
-  set_target_properties(${TARGET_NAME} PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_LIST_DIR}/lib/mac/libktx.dylib")
+  set_target_properties(${TARGET_NAME} PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_LIST_DIR}/lib/mac/${CMAKE_OSX_ARCHITECTURES}/libktx.dylib")
 endif()

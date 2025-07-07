@@ -4,6 +4,8 @@
 
 #include <cgltf/cgltf.h>
 
+#include <stdio.h>
+
 static void print_node_recursive(const cgltf_node* nodes,
                                  const cgltf_node* node,
                                  const AnalyzerNode* analyzer_nodes,

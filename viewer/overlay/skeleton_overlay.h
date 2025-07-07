@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+struct AEMJoint;
+
 bool generate_skeleton_overlay();
 void destroy_skeleton_overlay();
 

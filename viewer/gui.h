@@ -8,6 +8,7 @@ struct AnimationState;
 struct DisplayState;
 struct SceneState;
 struct SkeletonState;
+struct AEMJoint;
 
 void init_gui(struct GLFWwindow* window,
               struct AnimationState* animation_state,

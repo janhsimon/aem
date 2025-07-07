@@ -2,6 +2,8 @@
 
 #include <cgltf/cgltf.h>
 
+#include <stdio.h>
+
 const char* compression_to_string(enum AEMTextureCompression compression)
 {
   if (compression == AEMTextureCompression_BC7)

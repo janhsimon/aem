@@ -41,7 +41,7 @@ void init_gui(struct GLFWwindow* window,
 {
   context = igCreateContext(NULL);
 
-  io = igGetIO();
+  io = igGetIO_ContextPtr(context);
   io->IniFilename = NULL;
   io->LogFilename = NULL;
 

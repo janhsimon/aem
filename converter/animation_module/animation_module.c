@@ -311,7 +311,7 @@ void anim_write_keyframes(FILE* output_file)
 
 void anim_free()
 {
-  if (analyze_nodes)
+  if (analyzer_nodes)
   {
     free(analyzer_nodes);
   }

@@ -2,13 +2,14 @@
 
 #include "output_texture.h"
 
-#include <aem/aem.h>
-
 #include <ktx/ktx.h>
 
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static ktx_uint32_t aem_texture_compression_to_ktx_texture_format(enum AEMTextureCompression compression)
 {
@@ -64,8 +65,8 @@ static ktx_transcode_fmt_e aem_texture_compression_to_ktx_transcode_format(enum 
 static ktx_size_t
 get_level_size(uint32_t base_width, uint32_t base_height, uint32_t level_index, enum AEMTextureCompression compression)
 {
-  const ktx_uint32_t level_width = max(base_width >> level_index, 1);
-  const ktx_uint32_t level_height = max(base_height >> level_index, 1);
+  const ktx_uint32_t level_width = MAX(base_width >> level_index, 1);
+  const ktx_uint32_t level_height = MAX(base_height >> level_index, 1);
 
   if (compression == AEMTextureCompression_BC5)
   {
@@ -131,7 +132,7 @@ void compress_texture(OutputTexture* texture, enum AEMTextureCompression compres
     memset(&params, 0, sizeof(params));
     params.structSize = sizeof(params),
     params.compressionLevel = 1; // Fastest (1 = fastest, 5 = slowest/highest quality)
-    params.qualityLevel = 128;   // 0–255 (128 = balanced)
+    params.qualityLevel = 128;   // 0ï¿½255 (128 = balanced)
     params.uastc = aem_texture_compression_to_ktx_uastc_flag(texture->compression);
 
     const KTX_error_code result = ktxTexture2_CompressBasisEx(ktx_texture, &params);

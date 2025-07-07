@@ -18,6 +18,7 @@
 #include <aem/aem.h>
 
 #include <assert.h>
+#include <string.h>
 
 typedef struct
 {

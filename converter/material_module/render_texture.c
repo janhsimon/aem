@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 
 static const char* texture_type_to_string(RenderTextureType type)
 {

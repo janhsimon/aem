@@ -93,7 +93,7 @@ void init_gui_skeleton(struct SkeletonState* skeleton_state_, struct AEMJoint* j
   }
 }
 
-static draw_skeleton_tree(const struct Node* node)
+static void draw_skeleton_tree(const struct Node* node)
 {
   ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
 

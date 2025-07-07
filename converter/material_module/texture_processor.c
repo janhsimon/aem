@@ -26,6 +26,8 @@
 
 #define MIN_TEXTURE_SIZE 1 // The size of a texture that had no image GLB inputs (only numeric parameters)
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 static GLint texture_type_uniform_location, color_uniform_location, alpha_mode_uniform_location,
   alpha_mask_threshold_uniform_location, pbr_workflow_uniform_location, texture_bound_uniform_location;
 
@@ -111,8 +113,25 @@ static GLuint load_opengl_texture(const RenderTexture* render_texture,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   stbi_image_free(base_data);
 
-  *max_width = (base_width > *max_width) ? base_width : *max_width;
-  *max_height = (base_height > *max_height) ? base_height : *max_height;
+  *max_width = MAX(base_width, *max_width);
+  *max_height = MAX(base_height, *max_height);
+
+  return tex;
+}
+
+static GLuint create_fallback_texture()
+{
+  static uint8_t data[4] = { 0, 0, 0, 255 };
+
+  // Create an OpenGL texture from the GLB texture
+  GLuint tex;
+  glGenTextures(1, &tex);
+  glBindTexture(GL_TEXTURE_2D, tex);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   return tex;
 }
@@ -192,6 +211,9 @@ void process_textures(const char* path,
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
   }
 
+  // Create a fallback texture
+  const GLuint fallback_source_tex = create_fallback_texture();
+
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
     OutputTexture* output_texture = &output_textures[texture_index];
@@ -265,8 +287,8 @@ void process_textures(const char* path,
       output_texture->data_size = 0;
       for (uint32_t level_index = 0; level_index < output_texture->level_count; ++level_index)
       {
-        const uint32_t level_width = max(1, output_texture->base_width >> level_index);
-        const uint32_t level_height = max(1, output_texture->base_height >> level_index);
+        const uint32_t level_width = MAX(1, output_texture->base_width >> level_index);
+        const uint32_t level_height = MAX(1, output_texture->base_height >> level_index);
         glTexImage2D(GL_TEXTURE_2D, level_index, aem_texture_type_to_gl_internal_format(render_texture->type),
                      level_width, level_height, 0, target_texture_gl_format, GL_UNSIGNED_BYTE, NULL);
 
@@ -279,12 +301,17 @@ void process_textures(const char* path,
     output_texture->data = malloc(output_texture->data_size);
 
     // Bind the source textures for each image
-    for (cgltf_size texture_index = 0; texture_index < 3; ++texture_index)
+    for (cgltf_size i = 0; i < 3; ++i)
     {
-      if (source_texture_exists[texture_index])
+      glActiveTexture(GL_TEXTURE0 + i);
+
+      if (source_texture_exists[i])
       {
-        glActiveTexture(GL_TEXTURE0 + texture_index);
-        glBindTexture(GL_TEXTURE_2D, source_textures[texture_index]);
+        glBindTexture(GL_TEXTURE_2D, source_textures[i]);
+      }
+      else
+      {
+        glBindTexture(GL_TEXTURE_2D, fallback_source_tex);
       }
     }
 
@@ -326,8 +353,8 @@ void process_textures(const char* path,
       cgltf_size offset = 0;
       for (uint32_t level_index = 0; level_index < output_texture->level_count; ++level_index)
       {
-        const uint32_t level_width = max(1, output_texture->base_width >> level_index);
-        const uint32_t level_height = max(1, output_texture->base_height >> level_index);
+        const uint32_t level_width = MAX(1, output_texture->base_width >> level_index);
+        const uint32_t level_height = MAX(1, output_texture->base_height >> level_index);
 
         uint8_t* level_data = &output_texture->data[offset];
 
@@ -390,6 +417,8 @@ void process_textures(const char* path,
 
   // Cleanup the remaining resources
   {
+    glDeleteTextures(1, &fallback_source_tex);
+    
     glDeleteFramebuffers(1, &fbo);
     glDeleteVertexArrays(1, &vao);
 

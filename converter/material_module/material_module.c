@@ -13,6 +13,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 static RenderMaterial* render_materials = NULL;
 static cgltf_size render_material_count = 0;
