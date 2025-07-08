@@ -61,7 +61,7 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     }
     else
     {
-      generate_tangents_without_uvs(normals->data, output_mesh->vertex_count, reconstructed_tangents);
+      generate_tangents_without_uvs(output_mesh, normals->data, reconstructed_tangents);
     }
   }
 

@@ -35,12 +35,12 @@ static void generate_tangent_without_uvs(vec3 n, vec4 tangent)
   tangent[3] = 1.0f; // default handedness
 }
 
-void generate_tangents_with_uvs(OutputMesh* output_mesh,
-                                cgltf_accessor* positions,
-                                cgltf_accessor* normals,
-                                cgltf_accessor* uvs,
-                                cgltf_accessor* indices,
-                                vec4* reconstructed_tangents)
+void generate_tangents_with_uvs(const OutputMesh* output_mesh,
+                                const cgltf_accessor* positions,
+                                const cgltf_accessor* normals,
+                                const cgltf_accessor* uvs,
+                                const cgltf_accessor* indices,
+                                vec4* tangents)
 {
   const size_t vertex_count = output_mesh->vertex_count;
   const size_t index_count = output_mesh->index_count;
@@ -134,7 +134,7 @@ void generate_tangents_with_uvs(OutputMesh* output_mesh,
 
     if (!helper->valid)
     {
-      generate_tangent_without_uvs(n, reconstructed_tangents[vertex_index]);
+      generate_tangent_without_uvs(n, tangents[vertex_index]);
     }
     else
     {
@@ -145,23 +145,25 @@ void generate_tangents_with_uvs(OutputMesh* output_mesh,
       glm_vec3_normalize(helper->tan1);
 
       // Store the tangent xyz
-      reconstructed_tangents[vertex_index][0] = helper->tan1[0];
-      reconstructed_tangents[vertex_index][1] = helper->tan1[1];
-      reconstructed_tangents[vertex_index][2] = helper->tan1[2];
+      tangents[vertex_index][0] = helper->tan1[0];
+      tangents[vertex_index][1] = helper->tan1[1];
+      tangents[vertex_index][2] = helper->tan1[2];
 
       // Calculate handedness (sign) and store it in the w component
       vec3 cross;
       glm_vec3_cross(n, helper->tan1, cross);
       const float handedness = (glm_dot(cross, helper->tan2) < 0.0f) ? -1.0f : 1.0f;
-      reconstructed_tangents[vertex_index][3] = handedness;
+      tangents[vertex_index][3] = handedness;
     }
   }
 
   free(helpers);
 }
 
-void generate_tangents_without_uvs(const cgltf_accessor* normals, size_t vertex_count, vec4* tangents)
+void generate_tangents_without_uvs(const OutputMesh* output_mesh, const cgltf_accessor* normals, vec4* tangents)
 {
+  const size_t vertex_count = output_mesh->vertex_count;
+
   for (size_t vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
   {
     vec3 n;
