@@ -9,38 +9,31 @@
 #include <assert.h>
 #include <string.h>
 
-static void generate_tangent_without_uvs(vec3 n, vec4 tangent)
+static void generate_tangent_without_uvs(vec3 n, vec3 tangent, vec3 bitangent)
 {
-  vec3 tangent3;
-
   // Choose the smallest component to avoid numerical instability
   if (fabsf(n[0]) < fabsf(n[1]) && fabsf(n[0]) < fabsf(n[2]))
   {
-    glm_vec3_cross((vec3){ 1, 0, 0 }, n, tangent3);
+    glm_vec3_cross((vec3){ 1, 0, 0 }, n, tangent);
   }
   else if (fabsf(n[1]) < fabsf(n[2]))
   {
-    glm_vec3_cross((vec3){ 0, 1, 0 }, n, tangent3);
+    glm_vec3_cross((vec3){ 0, 1, 0 }, n, tangent);
   }
   else
   {
-    glm_vec3_cross((vec3){ 0, 0, 1 }, n, tangent3);
+    glm_vec3_cross((vec3){ 0, 0, 1 }, n, tangent);
   }
 
-  glm_vec3_normalize(tangent3);
-
-  tangent[0] = tangent3[0];
-  tangent[1] = tangent3[1];
-  tangent[2] = tangent3[2];
-  tangent[3] = 1.0f; // default handedness
+  glm_vec3_normalize(tangent);      // Tangent
+  glm_cross(n, tangent, bitangent); // Bitangent
 }
 
 void generate_tangents_with_uvs(const OutputMesh* output_mesh,
                                 const cgltf_accessor* positions,
                                 const cgltf_accessor* normals,
                                 const cgltf_accessor* uvs,
-                                const cgltf_accessor* indices,
-                                vec4* tangents)
+                                const cgltf_accessor* indices)
 {
   const size_t vertex_count = output_mesh->vertex_count;
   const size_t index_count = output_mesh->index_count;
@@ -125,52 +118,82 @@ void generate_tangents_with_uvs(const OutputMesh* output_mesh,
 
   for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
   {
-    vec3 n;
-    cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, n, 3);
-    assert(result);
-    glm_vec3_normalize(n);
-
     Helper* helper = &helpers[vertex_index];
+
+    vec3 normal;
+    cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, normal, 3);
+    assert(result);
+    glm_vec3_normalize(normal);
 
     if (!helper->valid)
     {
-      generate_tangent_without_uvs(n, tangents[vertex_index]);
+      generate_tangent_without_uvs(normal, output_mesh->tangents[vertex_index], output_mesh->bitangents[vertex_index]);
     }
     else
     {
+      vec3 temp;
+      glm_vec3_copy(helper->tan1, temp); // Copy before modification
+      glm_normalize(temp);
+
       // Gram-Schmidt orthogonalization
       vec3 n_dot_t;
-      glm_vec3_scale(n, glm_dot(n, helper->tan1), n_dot_t);
+      glm_vec3_scale(normal, glm_dot(normal, helper->tan1), n_dot_t);
       glm_vec3_sub(helper->tan1, n_dot_t, helper->tan1);
       glm_vec3_normalize(helper->tan1);
 
       // Store the tangent xyz
-      tangents[vertex_index][0] = helper->tan1[0];
-      tangents[vertex_index][1] = helper->tan1[1];
-      tangents[vertex_index][2] = helper->tan1[2];
+      glm_vec3_copy(helper->tan1, output_mesh->tangents[vertex_index]);
 
-      // Calculate handedness (sign) and store it in the w component
+      // Calculate handedness (sign)
       vec3 cross;
-      glm_vec3_cross(n, helper->tan1, cross);
+      glm_vec3_cross(normal, helper->tan1, cross);
       const float handedness = (glm_dot(cross, helper->tan2) < 0.0f) ? -1.0f : 1.0f;
-      tangents[vertex_index][3] = handedness;
+
+      // Bitangent
+      glm_cross(normal, temp, output_mesh->bitangents[vertex_index]);
+      glm_vec3_scale(output_mesh->bitangents[vertex_index], handedness, output_mesh->bitangents[vertex_index]);
     }
   }
 
   free(helpers);
 }
 
-void generate_tangents_without_uvs(const OutputMesh* output_mesh, const cgltf_accessor* normals, vec4* tangents)
+void generate_tangents_without_uvs(const OutputMesh* output_mesh, const cgltf_accessor* normals)
 {
   const size_t vertex_count = output_mesh->vertex_count;
-
   for (size_t vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
   {
-    vec3 n;
-    cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, n, 3);
+    vec3 normal;
+    cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, normal, 3);
     assert(result);
-    glm_vec3_normalize(n);
+    glm_vec3_normalize(normal);
 
-    generate_tangent_without_uvs(n, tangents[vertex_index]);
+    generate_tangent_without_uvs(normal, output_mesh->tangents[vertex_index], output_mesh->bitangents[vertex_index]);
+  }
+}
+
+void generate_tangents_from_normals_tangents(const OutputMesh* output_mesh,
+                                             const cgltf_accessor* normals,
+                                             const cgltf_accessor* tangents)
+{
+  const size_t vertex_count = output_mesh->vertex_count;
+  for (size_t vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
+  {
+    vec3 normal;
+    cgltf_bool result = cgltf_accessor_read_float(normals, vertex_index, normal, 3);
+    assert(result);
+    glm_vec3_normalize(normal);
+
+    vec4 tangent;
+    result = cgltf_accessor_read_float(tangents, vertex_index, tangent, 4); // Fourth component is handedness
+    assert(result);
+
+    // Tangent
+    glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
+    glm_vec3_normalize(output_mesh->tangents[vertex_index]);
+
+    // Bitangent
+    glm_cross(normal, output_mesh->tangents[vertex_index], output_mesh->bitangents[vertex_index]);
+    glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
   }
 }

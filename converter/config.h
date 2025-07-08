@@ -8,12 +8,12 @@
 
 // Print model information to the console for debugging purposes
 #define PRINT_HEADER
-// #define PRINT_VERTEX_BUFFER
+#define PRINT_VERTEX_BUFFER
 // #define PRINT_INDEX_BUFFER
 // #define PRINT_IMAGE_BUFFER
-#define PRINT_TEXTURES
-// #define PRINT_MESHES
-#define PRINT_MATERIALS
+// #define PRINT_TEXTURES
+#define PRINT_MESHES
+// #define PRINT_MATERIALS
 // #define PRINT_NODES // GLB nodes from the input file
 // #define PRINT_JOINTS
 // #define PRINT_ANIMATIONS

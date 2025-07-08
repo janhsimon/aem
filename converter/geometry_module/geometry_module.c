@@ -41,28 +41,31 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
                                         mat4 global_node_transform)
 {
   mat3 global_node_rotation;
-  glm_mat4_pick3(global_node_transform, global_node_rotation);
+  {
+    glm_mat4_pick3(global_node_transform, global_node_rotation);
 
-  glm_vec3_normalize(global_node_rotation[0]);
-  glm_vec3_normalize(global_node_rotation[1]);
-  glm_vec3_normalize(global_node_rotation[2]);
+    glm_vec3_normalize(global_node_rotation[0]);
+    glm_vec3_normalize(global_node_rotation[1]);
+    glm_vec3_normalize(global_node_rotation[2]);
+  }
 
-  // Reconstruct tangents if they are not included
-  vec4* reconstructed_tangents = NULL;
+  // Generate tangents and bitangents
   if (!tangents)
   {
-    reconstructed_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
-    assert(reconstructed_tangents);
-
+    // Generate tangents and bitangents from normals and, if available, also UV coordinates
     if (uvs)
     {
-      generate_tangents_with_uvs(output_mesh, positions->data, normals->data, uvs->data, indices,
-                                 reconstructed_tangents);
+      generate_tangents_with_uvs(output_mesh, positions->data, normals->data, uvs->data, indices);
     }
     else
     {
-      generate_tangents_without_uvs(output_mesh, normals->data, reconstructed_tangents);
+      generate_tangents_without_uvs(output_mesh, normals->data);
     }
+  }
+  else
+  {
+    // Generate tangents and bitangents from the existing tangents in the GLB
+    generate_tangents_from_normals_tangents(output_mesh, normals->data, tangents->data);
   }
 
   // Check for special animated mesh joints
@@ -76,7 +79,8 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     }
   }
 
-  for (cgltf_size vertex_index = 0; vertex_index < output_mesh->vertex_count; ++vertex_index)
+  const cgltf_size vertex_count = output_mesh->vertex_count;
+  for (cgltf_size vertex_index = 0; vertex_index < vertex_count; ++vertex_index)
   {
     // Position (required)
     {
@@ -93,49 +97,15 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       const cgltf_bool result =
         cgltf_accessor_read_float(normals->data, vertex_index, output_mesh->normals[vertex_index], 3);
       assert(result);
+      // TODO: Normalize
 
       glm_mat3_mulv(global_node_rotation, output_mesh->normals[vertex_index], output_mesh->normals[vertex_index]);
     }
 
-    // Tangent (included or reconstructed)
-    vec4 tangent; // With extra w-channel for later bitangent construction
+    // Tangent and bitangent (generated)
     {
-      if (tangents)
-      {
-        const cgltf_bool result = cgltf_accessor_read_float(tangents->data, vertex_index, tangent, 4);
-        assert(result);
-      }
-      else if (reconstructed_tangents)
-      {
-        glm_vec4_copy(reconstructed_tangents[vertex_index], tangent);
-      }
-      else
-      {
-        assert(false);
-      }
-
-      glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
       glm_mat3_mulv(global_node_rotation, output_mesh->tangents[vertex_index], output_mesh->tangents[vertex_index]);
-    }
-
-    // Bitangent (constructed)
-    {
-      vec3 used_tangent;
-      if (tangents)
-      {
-        glm_cross(output_mesh->normals[vertex_index], tangent, output_mesh->bitangents[vertex_index]);
-      }
-      else if (reconstructed_tangents)
-      {
-        glm_cross(output_mesh->normals[vertex_index], reconstructed_tangents[vertex_index],
-                  output_mesh->bitangents[vertex_index]);
-      }
-      else
-      {
-        assert(false);
-      }
-
-      glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
+      glm_mat3_mulv(global_node_rotation, output_mesh->bitangents[vertex_index], output_mesh->bitangents[vertex_index]);
     }
 
     // UV (optional)
@@ -211,11 +181,6 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     {
       glm_vec4_zero(output_mesh->weights[vertex_index]);
     }
-  }
-
-  if (reconstructed_tangents)
-  {
-    free(reconstructed_tangents);
   }
 }
 
@@ -482,15 +447,4 @@ void geo_free()
   }
 
   free(output_meshes);
-
-  /*for (cgltf_size mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
-  {
-    const struct MeshInfo* mesh_info = &mesh_infos[mesh_index];
-    if (mesh_info->reconstructed_tangents)
-    {
-      free(mesh_info->reconstructed_tangents);
-    }
-  }
-
-  free(mesh_infos);*/
 }
