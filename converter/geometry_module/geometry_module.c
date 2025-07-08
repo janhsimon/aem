@@ -2,7 +2,7 @@
 
 #include "mesh_inspector.h"
 #include "output_mesh.h"
-#include "tangent_constructor.h"
+#include "tangent_generator.h"
 
 #include "config.h"
 
@@ -22,6 +22,7 @@
 #include <aem/aem.h>
 
 #include <assert.h>
+#include <string.h>
 
 static cgltf_size output_mesh_count;
 static OutputMesh* output_meshes = NULL;
@@ -46,18 +47,22 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
   glm_vec3_normalize(global_node_rotation[1]);
   glm_vec3_normalize(global_node_rotation[2]);
 
-  // Reconstruct tangents if they are not included and uvs exist
-  vec4 *original_tangents = NULL, *reconstructed_tangents = NULL;
-  if (!tangents && uvs)
+  // Reconstruct tangents if they are not included
+  vec4* reconstructed_tangents = NULL;
+  if (!tangents)
   {
-    original_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
-    assert(original_tangents);
-
     reconstructed_tangents = malloc(sizeof(vec4) * output_mesh->vertex_count);
     assert(reconstructed_tangents);
 
-    reconstruct_tangents(input_file, output_mesh, positions->data, normals->data, uvs->data, indices, original_tangents,
-                         reconstructed_tangents);
+    if (uvs)
+    {
+      generate_tangents_with_uvs(output_mesh, positions->data, normals->data, uvs->data, indices,
+                                 reconstructed_tangents);
+    }
+    else
+    {
+      generate_tangents_without_uvs(normals->data, output_mesh->vertex_count, reconstructed_tangents);
+    }
   }
 
   // Check for special animated mesh joints
@@ -106,7 +111,7 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       }
       else
       {
-        glm_vec4_zero(tangent);
+        assert(false);
       }
 
       glm_vec3_copy(tangent, output_mesh->tangents[vertex_index]);
@@ -120,14 +125,14 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       {
         glm_cross(output_mesh->normals[vertex_index], tangent, output_mesh->bitangents[vertex_index]);
       }
-      else if (original_tangents)
+      else if (reconstructed_tangents)
       {
-        glm_cross(output_mesh->normals[vertex_index], original_tangents[vertex_index],
+        glm_cross(output_mesh->normals[vertex_index], reconstructed_tangents[vertex_index],
                   output_mesh->bitangents[vertex_index]);
       }
       else
       {
-        glm_vec3_zero(output_mesh->bitangents[vertex_index]);
+        assert(false);
       }
 
       glm_vec3_scale(output_mesh->bitangents[vertex_index], tangent[3], output_mesh->bitangents[vertex_index]);
@@ -206,11 +211,6 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     {
       glm_vec4_zero(output_mesh->weights[vertex_index]);
     }
-  }
-
-  if (original_tangents)
-  {
-    free(original_tangents);
   }
 
   if (reconstructed_tangents)

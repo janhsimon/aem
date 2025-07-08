@@ -151,7 +151,7 @@ static bool export_list(const char* filepath)
     ++index;
   }
 
-  printf("*** Exported %u models (%u succeeded, %u failed) ***\n\n", file_count, successes, file_count - successes);
+  printf("*** Converted %u models to AEM (%u succeeded, %u failed) ***\n\n", file_count, successes, file_count - successes);
 
   free(list);
 

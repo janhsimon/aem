@@ -39,8 +39,8 @@ set(SOURCE
   geometry_module/output_mesh.c
   geometry_module/output_mesh.h
 
-  geometry_module/tangent_constructor.c
-  geometry_module/tangent_constructor.h
+  geometry_module/tangent_generator.c
+  geometry_module/tangent_generator.h
 
   material_module/material_inspector.c
   material_module/material_inspector.h
