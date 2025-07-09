@@ -68,7 +68,7 @@ void anim_create(const cgltf_data* input_file)
     print_nodes(input_file, analyzer_nodes);
 #endif
 
-    // Analyze which nodes need to be represented as AEM joints&analyzer_nodes[node_index];
+    // Analyze which nodes need to be represented as AEM joints
     analyze_nodes(input_file, analyzer_nodes);
 
     // Count the represented nodes (=joints)

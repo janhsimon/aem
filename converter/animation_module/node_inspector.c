@@ -36,7 +36,18 @@ void calculate_local_node_transform(cgltf_node* node, mat4 transform)
 
   if (node->has_scale)
   {
-    glm_scale(transform, node->scale);
+    vec3 scale;
+    glm_vec3_copy(node->scale, scale);
+
+    for (int i = 0; i < 3; ++i)
+    {
+      if (fabs(scale[i]) < 1e-4f)
+      {
+        scale[i] = 1e-4f;
+      }
+    }
+
+    glm_scale(transform, scale);
   }
 }
 
