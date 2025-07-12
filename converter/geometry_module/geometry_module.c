@@ -97,7 +97,7 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       const cgltf_bool result =
         cgltf_accessor_read_float(normals->data, vertex_index, output_mesh->normals[vertex_index], 3);
       assert(result);
-      // TODO: Normalize
+      glm_vec3_normalize(output_mesh->normals[vertex_index]);
 
       glm_mat3_mulv(global_node_rotation, output_mesh->normals[vertex_index], output_mesh->normals[vertex_index]);
     }
@@ -182,6 +182,14 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
       glm_vec4_zero(output_mesh->weights[vertex_index]);
     }
   }
+}
+
+bool geo_is_primitive_valid(const cgltf_primitive* primitive)
+{
+  cgltf_attribute *positions = NULL, *normals = NULL;
+  locate_attributes_for_primitive(primitive, &positions, &normals, NULL, NULL, NULL, NULL);
+
+  return is_primitive_valid(primitive, positions, normals);
 }
 
 void geo_create(const cgltf_data* input_file)

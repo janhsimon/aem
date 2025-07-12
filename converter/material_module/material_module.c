@@ -7,6 +7,8 @@
 #include "texture_processor.h"
 #include "texture_transform.h"
 
+#include "geometry_module/geometry_module.h"
+
 #include <config.h>
 
 #include <cglm/mat3.h>
@@ -33,10 +35,7 @@ void mat_create(const cgltf_data* input_file, const char* path)
     for (cgltf_size primitive_index = 0; primitive_index < mesh->primitives_count; ++primitive_index)
     {
       const cgltf_primitive* primitive = &mesh->primitives[primitive_index];
-
-      // TODO: Ask geometry module if primitive is valid
-
-      if (!primitive->material)
+      if (geo_is_primitive_valid(primitive) && !primitive->material)
       {
         ++render_material_count;
         mesh_without_material_found = true;

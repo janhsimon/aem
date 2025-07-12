@@ -1,9 +1,13 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 typedef struct cgltf_data cgltf_data;
+typedef struct cgltf_primitive cgltf_primitive;
+
+bool geo_is_primitive_valid(const cgltf_primitive* primitive);
 
 void geo_create(const cgltf_data* input_file);
 
