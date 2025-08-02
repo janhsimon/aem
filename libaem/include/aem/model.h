@@ -10,13 +10,13 @@ typedef unsigned char aem_string[AEM_STRING_SIZE];
 
 struct AEMModel;
 
-enum AEMResult
+enum AEMModelResult
 {
-  AEMResult_Success,
-  AEMResult_OutOfMemory,
-  AEMResult_FileNotFound,
-  AEMResult_InvalidFileType,
-  AEMResult_InvalidVersion
+  AEMModelResult_Success,
+  AEMModelResult_OutOfMemory,
+  AEMModelResult_FileNotFound,
+  AEMModelResult_InvalidFileType,
+  AEMModelResult_InvalidVersion
 };
 
 enum AEMTextureWrapMode
@@ -69,7 +69,7 @@ struct AEMJoint
   int32_t parent_joint_index;
 };
 
-enum AEMResult aem_load_model(const char* filename, struct AEMModel** model);
+enum AEMModelResult aem_load_model(const char* filename, struct AEMModel** model);
 void aem_finish_loading_model(const struct AEMModel* model);
 void aem_free_model(struct AEMModel* model);
 
@@ -114,9 +114,3 @@ uint32_t aem_get_model_joint_rotation_keyframe_count(const struct AEMModel* mode
                                                      uint32_t joint_index);
 uint32_t
 aem_get_model_joint_scale_keyframe_count(const struct AEMModel* model, uint32_t animation_index, uint32_t joint_index);
-
-// animation_index < 0 means bind pose
-void aem_evaluate_model_animation(const struct AEMModel* model,
-                                  int32_t animation_index,
-                                  float time,
-                                  float* joint_transforms);

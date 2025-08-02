@@ -1,7 +1,8 @@
 set(TARGET_NAME libaem)
 
 set(SOURCE
-  include/aem/aem.h
+  include/aem/animation_mixer.h
+  include/aem/model.h
 
   animation.c
   model.c

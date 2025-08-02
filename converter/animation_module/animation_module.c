@@ -10,7 +10,7 @@
 
 #include "config.h"
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 #include <cgltf/cgltf.h>
 

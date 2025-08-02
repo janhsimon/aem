@@ -1,6 +1,10 @@
 #include "skeleton_overlay.h"
 
+#include "model.h"
+
 #include <util/util.h>
+
+#include <aem/model.h>
 
 #include <cglm/vec3.h>
 
@@ -95,8 +99,11 @@ void destroy_skeleton_overlay()
   free(points);
 }
 
-void skeleton_overlay_on_new_model_loaded(struct AEMJoint* joints, uint32_t joint_count)
+void skeleton_overlay_on_new_model_loaded()
 {
+  struct AEMJoint* joints = get_model_joints();
+  const uint32_t joint_count = get_model_joint_count();
+
   // Count the number of bones (connections between joints)
   point_count = 0;
   for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)

@@ -2,7 +2,7 @@
 
 #include "texture.h"
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 #include <util/util.h>
 

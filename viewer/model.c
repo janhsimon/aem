@@ -3,13 +3,15 @@
 #include "model_renderer.h"
 #include "texture.h"
 
-#include <aem/aem.h>
+#include <aem/animation_mixer.h>
+#include <aem/model.h>
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
 static struct AEMModel* model;
+static struct AEMAnimationMixer* mixer;
 
 static uint32_t texture_count;
 static GLuint* texture_handles;
@@ -22,9 +24,22 @@ static uint32_t animation_count;
 
 bool load_model(const char* filepath, const char* path)
 {
-  if (aem_load_model(filepath, &model) != AEMResult_Success)
+  if (aem_load_model(filepath, &model) != AEMModelResult_Success)
   {
     return false;
+  }
+
+  joint_count = aem_get_model_joint_count(model);
+  if (joint_count > 0)
+  {
+    if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
+    {
+      return false;
+    }
+  }
+  else
+  {
+    mixer = NULL;
   }
 
   aem_print_model_info(model);
@@ -46,7 +61,6 @@ bool load_model(const char* filepath, const char* path)
 
   // Load joints
   {
-    joint_count = aem_get_model_joint_count(model);
     joints = aem_get_model_joints(model);
 
     joint_transforms = malloc(joint_count * sizeof(mat4));
@@ -66,6 +80,7 @@ bool load_model(const char* filepath, const char* path)
     fill_model_renderer_buffers(vertex_buffer_size, get_model_vertex_buffer(), index_buffer_size,
                                 get_model_index_buffer(), joint_count);
   }
+
   return true;
 }
 
@@ -76,6 +91,11 @@ void finish_loading_model()
 
 void destroy_model()
 {
+  if (mixer)
+  {
+    aem_free_animation_mixer(mixer);
+  }
+
   aem_free_model(model);
 
   if (texture_count > 0)
@@ -122,6 +142,11 @@ uint32_t get_model_animation_count()
 
 char** get_model_animation_names()
 {
+  if (animation_count == 0)
+  {
+    return NULL;
+  }
+
   char** names = malloc(sizeof(void*) * animation_count);
   assert(names);
   for (unsigned int animation_index = 0; animation_index < animation_count; ++animation_index)
@@ -133,6 +158,69 @@ char** get_model_animation_names()
   }
 
   return names;
+}
+
+struct AEMAnimationChannel* get_model_animation_channel(uint32_t channel_index)
+{
+  if (mixer)
+  {
+    return aem_get_animation_mixer_channel(mixer, channel_index);
+  }
+
+  return NULL;
+}
+
+void blend_to_model_animation_channel(uint32_t channel_index)
+{
+  aem_blend_to_animation_mixer_channel(mixer, channel_index);
+}
+
+bool get_model_animation_mixer_enabled()
+{
+  if (mixer)
+  {
+    return aem_get_animation_mixer_enabled(mixer);
+  }
+
+  return false;
+}
+
+void set_model_animation_mixer_enabled(bool enabled)
+{
+  if (mixer)
+  {
+    aem_set_animation_mixer_enabled(mixer, enabled);
+  }
+}
+
+float get_model_animation_mixer_blend_speed()
+{
+  if (mixer)
+  {
+    return aem_get_animation_mixer_blend_speed(mixer);
+  }
+
+  return 1.0f;
+}
+
+void set_model_animation_mixer_blend_speed(float blend_speed)
+{
+  aem_set_animation_mixer_blend_speed(mixer, blend_speed);
+}
+
+enum AEMAnimationBlendMode get_model_animation_mixer_blend_mode()
+{
+  if (mixer)
+  {
+    return aem_get_animation_mixer_blend_mode(mixer);
+  }
+
+  return AEMAnimationBlendMode_Smooth;
+}
+
+void set_model_animation_mixer_blend_mode(enum AEMAnimationBlendMode blend_mode)
+{
+  aem_set_animation_mixer_blend_mode(mixer, blend_mode);
 }
 
 float get_model_animation_duration(unsigned int animation_index)
@@ -155,9 +243,88 @@ uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t
   return aem_get_model_joint_scale_keyframe_count(model, animation_index, joint_index);
 }
 
-void evaluate_model_animation(int animation_index, float time)
+/*
+int get_model_current_animation_index()
 {
-  aem_evaluate_model_animation(model, animation_index, time, **joint_transforms);
+  if (!mixer || aem_get_animation_mixer_mode(mixer) == AEMAnimationMixerMode_BindPose)
+  {
+    return -1;
+  }
+
+  return (int)aem_get_current_animation_index(mixer);
+}
+
+float get_model_current_animation_time()
+{
+  return aem_get_current_animation_time(mixer);
+}
+
+bool get_model_animation_playing()
+{
+  if (!mixer)
+  {
+    return false;
+  }
+
+  return aem_get_animation_mixer_state(mixer) == AEMAnimationMixerState_Playing;
+}
+
+bool get_model_animation_stopped()
+{
+  if (!mixer)
+  {
+    return true;
+  }
+
+  return aem_get_animation_mixer_state(mixer) == AEMAnimationMixerState_Stopped;
+}
+
+void set_model_animation(int index)
+{
+  if (!mixer)
+  {
+    return;
+  }
+
+  if (index < 0)
+  {
+    aem_set_animation_mixer_mode(mixer, AEMAnimationMixerMode_BindPose);
+    aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Stopped);
+  }
+  else if (index < animation_count)
+  {
+    aem_set_animation_mixer_mode(mixer, AEMAnimationMixerMode_Animated);
+    aem_switch_to_animation_immediately(mixer, (uint32_t)index);
+  }
+}
+
+void set_model_animation_time(float time)
+{
+  aem_set_animation_time(mixer, aem_get_current_animation_index(mixer), time);
+}
+
+void play_model_animation()
+{
+  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Playing);
+}
+
+void pause_model_animation()
+{
+  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Paused);
+}
+
+void stop_model_animation()
+{
+  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Stopped);
+}
+*/
+
+void model_update_animation(float delta_time)
+{
+  if (mixer)
+  {
+    aem_update_animation(model, mixer, delta_time, **joint_transforms);
+  }
 }
 
 void draw_model_opaque()

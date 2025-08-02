@@ -1,9 +1,9 @@
-#include "gui_skeleton.h"
+#include "skeleton.h"
 
 #include "model.h"
 #include "skeleton_state.h"
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -29,10 +29,15 @@ static uint32_t node_count;
 
 struct SkeletonState* skeleton_state;
 
-void init_gui_skeleton(struct SkeletonState* skeleton_state_, struct AEMJoint* joints, uint32_t joint_count)
+void init_skeleton(struct SkeletonState* skeleton_state_)
 {
   skeleton_state = skeleton_state_;
-  node_count = joint_count;
+}
+
+void skeleton_on_new_model()
+{
+  struct AEMJoint* joints = get_model_joints();
+  node_count = get_model_joint_count();
 
   if (node_count <= 0)
   {
@@ -145,7 +150,7 @@ static void draw_skeleton_tree(const struct Node* node)
   }
 }
 
-void update_gui_skeleton(int screen_width, int screen_height)
+void update_skeleton(int screen_width, int screen_height)
 {
   skeleton_state->selected_joint_index = -1;
 
@@ -169,7 +174,7 @@ void update_gui_skeleton(int screen_width, int screen_height)
   igEnd();
 }
 
-void destroy_gui_skeleton()
+void destroy_skeleton()
 {
   for (uint32_t node_index = 0; node_index < node_count; ++node_index)
   {

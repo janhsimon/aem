@@ -4,24 +4,23 @@
 #include <stdint.h>
 
 struct GLFWwindow;
-struct AnimationState;
 struct DisplayState;
 struct SceneState;
 struct SkeletonState;
 struct AEMJoint;
 
 void init_gui(struct GLFWwindow* window,
-              struct AnimationState* animation_state,
               struct DisplayState* display_state,
               struct SceneState* scene_state,
+              struct SkeletonState* skeleton_state,
               void (*file_open_callback)());
 
 bool is_mouse_consumed();
 bool is_keyboard_consumed();
 
-void gui_on_new_model_loaded(struct SkeletonState* skeleton_state, struct AEMJoint* joints, uint32_t joint_count);
+void gui_on_new_model_loaded();
 
-void update_gui(int screen_width, int screen_height, char** animation_names, float animation_duration);
+void update_gui(int screen_width, int screen_height);
 void render_gui();
 
 void destroy_gui();

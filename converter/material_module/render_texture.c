@@ -1,6 +1,6 @@
 #include "render_texture.h"
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 #include <cglm/common.h>
 

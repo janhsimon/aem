@@ -19,7 +19,7 @@
 
 #include <cgltf/cgltf.h>
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 #include <assert.h>
 #include <string.h>

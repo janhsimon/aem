@@ -1,7 +1,5 @@
 #pragma once
 
-#include <aem/aem.h>
-
 #include <glad/gl.h>
 
 #include <stdbool.h>

@@ -1,20 +1,20 @@
-#include "aem.h"
+#include "model.h"
 #include "common.h"
 
 #include <stdlib.h>
 
-enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
+enum AEMModelResult aem_load_model(const char* filename, struct AEMModel** model)
 {
   *model = malloc(sizeof(struct AEMModel));
   if (!*model)
   {
-    return AEMResult_OutOfMemory;
+    return AEMModelResult_OutOfMemory;
   }
 
   (*model)->fp = fopen(filename, "rb");
   if (!(*model)->fp)
   {
-    return AEMResult_FileNotFound;
+    return AEMModelResult_FileNotFound;
   }
 
   // Check ID and version number
@@ -24,13 +24,13 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
     if (id[0] != 'A' || id[1] != 'E' || id[2] != 'M')
     {
       fclose((*model)->fp);
-      return AEMResult_InvalidFileType;
+      return AEMModelResult_InvalidFileType;
     }
 
     if (id[3] != 1)
     {
       fclose((*model)->fp);
-      return AEMResult_InvalidVersion;
+      return AEMModelResult_InvalidVersion;
     }
   }
 
@@ -52,7 +52,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   if (!(*model)->load_time_data)
   {
     fclose((*model)->fp);
-    return AEMResult_OutOfMemory;
+    return AEMModelResult_OutOfMemory;
   }
 
   fread((*model)->load_time_data, load_time_data_size, 1, (*model)->fp);
@@ -63,7 +63,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
   if (!(*model)->run_time_data)
   {
     fclose((*model)->fp);
-    return AEMResult_OutOfMemory;
+    return AEMModelResult_OutOfMemory;
   }
 
   fread((*model)->run_time_data, run_time_data_size, 1, (*model)->fp);
@@ -86,7 +86,7 @@ enum AEMResult aem_load_model(const char* filename, struct AEMModel** model)
     (*model)->keyframes = (struct Keyframe*)((uint8_t*)(*model)->tracks + tracks_size);
   }
 
-  return AEMResult_Success;
+  return AEMModelResult_Success;
 }
 
 void aem_finish_loading_model(const struct AEMModel* model)

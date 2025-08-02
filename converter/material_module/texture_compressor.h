@@ -1,6 +1,6 @@
 #pragma once
 
-#include <aem/aem.h>
+#include <aem/model.h>
 
 typedef struct OutputTexture OutputTexture;
 

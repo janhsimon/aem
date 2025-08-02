@@ -1,5 +1,9 @@
 #pragma once
 
+#include "animation_mixer.h"
+#include "model.h"
+
+#include <stdbool.h>
 #include <stdio.h>
 
 struct Header
@@ -55,4 +59,22 @@ struct AEMModel
   struct Animation* animations;
   struct Track* tracks;
   struct Keyframe* keyframes;
+};
+
+struct AEMAnimationMixer
+{
+  struct AEMAnimationChannel* channels;
+  uint32_t channel_count;
+
+  float* joint_transforms;
+  uint32_t joint_count;
+
+  bool is_blending;
+  uint32_t blend_target_channel_index;
+  float blend_target_channel_initial_weight;
+  float blend_progress;
+  float blend_speed;
+  enum AEMAnimationBlendMode blend_mode;
+
+  bool is_enabled;
 };

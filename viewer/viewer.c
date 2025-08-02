@@ -1,8 +1,7 @@
-#include "animation_state.h"
 #include "camera.h"
 #include "display_state.h"
 #include "grid.h"
-#include "gui.h"
+#include "gui/gui.h"
 #include "input.h"
 #include "light.h"
 #include "model.h"
@@ -12,7 +11,7 @@
 #include "scene_state.h"
 #include "skeleton_state.h"
 
-#include <aem/aem.h>
+#include <aem/model.h>
 #include <cglm/affine.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
@@ -29,12 +28,9 @@ static int window_height = 800;
 
 static struct GLFWwindow* window = NULL;
 
-static struct AnimationState animation_state;
 static struct DisplayState display_state;
 static struct SceneState scene_state;
 static struct SkeletonState skeleton_state;
-
-static char** animation_names = NULL;
 
 static bool model_loaded = false;
 
@@ -60,8 +56,10 @@ void file_open_callback()
   }
 
   // Teardown the old model if there was one loaded and the file dialog was not canceled
+  uint32_t old_animation_count = 0;
   if (model_loaded)
   {
+    old_animation_count = get_model_animation_count();
     destroy_model();
     model_loaded = false;
   }
@@ -73,6 +71,7 @@ void file_open_callback()
 
   if (!load_model(filepath, path))
   {
+    printf("Failed to load model \"%s\"\n", filepath);
     return;
   }
 
@@ -94,30 +93,11 @@ void file_open_callback()
   NFD_FreePath(filepath);
   NFD_Quit();
 
-  if (animation_names)
-  {
-    for (uint32_t animation_index = 0; animation_index < animation_state.animation_count; ++animation_index)
-    {
-      free(animation_names[animation_index]);
-    }
-    free(animation_names);
-  }
-  animation_names = get_model_animation_names();
-
-  animation_state.animation_count = get_model_animation_count();
-  activate_animation(&animation_state, -1); // Bind pose
-
   scene_state.scale = 100;
 
-  evaluate_model_animation(animation_state.current_index, 0.0f);
-
-  // Update the skeleton UI and overlay
-  {
-    struct AEMJoint* joints = get_model_joints();
-    uint32_t joint_count = get_model_joint_count();
-    gui_on_new_model_loaded(&skeleton_state, joints, joint_count);
-    skeleton_overlay_on_new_model_loaded(joints, joint_count);
-  }
+  // Update the UI and overlay for this new model
+  gui_on_new_model_loaded();
+  skeleton_overlay_on_new_model_loaded();
 
   model_loaded = true;
 }
@@ -135,12 +115,6 @@ void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
 
 int main(int argc, char* argv[])
 {
-  // Initialize animation state
-  animation_state.speed = 100;
-  animation_state.loop = true;
-  animation_state.animation_count = 0;
-  activate_animation(&animation_state, -1); // Bind pose
-
   // Initialize display state
   display_state.show_gui = true;
   display_state.show_grid = true;
@@ -207,8 +181,8 @@ int main(int argc, char* argv[])
     glDisable(GL_CULL_FACE);
   }
 
-  init_input(&animation_state, &display_state, &scene_state, file_open_callback);
-  init_gui(window, &animation_state, &display_state, &scene_state, file_open_callback);
+  init_input(&display_state, &scene_state, file_open_callback);
+  init_gui(window, &display_state, &scene_state, &skeleton_state, file_open_callback);
 
   if (!load_model_renderer())
   {
@@ -242,21 +216,14 @@ int main(int argc, char* argv[])
       const float delta_time = (float)(now_time - prev_time);
       prev_time = now_time;
 
-      float animation_duration = 0.0f;
-      if (animation_state.current_index >= 0)
-      {
-        animation_duration = get_model_animation_duration(animation_state.current_index);
-      }
-
       if (display_state.show_gui)
       {
-        update_gui(window_width, window_height, animation_names, animation_duration);
+        update_gui(window_width, window_height);
       }
 
       if (model_loaded)
       {
-        update_animation_state(&animation_state, delta_time, animation_duration);
-        evaluate_model_animation(animation_state.current_index, animation_state.time);
+        model_update_animation(delta_time);
       }
 
       if (scene_state.auto_rotate_camera)

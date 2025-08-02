@@ -1,14 +1,10 @@
 #pragma once
 
-struct AnimationState;
 struct DisplayState;
 struct GLFWwindow;
 struct SceneState;
 
-void init_input(struct AnimationState* animation_state,
-                struct DisplayState* display_state,
-                struct SceneState* scene_state,
-                void (*file_open_callback)());
+void init_input(struct DisplayState* display_state, struct SceneState* scene_state, void (*file_open_callback)());
 
 void cursor_pos_callback(struct GLFWwindow* window, double x, double y);
 void scroll_callback(struct GLFWwindow* window, double x, double y);

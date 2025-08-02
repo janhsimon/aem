@@ -1,9 +1,6 @@
 set(TARGET_NAME viewer)
 
 set(SOURCE
-  animation_state.c
-  animation_state.h
-
   camera.c
   camera.h
 
@@ -11,12 +8,6 @@ set(SOURCE
 
   grid.c
   grid.h
-
-  gui.c
-  gui.h
-
-  gui_skeleton.c
-  gui_skeleton.h
 
   input.c
   input.h
@@ -38,6 +29,18 @@ set(SOURCE
   texture.h
 
   viewer.c
+
+  gui/animation_mixer.c
+  gui/animation_mixer.h
+
+  gui/gui.c
+  gui/gui.h
+
+  gui/main_menu.c
+  gui/main_menu.h
+
+  gui/skeleton.c
+  gui/skeleton.h
 
   overlay/skeleton_overlay.c
   overlay/skeleton_overlay.h

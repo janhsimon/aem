@@ -1,10 +1,10 @@
 #include "input.h"
 
-#include "animation_state.h"
 #include "camera.h"
 #include "display_state.h"
-#include "gui.h"
+#include "gui/gui.h"
 #include "light.h"
+#include "model.h"
 #include "scene_state.h"
 
 #include <cglm/vec2.h>
@@ -20,18 +20,13 @@ static vec2 last_cursor_pos;
 static uint8_t mouse_button_mask = 0;
 static uint8_t keyboard_key_mask = 0;
 
-static struct AnimationState* animation_state;
 static struct DisplayState* display_state;
 static struct SceneState* scene_state;
 
 static void (*file_open_callback)() = NULL;
 
-void init_input(struct AnimationState* animation_state_,
-                struct DisplayState* display_state_,
-                struct SceneState* scene_state_,
-                void (*file_open_callback_)())
+void init_input(struct DisplayState* display_state_, struct SceneState* scene_state_, void (*file_open_callback_)())
 {
-  animation_state = animation_state_;
   display_state = display_state_;
   scene_state = scene_state_;
 
@@ -199,25 +194,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       {
         scene_state->scale = 500;
       }
-    }
-    else if (key == GLFW_KEY_L)
-    {
-      animation_state->loop = !animation_state->loop;
-    }
-    else if (key == GLFW_KEY_SPACE)
-    {
-      if (animation_state->current_index >= 0)
-      {
-        animation_state->playing = !animation_state->playing;
-      }
-    }
-    else if (key == GLFW_KEY_0)
-    {
-      activate_animation(animation_state, -1);
-    }
-    else if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9)
-    {
-      activate_animation(animation_state, key - GLFW_KEY_1);
     }
   }
 }
