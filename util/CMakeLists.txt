@@ -4,8 +4,9 @@ set(SOURCE
   include/util/util.h
 
   filename.c
-  text.c
   shader.c
+  text.c
+  texture.c
 )
 
 set(DEPENDENCIES

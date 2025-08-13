@@ -10,5 +10,6 @@ add_subdirectory(external)
 
 add_subdirectory(converter)
 add_subdirectory(libaem)
+add_subdirectory(showcase)
 add_subdirectory(util)
 add_subdirectory(viewer)

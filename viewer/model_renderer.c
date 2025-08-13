@@ -1,7 +1,5 @@
 #include "model_renderer.h"
 
-#include "texture.h"
-
 #include <aem/model.h>
 
 #include <util/util.h>

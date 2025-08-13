@@ -1,7 +1,7 @@
 #pragma once
 
 // Compress textures for faster load times, but takes significantly longer to convert
-// #define COMPRESS_TEXTURES
+#define COMPRESS_TEXTURES
 
 // Skip optional steps to improve performance
 // #define SKIP_INPUT_VALIDATION // Provided by cgltf

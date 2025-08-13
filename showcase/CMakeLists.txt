@@ -1,64 +1,31 @@
-set(TARGET_NAME viewer)
+set(TARGET_NAME showcase)
 
 set(SOURCE
   camera.c
   camera.h
 
-  display_state.h
-
-  grid.c
-  grid.h
+  hud.c
+  hud.h
 
   input.c
   input.h
 
-  light.c
-  light.h
+  model_manager.c
+  model_manager.h
 
-  model.c
-  model.h
+  renderer.c
+  renderer.h
 
-  model_renderer.c
-  model_renderer.h
+  showcase.c
 
-  scene_state.h
+  view_model.c
+  view_model.h
 
-  skeleton_state.h
+  window.c
+  window.h
 
-  viewer.c
-
-  gui/animation_mixer.c
-  gui/animation_mixer.h
-
-  gui/gui.c
-  gui/gui.h
-
-  gui/main_menu.c
-  gui/main_menu.h
-
-  gui/skeleton.c
-  gui/skeleton.h
-
-  overlay/skeleton_overlay.c
-  overlay/skeleton_overlay.h
-
-  overlay/wireframe_overlay.c
-  overlay/wireframe_overlay.h
-
-  shaders/grid.vert.glsl
-  shaders/grid.frag.glsl
-
-  shaders/model.vert.glsl
-  shaders/model.frag.glsl
-
-  shaders/overlay/skeleton.vert.glsl
-  shaders/overlay/skeleton_point.geo.glsl
-  shaders/overlay/skeleton_line.geo.glsl
-
-  shaders/overlay/wireframe.vert.glsl
-  shaders/overlay/wireframe.geo.glsl
-
-  shaders/overlay/overlay.frag.glsl
+  shaders/vert.glsl
+  shaders/frag.glsl
 )
 
 set(DEPENDENCIES
@@ -67,8 +34,6 @@ set(DEPENDENCIES
   glad
   glfw
   libaem
-  nfdx
-  stb
   util
 )
 
@@ -93,4 +58,5 @@ foreach (EXTRA_BIN ${EXTRA_BINS})
 endforeach()
 
 # Copy assets
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/models" "$<TARGET_FILE_DIR:${TARGET_NAME}>/models")
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")

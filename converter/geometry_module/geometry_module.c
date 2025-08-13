@@ -135,7 +135,7 @@ static void add_vertices_to_output_mesh(OutputMesh* output_mesh,
     }
 
     // Joints (optional)
-    if (joints)
+    if (joints && input_file->animations_count > 0)
     {
       assert(skin);
 

@@ -5,41 +5,9 @@ const int RENDER_PASS_TRANSPARENT = 1;
 
 uniform int render_pass;
 
-
-const int RENDER_MODE_FULL = 0;
-
-const int RENDER_MODE_VERTEX_POSITION = 1;
-const int RENDER_MODE_VERTEX_NORMAL = 2;
-const int RENDER_MODE_VERTEX_TANGENT = 3;
-const int RENDER_MODE_VERTEX_BITANGENT = 4;
-const int RENDER_MODE_VERTEX_UV = 5;
-
-const int RENDER_MODE_TEXTURE_BASE_COLOR = 6;
-const int RENDER_MODE_TEXTURE_OPACITY = 7;
-const int RENDER_MODE_TEXTURE_NORMAL = 8;
-const int RENDER_MODE_TEXTURE_ROUGHNESS = 9;
-const int RENDER_MODE_TEXTURE_OCCLUSION = 10;
-const int RENDER_MODE_TEXTURE_METALNESS = 11;
-const int RENDER_MODE_TEXTURE_EMISSIVE = 12;
-
-const int RENDER_MODE_COMBINED_NORMAL = 13;
-
-uniform int render_mode;
-
-
-const int POSTPROCESSING_MODE_LINEAR = 0;
-const int POSTPROCESSING_MODE_SRGB = 1;
-const int POSTPROCESSING_MODE_SRGB_REINHARD = 2;
-const int POSTPROCESSING_MODE_SRGB_REINHARD_X = 3;
-const int POSTPROCESSING_MODE_SRGB_ACES = 4;
-const int POSTPROCESSING_MODE_SRGB_FILMIC = 5;
-
-uniform int postprocessing_mode;
-
-
-uniform vec4 ambient_color; // In linear space, RGB, A: intensity
-uniform vec3 light_dir;
-uniform vec4 light_color; // In linear space, RGB, A: intensity
+uniform vec4 ambient_color = vec4(0.85, 0.75, 1.0, 0.1); // In linear space, RGB, A: intensity
+uniform vec3 light_dir = vec3(1.0, -1.0, 1.0);
+uniform vec4 light_color = vec4(0.97, 0.72, 0.47, 10.0); // In linear space, RGB, A: intensity
 uniform vec3 camera_pos; // In world space
 
 uniform sampler2D base_color_tex;
@@ -201,73 +169,22 @@ void main()
   vec3 color = ambient + Lo + emissive;
 
   // Postprocessing
-  if (postprocessing_mode != POSTPROCESSING_MODE_LINEAR) {
-    if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD) {
-        color = reinhard(color);
-    }
-    else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD_X) {
-        color = reinhard_x(color, 1.0);
-    }
-    else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_ACES) {
-        color = aces(color);
-    }
-    else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_FILMIC) {
-        color = filmic(color);
-    }
+  // if (postprocessing_mode != POSTPROCESSING_MODE_LINEAR) {
+  //   if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD) {
+  //       color = reinhard(color);
+  //   }
+  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD_X) {
+  //       color = reinhard_x(color, 1.0);
+  //   }
+  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_ACES) {
+         color = aces(color);
+  //   }
+  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_FILMIC) {
+  //       color = filmic(color);
+  //   }
 
     color = linear_to_srgb(color);
-  }
+  // }
 
-  if (render_mode == RENDER_MODE_FULL) {
     out_color = vec4(color, opacity);
-  }
-  
-  else if (render_mode == RENDER_MODE_VERTEX_POSITION) {
-    out_color = vec4(i.position, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_VERTEX_NORMAL) {
-    out_color = vec4(i.normal * 0.5 + 0.5, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_VERTEX_TANGENT) {
-    out_color = vec4(i.tangent * 0.5 + 0.5, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_VERTEX_BITANGENT) {
-    out_color = vec4(i.bitangent * 0.5 + 0.5, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_VERTEX_UV) {
-    vec2 grid = i.uv * 64.0;
-    if (floor(mod(grid.x, 2)) == floor(mod(grid.y, 2))) {
-        out_color = vec4(i.uv, 1.0, 1.0);
-    }
-    else {
-        out_color = vec4(1.0 - i.uv, 1.0, 1.0);
-    }
-  }
-
-  else if (render_mode == RENDER_MODE_TEXTURE_BASE_COLOR) {
-    out_color = vec4(base_color_sample.rgb, opacity);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_OPACITY) {
-    out_color = vec4(opacity, opacity, opacity, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_NORMAL) {
-    out_color = vec4(normal_sample.rg * 0.5 + 0.5, 1.0, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_ROUGHNESS) {
-    out_color = vec4(roughness, roughness, roughness, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_OCCLUSION) {
-    out_color = vec4(occlusion, occlusion, occlusion, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_METALNESS) {
-    out_color = vec4(metalness, metalness, metalness, 1.0);
-  }
-  else if (render_mode == RENDER_MODE_TEXTURE_EMISSIVE) {
-    out_color = vec4(emissive, 1.0);
-  }
-
-  else if (render_mode == RENDER_MODE_COMBINED_NORMAL) {
-    out_color = vec4(N * 0.5 + 0.5, 1.0);
-  }
-  
 }

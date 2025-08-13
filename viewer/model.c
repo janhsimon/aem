@@ -1,10 +1,11 @@
 #include "model.h"
 
 #include "model_renderer.h"
-#include "texture.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
+
+#include <util/util.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -151,10 +152,10 @@ char** get_model_animation_names()
   assert(names);
   for (unsigned int animation_index = 0; animation_index < animation_count; ++animation_index)
   {
-    names[animation_index] = malloc(sizeof(aem_string));
+    names[animation_index] = malloc(sizeof(aem_string) * 2);
     assert(names[animation_index]);
     const aem_string* name = aem_get_model_animation_name(model, animation_index);
-    memcpy(names[animation_index], name, sizeof(aem_string));
+    sprintf(names[animation_index], "#%u: %s", animation_index, name);
   }
 
   return names;
@@ -242,82 +243,6 @@ uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t
 {
   return aem_get_model_joint_scale_keyframe_count(model, animation_index, joint_index);
 }
-
-/*
-int get_model_current_animation_index()
-{
-  if (!mixer || aem_get_animation_mixer_mode(mixer) == AEMAnimationMixerMode_BindPose)
-  {
-    return -1;
-  }
-
-  return (int)aem_get_current_animation_index(mixer);
-}
-
-float get_model_current_animation_time()
-{
-  return aem_get_current_animation_time(mixer);
-}
-
-bool get_model_animation_playing()
-{
-  if (!mixer)
-  {
-    return false;
-  }
-
-  return aem_get_animation_mixer_state(mixer) == AEMAnimationMixerState_Playing;
-}
-
-bool get_model_animation_stopped()
-{
-  if (!mixer)
-  {
-    return true;
-  }
-
-  return aem_get_animation_mixer_state(mixer) == AEMAnimationMixerState_Stopped;
-}
-
-void set_model_animation(int index)
-{
-  if (!mixer)
-  {
-    return;
-  }
-
-  if (index < 0)
-  {
-    aem_set_animation_mixer_mode(mixer, AEMAnimationMixerMode_BindPose);
-    aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Stopped);
-  }
-  else if (index < animation_count)
-  {
-    aem_set_animation_mixer_mode(mixer, AEMAnimationMixerMode_Animated);
-    aem_switch_to_animation_immediately(mixer, (uint32_t)index);
-  }
-}
-
-void set_model_animation_time(float time)
-{
-  aem_set_animation_time(mixer, aem_get_current_animation_index(mixer), time);
-}
-
-void play_model_animation()
-{
-  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Playing);
-}
-
-void pause_model_animation()
-{
-  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Paused);
-}
-
-void stop_model_animation()
-{
-  aem_set_animation_mixer_state(mixer, AEMAnimationMixerState_Stopped);
-}
-*/
 
 void model_update_animation(float delta_time)
 {

@@ -202,3 +202,11 @@ Tracks index into the [keyframe section](#keyframe-section). There is a track fo
 (The fields above repeated for each keyframe in the file.)
 
 The time of the keyframe is defined in seconds. Keyframes are generic, they can represent position, rotation or scale keyframes, depending on how the track using the keyframe is indexing it. For position and scale keyframes, the last component W is 0. For rotation keyframes, the X, Y, Z, W values define a quaternion that expresses the rotation of the keyframe.
+
+# Attributions
+
+| Asset | Title | Author | License |
+| --- | --- | --- | --- |
+| `showcase/models/sponza_*.aem` | [Sponza](https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html) | [Intel](https://www.intel.com) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| `showcase/models/ak.aem` | [AK-74M](https://sketchfab.com/3d-models/ak-74m-animations-blender-effd52406532433eaac9454740572c57) | [LokitoBlu](https://sketchfab.com/martinezequielgorno) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| `showcase/models/car.aem` | [Keller's Car](https://sketchfab.com/3d-models/kellers-car-wolf-new-order-930c8edf1ee341ddad215724efc6d081) | [Nazar Okruzhko](https://sketchfab.com/Hot-Dog_1947) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |

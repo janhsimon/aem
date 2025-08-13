@@ -86,12 +86,13 @@ enum AEMModelResult aem_load_model(const char* filename, struct AEMModel** model
     (*model)->keyframes = (struct Keyframe*)((uint8_t*)(*model)->tracks + tracks_size);
   }
 
+  fclose((*model)->fp);
+
   return AEMModelResult_Success;
 }
 
 void aem_finish_loading_model(const struct AEMModel* model)
 {
-  fclose(model->fp);
   free(model->load_time_data);
 }
 
@@ -169,7 +170,7 @@ const struct AEMMaterial* aem_get_model_material(const struct AEMModel* model, u
 
 const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, uint32_t* texture_count)
 {
-  *texture_count = model->header.texture_count;
+   *texture_count = model->header.texture_count;
   return model->textures;
 }
 
