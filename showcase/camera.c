@@ -52,9 +52,7 @@ void camera_add_yaw_pitch(float yaw_, float pitch_)
 
 void camera_add_move(float move[3])
 {
-  glm_mat3_mulv(orientation, move, move); // Transform move from local to camera space
-  move[1] = 0.0f;                         // Flatten
-  glm_vec3_add(position, move, position); // And add it to the camera position
+  glm_vec3_add(position, move, position);
 }
 
 void calc_view_matrix(mat4 view_matrix)

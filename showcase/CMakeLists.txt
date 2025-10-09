@@ -4,6 +4,9 @@ set(SOURCE
   camera.c
   camera.h
 
+  collision.c
+  collision.h
+
   hud.c
   hud.h
 
