@@ -35,7 +35,7 @@ enum AEMTextureCompression
 
 struct AEMTexture
 {
-  uint32_t offset; // Into image buffer
+  uint64_t offset; // Into image buffer
   uint32_t width, height;
   enum AEMTextureWrapMode wrap_mode[2]; // 0: x, 1: y
   uint32_t channel_count;
@@ -82,7 +82,7 @@ void* aem_get_model_index_buffer(const struct AEMModel* model);
 uint32_t aem_get_model_index_count(const struct AEMModel* model);
 
 void* aem_get_model_image_buffer(const struct AEMModel* model);
-uint32_t aem_get_model_image_buffer_size(const struct AEMModel* model);
+uint64_t aem_get_model_image_buffer_size(const struct AEMModel* model);
 
 const struct AEMTexture* aem_get_model_textures(const struct AEMModel* model, uint32_t* texture_count);
 

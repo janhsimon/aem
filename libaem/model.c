@@ -38,7 +38,7 @@ enum AEMModelResult aem_load_model(const char* filename, struct AEMModel** model
 
   const uint32_t vertex_buffer_size = (*model)->header.vertex_count * AEM_VERTEX_SIZE;
   const uint32_t index_buffer_size = (*model)->header.index_count * AEM_INDEX_SIZE;
-  const uint32_t image_buffer_size = (*model)->header.image_buffer_size;
+  const uint64_t image_buffer_size = (*model)->header.image_buffer_size;
   const uint32_t textures_size = (*model)->header.texture_count * sizeof(struct AEMTexture);
   const uint32_t meshes_size = (*model)->header.mesh_count * sizeof(struct AEMMesh);
   const uint32_t materials_size = (*model)->header.material_count * sizeof(struct AEMMaterial);
@@ -47,7 +47,7 @@ enum AEMModelResult aem_load_model(const char* filename, struct AEMModel** model
   const uint32_t tracks_size = (*model)->header.track_count * sizeof(struct Track);
   const uint32_t keyframes_size = (*model)->header.keyframe_count * sizeof(struct Keyframe);
 
-  const uint32_t load_time_data_size = vertex_buffer_size + index_buffer_size + image_buffer_size + textures_size;
+  const uint64_t load_time_data_size = vertex_buffer_size + index_buffer_size + image_buffer_size + textures_size;
   (*model)->load_time_data = malloc(load_time_data_size);
   if (!(*model)->load_time_data)
   {
@@ -108,7 +108,7 @@ void aem_print_model_info(struct AEMModel* model)
 
   printf("Vertex count: %u\n", header->vertex_count);
   printf("Index count: %u\n", header->index_count);
-  printf("Image buffer size: %u bytes\n", header->image_buffer_size);
+  printf("Image buffer size: %llu bytes\n", header->image_buffer_size);
   printf("Texture count: %u\n", header->texture_count);
   printf("Mesh count: %u\n", header->mesh_count);
   printf("Material count: %u\n", header->material_count);
@@ -143,7 +143,7 @@ void* aem_get_model_image_buffer(const struct AEMModel* model)
   return model->image_buffer;
 }
 
-uint32_t aem_get_model_image_buffer_size(const struct AEMModel* model)
+uint64_t aem_get_model_image_buffer_size(const struct AEMModel* model)
 {
   return model->header.image_buffer_size;
 }

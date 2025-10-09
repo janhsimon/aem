@@ -306,13 +306,13 @@ bool mat_get_texture_transform_for_material(const cgltf_material* material, mat3
   return false;
 }
 
-uint32_t mat_calculate_image_buffer_size()
+uint64_t mat_calculate_image_buffer_size()
 {
-  uint32_t size = 0;
+  uint64_t size = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
     const OutputTexture* texture = &output_textures[texture_index];
-    size += texture->data_size;
+    size += (uint64_t)texture->data_size;
   }
 
   return size;
@@ -339,7 +339,7 @@ void mat_write_image_buffer(FILE* output_file)
 
 void mat_write_textures(FILE* output_file)
 {
-  uint32_t offset = 0;
+  uint64_t offset = 0;
   for (cgltf_size texture_index = 0; texture_index < texture_count; ++texture_index)
   {
     const OutputTexture* output_texture = &output_textures[texture_index];
@@ -359,7 +359,7 @@ void mat_write_textures(FILE* output_file)
     fwrite(&output_texture->channel_count, sizeof(output_texture->channel_count), 1, output_file);
     fwrite(&output_texture->compression, sizeof(output_texture->compression), 1, output_file);
 
-    offset += output_texture->data_size;
+    offset += (uint64_t)output_texture->data_size;
   }
 }
 

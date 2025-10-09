@@ -33,14 +33,14 @@ This repository contains:
 | 3      | 1    | Version number                | Unsigned integer |
 | 4      | 4    | Number of vertices            | Unsigned integer |
 | 8      | 4    | Number of indices             | Unsigned integer |
-| 12     | 4    | Size of image buffer in bytes | Unsigned integer |
-| 16     | 4    | Number of textures            | Unsigned integer |
-| 20     | 4    | Number of meshes              | Unsigned integer |
-| 24     | 4    | Number of materials           | Unsigned integer |
-| 28     | 4    | Number of joints              | Unsigned integer |
-| 32     | 4    | Number of animations          | Unsigned integer |
-| 36     | 4    | Number of tracks              | Unsigned integer |
-| 40     | 4    | Number of keyframes           | Unsigned integer |
+| 12     | 8    | Size of image buffer in bytes | Unsigned integer |
+| 20     | 4    | Number of textures            | Unsigned integer |
+| 24     | 4    | Number of meshes              | Unsigned integer |
+| 28     | 4    | Number of materials           | Unsigned integer |
+| 32     | 4    | Number of joints              | Unsigned integer |
+| 36     | 4    | Number of animations          | Unsigned integer |
+| 40     | 4    | Number of tracks              | Unsigned integer |
+| 44     | 4    | Number of keyframes           | Unsigned integer |
 
 The magic number is always "AEM" in ASCII (`0x41 45 4D`). This specification describes version 1 of the file format.
 
@@ -102,15 +102,16 @@ The indices index into the [vertex section](#vertex-section).
 
 ## Texture Section
 
-| Offset | Size | Description | Data Type        |
-| ------ | ---- | ----------- | ---------------- |
-| 0      | 4    | Offset      | Unsigned integer |
-| 4      | 4    | Width       | Unsigned integer |
-| 8      | 4    | Height      | Unsigned integer |
-| 12     | 4    | Wrap mode X | Unsigned integer |
-| 16     | 4    | Wrap mode Y | Unsigned integer |
-| 20     | 4    | Compression | Unsigned integer |
-| ...    | ...  | (repeat)    | ...              |
+| Offset | Size | Description        | Data Type        |
+| ------ | ---- | ------------------ | ---------------- |
+| 0      | 8    | Offset             | Unsigned integer |
+| 8      | 4    | Width              | Unsigned integer |
+| 12     | 4    | Height             | Unsigned integer |
+| 16     | 4    | Wrap mode X        | Unsigned integer |
+| 20     | 4    | Wrap mode Y        | Unsigned integer |
+| 24     | 4    | Number of channels | Unsigned integer |
+| 28     | 4    | Compression        | Unsigned integer |
+| ...    | ...  | (repeat)           | ...              |
 
 (The field above is repeated for each texture in the file.)
 
