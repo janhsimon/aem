@@ -17,16 +17,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define GRAVITY 10.0f
-
-#define PLAYER_RADIUS 0.25f
-#define PLAYER_HEIGHT 1.8f
-#define PLAYER_ACCEL 0.3f
-#define PLAYER_DECEL 0.1f
-#define PLAYER_MOVE_SPEED 0.03f
-
-static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
-
 static struct ModelRenderInfo *sponza_base = NULL, *sponza_curtains = NULL, *sponza_ivy = NULL, *sponza_tree = NULL,
                               *ak = NULL, *car = NULL;
 
