@@ -53,30 +53,69 @@ int main(int argc, char* argv[])
   float* collision_vertices = NULL;
   uint32_t* collision_indices = NULL;
   {
-    struct AEMModel* model = NULL;
-    if (aem_load_model("models/sponza_c.aem", &model) != AEMModelResult_Success)
+    struct AEMModel *model1 = NULL, *model2 = NULL;
+    if (aem_load_model("models/sponza_c.aem", &model1) != AEMModelResult_Success)
     {
       return NULL;
     }
 
+    if (aem_load_model("models/car_c.aem", &model2) != AEMModelResult_Success)
     {
-      collision_vertex_count = aem_get_model_vertex_count(model);
+      return NULL;
+    }
 
-      const uint32_t size = AEM_VERTEX_SIZE * collision_vertex_count;
-      collision_vertices = malloc(size);
-      memcpy(collision_vertices, aem_get_model_vertex_buffer(model), size);
+    const uint32_t vertex_count1 = aem_get_model_vertex_count(model1);
+    const uint32_t vertex_count2 = aem_get_model_vertex_count(model2);
+
+    {
+      collision_vertex_count = vertex_count1 + vertex_count2;
+
+      collision_vertices = malloc(AEM_VERTEX_SIZE * collision_vertex_count);
+
+      memcpy(collision_vertices, aem_get_model_vertex_buffer(model1), AEM_VERTEX_SIZE * vertex_count1);
+      memcpy(collision_vertices + vertex_count1 * 22, aem_get_model_vertex_buffer(model2),
+             AEM_VERTEX_SIZE * vertex_count2);
+
+      mat4 car_matrix;
+      glm_translate_make(car_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
+      glm_rotate(car_matrix, glm_rad(15.0f), GLM_YUP);
+      glm_scale(car_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
+
+      for (uint32_t v = 0; v < vertex_count2; ++v)
+      {
+        vec3 in;
+        glm_vec3_make(&collision_vertices[(vertex_count1 + v) * 22], in);
+
+        glm_mat4_mulv3(car_matrix, in, 1.0f, in);
+
+        collision_vertices[(vertex_count1 + v) * 22 + 0] = in[0];
+        collision_vertices[(vertex_count1 + v) * 22 + 1] = in[1];
+        collision_vertices[(vertex_count1 + v) * 22 + 2] = in[2];
+      }
     }
 
     {
-      collision_index_count = aem_get_model_index_count(model);
+      const uint32_t index_count1 = aem_get_model_index_count(model1);
+      const uint32_t index_count2 = aem_get_model_index_count(model2);
 
-      const uint32_t size = AEM_INDEX_SIZE * collision_index_count;
-      collision_indices = malloc(size);
-      memcpy(collision_indices, aem_get_model_index_buffer(model), size);
+      collision_index_count = index_count1 + index_count2;
+
+      collision_indices = malloc(AEM_INDEX_SIZE * collision_index_count);
+
+      memcpy(collision_indices, aem_get_model_index_buffer(model1), AEM_INDEX_SIZE * index_count1);
+      memcpy(collision_indices + index_count1, aem_get_model_index_buffer(model2), AEM_INDEX_SIZE * index_count2);
+
+      for (uint32_t i = 0; i < index_count2; ++i)
+      {
+        collision_indices[index_count1 + i] += vertex_count1;
+      }
     }
 
-    aem_finish_loading_model(model);
-    aem_free_model(model);
+    aem_finish_loading_model(model1);
+    aem_finish_loading_model(model2);
+
+    aem_free_model(model1);
+    aem_free_model(model2);
   }
 
   if (!load_renderer())

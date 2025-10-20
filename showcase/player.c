@@ -14,7 +14,7 @@
 #define PLAYER_HEIGHT 1.8f
 #define PLAYER_ACCEL 0.3f
 #define PLAYER_DECEL 0.1f
-#define PLAYER_MOVE_SPEED 0.03f
+#define PLAYER_MOVE_SPEED 0.025f
 
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
 
