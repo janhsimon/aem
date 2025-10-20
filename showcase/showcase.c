@@ -18,7 +18,7 @@
 
 #define GRAVITY 10.0f
 
-#define PLAYER_RADIUS 0.5f
+#define PLAYER_RADIUS 0.25f
 #define PLAYER_HEIGHT 1.8f
 #define PLAYER_ACCEL 0.3f
 #define PLAYER_DECEL 0.1f
@@ -143,7 +143,10 @@ int main(int argc, char* argv[])
 
       // Movement
       bool moving;
+      vec3 old_cam_pos;
       {
+        cam_get_position(old_cam_pos);
+
         vec3 move;
         get_move_vector(move, &moving);
 
@@ -183,81 +186,39 @@ int main(int argc, char* argv[])
         camera_add_move(player_velocity);
       }
 
-      // Collision
+      // New-style collision
       {
-        vec3 top;
-        cam_get_position(top);
+        vec3 new_cam_pos;
+        cam_get_position(new_cam_pos);
 
-        vec3 bottom;
-        bottom[0] = top[0];
-        bottom[1] = top[1] - PLAYER_HEIGHT + PLAYER_RADIUS;
-        bottom[2] = top[2];
+        vec3 new_bottom;
+        new_bottom[0] = new_cam_pos[0];
+        new_bottom[1] = new_cam_pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS;
+        new_bottom[2] = new_cam_pos[2];
 
-        for (int iter = 0; iter < 50; ++iter)
+        const float v = glm_vec3_norm(player_velocity);
+        const int step_count = (v / PLAYER_RADIUS) + 1;
+        const float step_length = v / step_count;
+        for (int step = 1; step <= step_count; ++step)
         {
-          bool contact_this_iter = false;
+          vec3 t;
+          glm_vec3_scale_as(player_velocity, step_length * step, t);
 
-          float best_push_len;
-          vec3 best_push;
+          vec3 step_cam_pos;
+          glm_vec3_add(old_cam_pos, t, step_cam_pos);
 
-          for (int t = 0; t < collision_index_count; t += 3)
+          vec3 step_base;
+          step_base[0] = step_cam_pos[0];
+          step_base[1] = step_cam_pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS + PLAYER_RADIUS;
+          step_base[2] = step_cam_pos[2];
+
+          if (collide_capsule(step_base, step_cam_pos, PLAYER_RADIUS, collision_vertices, collision_indices,
+                              collision_index_count))
           {
-            const uint32_t i0 = collision_indices[t + 0];
-            const uint32_t i1 = collision_indices[t + 1];
-            const uint32_t i2 = collision_indices[t + 2];
-
-            vec3 v0, v1, v2;
-            v0[0] = collision_vertices[i0 * 22 + 0];
-            v0[1] = collision_vertices[i0 * 22 + 1];
-            v0[2] = collision_vertices[i0 * 22 + 2];
-
-            v1[0] = collision_vertices[i1 * 22 + 0];
-            v1[1] = collision_vertices[i1 * 22 + 1];
-            v1[2] = collision_vertices[i1 * 22 + 2];
-
-            v2[0] = collision_vertices[i2 * 22 + 0];
-            v2[1] = collision_vertices[i2 * 22 + 1];
-            v2[2] = collision_vertices[i2 * 22 + 2];
-
-            {
-              vec3 closest_seg, closest_tri;
-              closest_point_segment_triangle(bottom, top, v0, v1, v2, closest_seg, closest_tri);
-
-              vec3 v;
-              glm_vec3_sub(closest_seg, closest_tri, v);
-
-              const float v_len = glm_vec3_norm(v);
-              if (v_len < PLAYER_RADIUS)
-              {
-                const float push_len = PLAYER_RADIUS - v_len;
-
-                if (!contact_this_iter || push_len > best_push_len)
-                {
-                  best_push_len = push_len;
-
-                  glm_vec3_normalize(v);
-                  glm_vec3_scale(v, push_len, v);
-
-                  glm_vec3_scale_as(v, push_len, best_push);
-                }
-
-                contact_this_iter = true;
-              }
-            }
-          }
-
-          if (contact_this_iter)
-          {
-            glm_vec3_add(bottom, best_push, bottom);
-            glm_vec3_add(top, best_push, top);
-          }
-          else
-          {
+            cam_set_position(step_cam_pos);
             break;
           }
         }
-
-        cam_set_position(top);
       }
 
       // Mouse look

@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#define ITERATION_COUNT 50
+
 static float closest_segment_segment(vec3 p0, vec3 p1, vec3 q0, vec3 q1, vec3 cp_seg, vec3 cp_tri)
 {
   vec3 u, v, w;
@@ -125,13 +127,8 @@ static bool point_in_triangle(vec3 p, vec3 a, vec3 b, vec3 c)
   return (u >= 0.0f) && (v >= 0.0f) && (u + v <= 1.0f);
 }
 
-void closest_point_segment_triangle(vec3 p0,
-                                    vec3 p1,
-                                    vec3 a,
-                                    vec3 b,
-                                    vec3 c,
-                                    vec3 out_closest_seg,
-                                    vec3 out_closest_tri)
+static void
+closest_point_segment_triangle(vec3 p0, vec3 p1, vec3 a, vec3 b, vec3 c, vec3 out_closest_seg, vec3 out_closest_tri)
 {
   vec3 tri_edges[3][2];
 
@@ -204,4 +201,69 @@ void closest_point_segment_triangle(vec3 p0,
 
   glm_vec3_copy(best_seg, out_closest_seg);
   glm_vec3_copy(best_tri, out_closest_tri);
+}
+
+bool collide_capsule(vec3 base, vec3 top, float radius, float* vertices, uint32_t* indices, uint32_t index_count)
+{
+  bool contact = false;
+
+  for (int iter = 0; iter < ITERATION_COUNT; iter++)
+  {
+    bool contact_this_iter = false;
+
+    float best_push_len;
+    vec3 best_push;
+
+    for (int t = 0; t < index_count; t += 3)
+    {
+      const uint32_t i0 = indices[t + 0];
+      const uint32_t i1 = indices[t + 1];
+      const uint32_t i2 = indices[t + 2];
+
+      vec3 v0, v1, v2;
+      glm_vec3_copy(&vertices[i0 * 22], v0);
+      glm_vec3_copy(&vertices[i1 * 22], v1);
+      glm_vec3_copy(&vertices[i2 * 22], v2);
+
+      {
+        vec3 closest_seg, closest_tri;
+        closest_point_segment_triangle(base, top, v0, v1, v2, closest_seg, closest_tri);
+
+        vec3 v;
+        glm_vec3_sub(closest_seg, closest_tri, v);
+
+        const float v_len = glm_vec3_norm(v);
+        if (v_len < radius)
+        {
+          const float push_len = radius - v_len;
+
+          if (!contact_this_iter || push_len > best_push_len)
+          {
+            best_push_len = push_len;
+
+            glm_vec3_normalize(v);
+            glm_vec3_scale(v, push_len, v);
+
+            glm_vec3_scale_as(v, push_len, best_push);
+          }
+
+          contact = true;
+          contact_this_iter = true;
+        }
+      }
+    }
+
+    if (contact_this_iter)
+    {
+      glm_vec3_add(base, best_push, base);
+      glm_vec3_add(top, best_push, top);
+    }
+    else
+    {
+      // printf("Resolving collisions took %d iterations this frame...\n", iter);
+      break;
+    }
+  }
+
+  return contact;
 }

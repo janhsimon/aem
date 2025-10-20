@@ -2,10 +2,7 @@
 
 #include <cglm/types.h>
 
-void closest_point_segment_triangle(vec3 p0,
-                                    vec3 p1,
-                                    vec3 a,
-                                    vec3 b,
-                                    vec3 c,
-                                    vec3 out_closest_seg,
-                                    vec3 out_closest_tri);
+#include <stdbool.h>
+#include <stdint.h>
+
+bool collide_capsule(vec3 base, vec3 tip, float radius, float* vertices, uint32_t* indices, uint32_t index_count);
