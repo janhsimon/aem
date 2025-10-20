@@ -3,6 +3,7 @@
 #include "hud.h"
 #include "input.h"
 #include "model_manager.h"
+#include "player.h"
 #include "renderer.h"
 #include "view_model.h"
 #include "window.h"
@@ -141,92 +142,10 @@ int main(int argc, char* argv[])
         close_window();
       }
 
-      // Movement
-      bool moving;
-      vec3 old_cam_pos;
-      {
-        cam_get_position(old_cam_pos);
+      bool player_moving;
+      player_update(delta_time, collision_vertices, collision_indices, collision_index_count, &player_moving);
 
-        vec3 move;
-        get_move_vector(move, &moving);
-
-        if (moving)
-        {
-          mat3 cam_orientation;
-          cam_get_orientation((float*)cam_orientation);
-
-          glm_mat3_mulv(cam_orientation, move, move); // Transform move from local to camera space
-          move[1] = 0.0f;                             // Flatten
-          glm_vec3_normalize(move);
-          glm_vec3_scale(move, PLAYER_ACCEL, move);
-
-          glm_vec3_scale(move, delta_time, move);
-
-          glm_vec3_add(move, player_velocity, player_velocity);
-        }
-        else
-        {
-          glm_vec3_scale(player_velocity, 1.0f - PLAYER_DECEL, player_velocity);
-        }
-
-        // Limit max speed
-        {
-          const float orig_y = player_velocity[1];
-          player_velocity[1] = 0.0f;
-          if (glm_vec3_norm(player_velocity) > PLAYER_MOVE_SPEED)
-          {
-            glm_vec3_normalize(player_velocity);
-            glm_vec3_scale(player_velocity, PLAYER_MOVE_SPEED, player_velocity);
-          }
-          player_velocity[1] = orig_y;
-        }
-
-        player_velocity[1] = -GRAVITY * delta_time; // Gravity
-
-        camera_add_move(player_velocity);
-      }
-
-      // New-style collision
-      {
-        vec3 new_cam_pos;
-        cam_get_position(new_cam_pos);
-
-        vec3 new_bottom;
-        new_bottom[0] = new_cam_pos[0];
-        new_bottom[1] = new_cam_pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS;
-        new_bottom[2] = new_cam_pos[2];
-
-        const float v = glm_vec3_norm(player_velocity);
-        const int step_count = (v / PLAYER_RADIUS) + 1;
-        const float step_length = v / step_count;
-        for (int step = 1; step <= step_count; ++step)
-        {
-          vec3 t;
-          glm_vec3_scale_as(player_velocity, step_length * step, t);
-
-          vec3 step_cam_pos;
-          glm_vec3_add(old_cam_pos, t, step_cam_pos);
-
-          vec3 step_base;
-          step_base[0] = step_cam_pos[0];
-          step_base[1] = step_cam_pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS + PLAYER_RADIUS;
-          step_base[2] = step_cam_pos[2];
-
-          if (collide_capsule(step_base, step_cam_pos, PLAYER_RADIUS, collision_vertices, collision_indices,
-                              collision_index_count))
-          {
-            cam_set_position(step_cam_pos);
-            break;
-          }
-        }
-      }
-
-      // Mouse look
-      double delta_x, delta_y;
-      get_mouse_delta(&delta_x, &delta_y);
-      camera_add_yaw_pitch(delta_x * 0.001f, delta_y * 0.001f);
-
-      update_view_model(moving, delta_time);
+      update_view_model(player_moving, delta_time);
 
       update_hud(window_width, window_height);
     }

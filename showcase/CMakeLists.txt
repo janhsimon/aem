@@ -16,6 +16,9 @@ set(SOURCE
   model_manager.c
   model_manager.h
 
+  player.c
+  player.h
+
   renderer.c
   renderer.h
 
