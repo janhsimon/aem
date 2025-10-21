@@ -13,6 +13,9 @@ set(SOURCE
   input.c
   input.h
 
+  map.c
+  map.h
+
   model_manager.c
   model_manager.h
 

@@ -1,7 +1,7 @@
 #include "camera.h"
-#include "collision.h"
 #include "hud.h"
 #include "input.h"
+#include "map.h"
 #include "model_manager.h"
 #include "player.h"
 #include "renderer.h"
@@ -17,105 +17,38 @@
 #include <stdio.h>
 #include <string.h>
 
-static struct ModelRenderInfo *sponza_base = NULL, *sponza_curtains = NULL, *sponza_ivy = NULL, *sponza_tree = NULL,
-                              *ak = NULL, *car = NULL;
+static struct ModelRenderInfo* ak = NULL;
 
 int main(int argc, char* argv[])
 {
-  if (!load_window(WindowMode_Fullscreen /*WindowMode_Windowed*/))
+#ifndef NDEBUG
+  if (!load_window(WindowMode_Windowed))
+#else
+  if (!load_window(WindowMode_Fullscreen))
+
+#endif
   {
     printf("Failed to open window\n");
     return EXIT_FAILURE;
   }
 
-  // Load models
   {
-    prepare_model_loading(6);
+    prepare_model_loading(5 + 1);
 
-    sponza_base = load_model("models/sponza_base.aem");
-    sponza_curtains = load_model("models/sponza_curtains.aem");
-    sponza_ivy = load_model("models/sponza_ivy.aem");
-    sponza_tree = load_model("models/sponza_tree.aem");
-    ak = load_model("models/ak.aem");
-    car = load_model("models/car.aem");
-
-    if (!sponza_base || !sponza_curtains || !sponza_ivy || !sponza_tree || !ak || !car)
+    if (!load_map())
     {
-      printf("Failed to load models\n");
+      printf("Failed to load map\n");
+      return EXIT_FAILURE;
+    }
+
+    ak = load_model("models/ak.aem");
+    if (!ak)
+    {
+      printf("Failed to load view model\n");
       return EXIT_FAILURE;
     }
 
     finish_model_loading();
-  }
-
-  // Load collision mesh
-  uint32_t collision_vertex_count, collision_index_count;
-  float* collision_vertices = NULL;
-  uint32_t* collision_indices = NULL;
-  {
-    struct AEMModel *model1 = NULL, *model2 = NULL;
-    if (aem_load_model("models/sponza_c.aem", &model1) != AEMModelResult_Success)
-    {
-      return NULL;
-    }
-
-    if (aem_load_model("models/car_c.aem", &model2) != AEMModelResult_Success)
-    {
-      return NULL;
-    }
-
-    const uint32_t vertex_count1 = aem_get_model_vertex_count(model1);
-    const uint32_t vertex_count2 = aem_get_model_vertex_count(model2);
-
-    {
-      collision_vertex_count = vertex_count1 + vertex_count2;
-
-      collision_vertices = malloc(AEM_VERTEX_SIZE * collision_vertex_count);
-
-      memcpy(collision_vertices, aem_get_model_vertex_buffer(model1), AEM_VERTEX_SIZE * vertex_count1);
-      memcpy(collision_vertices + vertex_count1 * 22, aem_get_model_vertex_buffer(model2),
-             AEM_VERTEX_SIZE * vertex_count2);
-
-      mat4 car_matrix;
-      glm_translate_make(car_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
-      glm_rotate(car_matrix, glm_rad(15.0f), GLM_YUP);
-      glm_scale(car_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-
-      for (uint32_t v = 0; v < vertex_count2; ++v)
-      {
-        vec3 in;
-        glm_vec3_make(&collision_vertices[(vertex_count1 + v) * 22], in);
-
-        glm_mat4_mulv3(car_matrix, in, 1.0f, in);
-
-        collision_vertices[(vertex_count1 + v) * 22 + 0] = in[0];
-        collision_vertices[(vertex_count1 + v) * 22 + 1] = in[1];
-        collision_vertices[(vertex_count1 + v) * 22 + 2] = in[2];
-      }
-    }
-
-    {
-      const uint32_t index_count1 = aem_get_model_index_count(model1);
-      const uint32_t index_count2 = aem_get_model_index_count(model2);
-
-      collision_index_count = index_count1 + index_count2;
-
-      collision_indices = malloc(AEM_INDEX_SIZE * collision_index_count);
-
-      memcpy(collision_indices, aem_get_model_index_buffer(model1), AEM_INDEX_SIZE * index_count1);
-      memcpy(collision_indices + index_count1, aem_get_model_index_buffer(model2), AEM_INDEX_SIZE * index_count2);
-
-      for (uint32_t i = 0; i < index_count2; ++i)
-      {
-        collision_indices[index_count1 + i] += vertex_count1;
-      }
-    }
-
-    aem_finish_loading_model(model1);
-    aem_finish_loading_model(model2);
-
-    aem_free_model(model1);
-    aem_free_model(model2);
   }
 
   if (!load_renderer())
@@ -172,7 +105,7 @@ int main(int argc, char* argv[])
       }
 
       bool player_moving;
-      player_update(delta_time, collision_vertices, collision_indices, collision_index_count, &player_moving);
+      player_update(delta_time, &player_moving);
 
       update_view_model(player_moving, delta_time);
 
@@ -185,50 +118,24 @@ int main(int argc, char* argv[])
 
       const float window_aspect = (float)window_width / (float)window_height;
 
-      // Draw static level
+      // Draw static map
       {
         use_fov(window_aspect, 75.0f);
+
         use_render_pass(RenderPass_Opaque);
+        draw_map_opaque();
 
-        // Car
-        {
-          mat4 world_matrix;
-          glm_translate_make(world_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
-          glm_rotate(world_matrix, glm_rad(15.0f), GLM_YUP);
-          glm_scale(world_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-          use_world_matrix((float*)world_matrix);
+        use_render_pass(RenderPass_Transparent);
 
-          render_model(car, ModelRenderMode_AllMeshes);
-        }
+        // Don't write depth (but do still test it) and enable blending
+        glDepthMask(GL_FALSE);
+        glEnable(GL_BLEND);
 
-        // Sponza (opaque parts)
-        {
-          mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-          use_world_matrix((float*)world_matrix);
+        draw_map_transparent();
 
-          render_model(sponza_base, ModelRenderMode_AllMeshes);
-          render_model(sponza_curtains, ModelRenderMode_AllMeshes);
-          render_model(sponza_ivy, ModelRenderMode_AllMeshes);
-          render_model(sponza_tree, ModelRenderMode_AllMeshes);
-        }
-
-        // Sponza (transparent parts)
-        {
-          use_render_pass(RenderPass_Transparent);
-
-          // Don't write depth (but do still test it) and enable blending
-          glDepthMask(GL_FALSE);
-          glEnable(GL_BLEND);
-
-          render_model(sponza_base, ModelRenderMode_TransparentMeshesOnly);
-          render_model(sponza_curtains, ModelRenderMode_TransparentMeshesOnly);
-          render_model(sponza_ivy, ModelRenderMode_TransparentMeshesOnly);
-          render_model(sponza_tree, ModelRenderMode_TransparentMeshesOnly);
-
-          // Reset OpenGL state
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-        }
+        // Reset OpenGL state
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
       }
 
       // Draw view model
@@ -254,12 +161,10 @@ int main(int argc, char* argv[])
 
   // Cleanup
   {
-    free(collision_vertices);
-    free(collision_indices);
-
     free_hud();
     free_view_model();
     free_renderer();
+    free_map();
     free_models();
     free_window();
   }
