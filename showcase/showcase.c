@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "enemy.h"
 #include "hud.h"
 #include "input.h"
 #include "map.h"
@@ -10,14 +11,13 @@
 
 #include <aem/model.h>
 
-#include <cglm/affine.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 
 #include <stdio.h>
 #include <string.h>
 
-static struct ModelRenderInfo* ak = NULL;
+static struct ModelRenderInfo *soldier = NULL, *ak = NULL;
 
 int main(int argc, char* argv[])
 {
@@ -33,11 +33,18 @@ int main(int argc, char* argv[])
   }
 
   {
-    prepare_model_loading(5 + 1);
+    prepare_model_loading(5 + 1 + 1); // 5 map models, 1 enemy model, 1 view weapon model
 
     if (!load_map())
     {
       printf("Failed to load map\n");
+      return EXIT_FAILURE;
+    }
+
+    soldier = load_model("models/soldier.aem");
+    if (!soldier)
+    {
+      printf("Failed to load enemy model\n");
       return EXIT_FAILURE;
     }
 
@@ -60,6 +67,12 @@ int main(int argc, char* argv[])
   if (!load_view_model(ak->model))
   {
     printf("Failed to load view model\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!load_enemy(soldier->model))
+  {
+    printf("Failed to load enemy\n");
     return EXIT_FAILURE;
   }
 
@@ -106,8 +119,9 @@ int main(int argc, char* argv[])
 
       bool player_moving;
       player_update(delta_time, &player_moving);
-
       update_view_model(player_moving, delta_time);
+
+      update_enemy(delta_time);
 
       update_hud(window_width, window_height);
     }
@@ -138,11 +152,21 @@ int main(int argc, char* argv[])
         glDisable(GL_BLEND);
       }
 
+      // Draw enemy
+      {
+        // Enemy
+        {
+          use_render_pass(RenderPass_Opaque);
+
+          prepare_enemy_rendering();
+          render_model(soldier, ModelRenderMode_AllMeshes);
+        }
+      }
+
       // Draw view model
       {
         glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
 
-        use_render_pass(RenderPass_Opaque);
         prepare_view_model_rendering(window_aspect);
         render_model(ak, ModelRenderMode_AllMeshes);
       }
@@ -162,6 +186,7 @@ int main(int argc, char* argv[])
   // Cleanup
   {
     free_hud();
+    free_enemy();
     free_view_model();
     free_renderer();
     free_map();

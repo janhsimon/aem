@@ -6,7 +6,7 @@
 
 #define ITERATION_COUNT 50
 
-static float closest_segment_segment(vec3 p0, vec3 p1, vec3 q0, vec3 q1, vec3 cp_seg, vec3 cp_tri)
+float closest_segment_segment(vec3 p0, vec3 p1, vec3 q0, vec3 q1, vec3 cp_seg, vec3 cp_tri)
 {
   vec3 u, v, w;
   glm_vec3_sub(p1, p0, u);

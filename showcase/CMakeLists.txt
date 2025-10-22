@@ -7,6 +7,9 @@ set(SOURCE
   collision.c
   collision.h
 
+  enemy.c
+  enemy.h
+
   hud.c
   hud.h
 

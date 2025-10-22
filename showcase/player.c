@@ -11,6 +11,7 @@
 
 #define PLAYER_RADIUS 0.25f
 #define PLAYER_HEIGHT 1.8f
+
 #define PLAYER_ACCEL 0.3f
 #define PLAYER_DECEL 0.1f
 #define PLAYER_MOVE_SPEED 5.0f

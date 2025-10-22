@@ -1,6 +1,7 @@
 #include "view_model.h"
 
 #include "camera.h"
+#include "enemy.h"
 #include "renderer.h"
 
 #include <aem/animation_mixer.h>
@@ -107,6 +108,26 @@ void update_view_model(bool moving, float delta_time)
       shoot_channel->is_playing = true;
       aem_set_animation_mixer_blend_speed(mixer, 10.0f);
       aem_blend_to_animation_mixer_channel(mixer, 3); // To shoot
+
+      vec3 from;
+      cam_get_position(from);
+
+      mat3 cam_dir;
+      cam_get_orientation(cam_dir);
+
+      vec3 ray = { 0.0f, 0.0f, 1.0f };
+      glm_mat3_mulv(cam_dir, ray, ray);
+
+      glm_vec3_scale_as(ray, 10000.0f, ray);
+
+      vec3 to;
+      glm_vec3_add(from, ray, to);
+
+      if (is_enemy_hit(from, to))
+      {
+        glm_vec3_negate(ray);
+        enemy_die(ray);
+      }
     }
     else
     {
@@ -143,8 +164,6 @@ void update_view_model(bool moving, float delta_time)
 
   aem_update_animation(model, mixer, delta_time, **joint_transforms);
 
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
-
   prev_moving = moving;
 }
 
@@ -175,6 +194,9 @@ void prepare_view_model_rendering(float aspect)
     glm_scale_uni((vec4*)world_matrix, 0.02f);
     use_world_matrix((float*)world_matrix);
   }
+
+  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
 
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);
