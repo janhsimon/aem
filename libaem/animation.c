@@ -224,6 +224,22 @@ aem_get_animation_mixer_channel(const struct AEMAnimationMixer* mixer, uint32_t 
   return &mixer->channels[channel_index];
 }
 
+void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
+                                             const struct AEMAnimationMixer* mixer,
+                                             uint32_t joint_index,
+                                             float transform[16])
+{
+  mat4* t = (mat4*)mixer->joint_transforms;
+  glm_mat4_copy(t[joint_index], (vec4*)transform);
+
+  int32_t parent_joint_index = model->joints[joint_index].parent_joint_index;
+  while (parent_joint_index >= 0)
+  {
+    glm_mat4_mul(t[parent_joint_index], (vec4*)transform, (vec4*)transform);
+    parent_joint_index = model->joints[parent_joint_index].parent_joint_index;
+  }
+}
+
 void aem_blend_to_animation_mixer_channel(struct AEMAnimationMixer* mixer, uint32_t channel_index)
 {
   mixer->is_blending = true;

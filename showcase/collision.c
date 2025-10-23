@@ -2,6 +2,7 @@
 
 #include "map.h"
 
+#include <cglm/ray.h>
 #include <cglm/vec3.h>
 
 #define ITERATION_COUNT 50
@@ -257,4 +258,39 @@ bool collide_capsule(vec3 base, vec3 top, float radius)
   }
 
   return contact;
+}
+
+bool collide_ray(vec3 from, vec3 to, vec3 hit)
+{
+  vec3 dir;
+  glm_vec3_sub(to, from, dir);
+
+  bool contact = false;
+  float best_d;
+  const uint32_t map_index_count = get_map_collision_index_count();
+  for (uint32_t map_index = 0; map_index < map_index_count; map_index += 3)
+  {
+    vec3 v0, v1, v2;
+    get_map_collision_triangle(map_index, v0, v1, v2);
+
+    float d;
+    if (glm_ray_triangle(from, dir, v0, v1, v2, &d))
+    {
+      if (!contact || d < best_d)
+      {
+        best_d = d;
+        contact = true;
+      }
+    }
+  }
+
+  if (!contact)
+  {
+    return false;
+  }
+
+  glm_vec3_scale(dir, best_d, dir);
+  glm_vec3_add(from, dir, hit);
+
+  return true;
 }

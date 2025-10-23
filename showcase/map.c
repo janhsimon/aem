@@ -107,15 +107,14 @@ void draw_map_opaque()
     glm_translate_make(world_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
     glm_rotate(world_matrix, glm_rad(15.0f), GLM_YUP);
     glm_scale(world_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-    use_world_matrix((float*)world_matrix);
+    use_world_matrix(world_matrix);
 
     render_model(car, ModelRenderMode_AllMeshes);
   }
 
   // Sponza (opaque parts)
   {
-    mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-    use_world_matrix((float*)world_matrix);
+    use_world_matrix(GLM_MAT4_IDENTITY);
 
     render_model(sponza_base, ModelRenderMode_AllMeshes);
     render_model(sponza_curtains, ModelRenderMode_AllMeshes);

@@ -11,19 +11,19 @@ static vec3 position = GLM_VEC3_ZERO_INIT;
 static mat3 orientation = GLM_MAT3_IDENTITY_INIT;
 static float yaw, pitch = 0.0f; // Only used in camera_add_yaw_pitch()
 
-void cam_set_position(float position_[3])
+void cam_set_position(vec3 position_)
 {
   glm_vec3_copy(position_, position);
 }
 
-void cam_get_position(float position_[3])
+void cam_get_position(vec3 position_)
 {
   glm_vec3_copy(position, position_);
 }
 
-void cam_get_orientation(float orientation_[9])
+void cam_get_orientation(mat3 orientation_)
 {
-  glm_mat3_copy(orientation, (vec3*)orientation_);
+  glm_mat3_copy(orientation, orientation_);
 }
 
 void camera_add_yaw_pitch(float yaw_, float pitch_)
@@ -50,7 +50,7 @@ void camera_add_yaw_pitch(float yaw_, float pitch_)
   glm_mat4_pick3(rot_combined, orientation);
 }
 
-void camera_add_move(float move[3])
+void camera_add_move(vec3 move)
 {
   glm_vec3_add(position, move, position);
 }

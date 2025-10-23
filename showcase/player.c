@@ -31,7 +31,7 @@ void player_update(float delta_time, bool* moving)
     if (*moving)
     {
       mat3 cam_orientation;
-      cam_get_orientation((float*)cam_orientation);
+      cam_get_orientation(cam_orientation);
 
       glm_mat3_mulv(cam_orientation, move, move); // Transform move from local to camera space
       move[1] = 0.0f;                             // Flatten

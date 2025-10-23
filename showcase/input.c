@@ -1,5 +1,7 @@
 #include "input.h"
 
+#include <cglm/vec3.h>
+
 #include <glfw/glfw3.h>
 
 #define KEY_BINDING_EXIT GLFW_KEY_ESCAPE
@@ -8,6 +10,7 @@
 #define KEY_BINDING_STRAFE_LEFT GLFW_KEY_A
 #define KEY_BINDING_STRAFE_RIGHT GLFW_KEY_D
 #define KEY_BINDING_RELOAD GLFW_KEY_R
+#define KEY_BINDING_DEBUG GLFW_KEY_TAB
 
 #define BUTTON_BINDING_SHOOT GLFW_MOUSE_BUTTON_1
 
@@ -19,7 +22,10 @@ static bool mouse_position_received = false;
 static bool is_shoot_button_down = false;
 
 static bool is_exit_key_down = false, is_forward_key_down = false, is_backwards_key_down = false,
-            is_strafe_left_key_down = false, is_strafe_right_key_down = false, is_reload_key_down = false;
+            is_strafe_left_key_down = false, is_strafe_right_key_down = false, is_reload_key_down = false,
+            is_debug_key_down;
+
+static bool prev_debug_key_down;
 
 void on_mouse_move(double x, double y)
 {
@@ -76,6 +82,10 @@ void on_key_down(int key)
   {
     is_reload_key_down = true;
   }
+  else if (key == KEY_BINDING_DEBUG)
+  {
+    is_debug_key_down = true;
+  }
 }
 
 void on_key_up(int key)
@@ -104,6 +114,10 @@ void on_key_up(int key)
   {
     is_reload_key_down = false;
   }
+  else if (key == KEY_BINDING_DEBUG)
+  {
+    is_debug_key_down = false;
+  }
 }
 
 void get_mouse_delta(double* x, double* y)
@@ -125,7 +139,7 @@ bool get_exit_key_down()
   return is_exit_key_down;
 }
 
-void get_move_vector(float move[3], bool* moving)
+void get_move_vector(vec3 move, bool* moving)
 {
   move[0] = (float)is_strafe_left_key_down - (float)is_strafe_right_key_down;
   move[1] = 0.0f;
@@ -137,4 +151,11 @@ void get_move_vector(float move[3], bool* moving)
 bool get_reload_key_down()
 {
   return is_reload_key_down;
+}
+
+bool get_debug_key_up()
+{
+  const bool up = prev_debug_key_down && !is_debug_key_down;
+  prev_debug_key_down = is_debug_key_down;
+  return up;
 }

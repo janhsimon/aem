@@ -103,11 +103,15 @@ bool load_renderer()
   return true;
 }
 
-void start_render_frame()
+void clear_frame()
 {
+
   glClearColor(CLEAR_COLOR, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
+void start_render_frame()
+{
   glBindVertexArray(vertex_array);
 
   glUseProgram(shader_program);
@@ -131,9 +135,9 @@ void use_fov(float aspect, float fov)
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
 }
 
-void use_world_matrix(float world_matrix[16])
+void use_world_matrix(mat4 world_matrix)
 {
-  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, world_matrix);
+  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
 }
 
 void use_render_pass(enum RenderPass pass)

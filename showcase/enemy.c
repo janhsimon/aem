@@ -1,6 +1,7 @@
 #include "enemy.h"
 
 #include "collision.h"
+#include "debug_renderer.h"
 #include "renderer.h"
 
 #include <aem/animation_mixer.h>
@@ -13,10 +14,14 @@
 #include <glad/gl.h>
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define ENEMY_RADIUS 0.5f
 #define ENEMY_HEIGHT 1.8f
+
+#define ENEMY_MOVE_SPEED 0.1f
+#define ENEMY_TURN_ANGLE 2.5f
 
 static const struct AEMModel* model = NULL;
 
@@ -127,8 +132,7 @@ void update_enemy(float delta_time)
     }*/
 
     glm_rotate_y(transform, glm_rad(rot), transform);
-
-    glm_translate_z(transform, 0.1f * delta_time);
+    glm_translate_z(transform, ENEMY_MOVE_SPEED * delta_time);
   }
 
   vec3 velocity;
@@ -166,13 +170,13 @@ void update_enemy(float delta_time)
 
   if (rand() % 100 == 22)
   {
-    rot = ((rand() % 100) / 100.0f) * 2.5f - 1.25f;
+    rot = ((rand() % 100) / 100.0f) * ENEMY_TURN_ANGLE - (ENEMY_TURN_ANGLE / 2.0f);
   }
 }
 
 void prepare_enemy_rendering()
 {
-  use_world_matrix((float*)transform);
+  use_world_matrix(transform);
 
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
   glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
@@ -182,24 +186,46 @@ void prepare_enemy_rendering()
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
 }
 
+void debug_draw_enemy()
+{
+  mat4 t;
+  aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)t);
+
+  glm_mat4_mul(transform, t, t);
+
+  vec3 from = GLM_VEC3_ZERO_INIT;
+  vec3 to;
+  glm_vec3_copy(GLM_YUP, to);
+
+  glm_mat4_mulv3(t, from, 1.0f, from);
+  glm_mat4_mulv3(t, to, 1.0f, to);
+
+  set_line(0, from, to, GLM_ZUP);
+}
+
 bool is_enemy_hit(vec3 from, vec3 to)
 {
-  vec3 base;
-  glm_vec3_copy(transform[3], base);
-  base[1] += ENEMY_RADIUS; // From feet to capsule bottom center
+  vec3 head_base, head_top;
+  {
+    mat4 head_transform;
+    aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)head_transform);
+    glm_mat4_mul(transform, head_transform, head_transform); // Model to world space
 
-  vec3 top;
-  top[0] = base[0];
-  top[1] = base[1] + ENEMY_HEIGHT - ENEMY_RADIUS - ENEMY_RADIUS;
-  top[2] = base[2];
+    glm_vec3_copy(GLM_VEC3_ZERO, head_base);
+    glm_vec3_copy(GLM_YUP, head_top);
+
+    glm_mat4_mulv3(head_transform, head_base, 1.0f, head_base);
+    glm_mat4_mulv3(head_transform, head_top, 1.0f, head_top);
+  }
 
   vec3 out_a, out_b;
-  closest_segment_segment(from, to, base, top, out_a, out_b);
+  closest_segment_segment(from, to, head_base, head_top, out_a, out_b);
 
   vec3 i;
   glm_vec3_sub(out_a, out_b, i);
 
-  return glm_vec3_norm(i) < ENEMY_RADIUS;
+  const float dist = glm_vec3_norm(i);
+  return dist < 0.08f;
 }
 
 void enemy_die(vec3 dir)
@@ -214,6 +240,7 @@ void enemy_die(vec3 dir)
   channel->is_looping = false;
   channel->time = 0.0f;
 
+  dir[1] = 0.0f; // Flatten
   glm_normalize(dir);
 
   vec3 x;

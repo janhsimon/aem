@@ -1,6 +1,8 @@
 #include "view_model.h"
 
 #include "camera.h"
+#include "collision.h"
+#include "debug_renderer.h"
 #include "enemy.h"
 #include "renderer.h"
 
@@ -123,6 +125,9 @@ void update_view_model(bool moving, float delta_time)
       vec3 to;
       glm_vec3_add(from, ray, to);
 
+      collide_ray(from, to, to);
+      draw_line(from, to, GLM_YUP);
+
       if (is_enemy_hit(from, to))
       {
         glm_vec3_negate(ray);
@@ -183,16 +188,16 @@ void prepare_view_model_rendering(float aspect)
 
     // And insert the camera orientation
     mat3 camera_orientation;
-    cam_get_orientation((float*)camera_orientation);
-    glm_mat4_ins3(camera_orientation, (vec4*)world_matrix);
+    cam_get_orientation(camera_orientation);
+    glm_mat4_ins3(camera_orientation, world_matrix);
 
     // Offset slightly
-    glm_translate_y((vec4*)world_matrix, -0.02f);
-    glm_translate_z((vec4*)world_matrix, 0.1f);
+    glm_translate_y(world_matrix, -0.02f);
+    glm_translate_z(world_matrix, 0.1f);
 
     // Scale way down
-    glm_scale_uni((vec4*)world_matrix, 0.02f);
-    use_world_matrix((float*)world_matrix);
+    glm_scale_uni(world_matrix, 0.02f);
+    use_world_matrix(world_matrix);
   }
 
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);

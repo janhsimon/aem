@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "debug_renderer.h"
 #include "enemy.h"
 #include "hud.h"
 #include "input.h"
@@ -11,13 +12,16 @@
 
 #include <aem/model.h>
 
+#include <cglm/util.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static struct ModelRenderInfo *soldier = NULL, *ak = NULL;
+static bool debug_render_enabled = false;
 
 int main(int argc, char* argv[])
 {
@@ -61,6 +65,12 @@ int main(int argc, char* argv[])
   if (!load_renderer())
   {
     printf("Failed to load renderer\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!load_debug_renderer())
+  {
+    printf("Failed to load debug renderer\n");
     return EXIT_FAILURE;
   }
 
@@ -117,6 +127,11 @@ int main(int argc, char* argv[])
         close_window();
       }
 
+      if (get_debug_key_up())
+      {
+        debug_render_enabled = !debug_render_enabled;
+      }
+
       bool player_moving;
       player_update(delta_time, &player_moving);
       update_view_model(player_moving, delta_time);
@@ -128,6 +143,7 @@ int main(int argc, char* argv[])
 
     // Render
     {
+      clear_frame();
       start_render_frame();
 
       const float window_aspect = (float)window_width / (float)window_height;
@@ -154,13 +170,23 @@ int main(int argc, char* argv[])
 
       // Draw enemy
       {
-        // Enemy
-        {
-          use_render_pass(RenderPass_Opaque);
+        use_render_pass(RenderPass_Opaque);
 
-          prepare_enemy_rendering();
-          render_model(soldier, ModelRenderMode_AllMeshes);
-        }
+        prepare_enemy_rendering();
+        render_model(soldier, ModelRenderMode_AllMeshes);
+      }
+
+      // Debug draw
+      if (debug_render_enabled)
+      {
+        glDisable(GL_DEPTH_TEST);
+
+        debug_render(window_aspect, 75.0f);
+        debug_draw_enemy();
+
+        start_render_frame();
+
+        glEnable(GL_DEPTH_TEST);
       }
 
       // Draw view model

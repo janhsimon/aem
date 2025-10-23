@@ -7,6 +7,9 @@ set(SOURCE
   collision.c
   collision.h
 
+  debug_renderer.c
+  debug_renderer.h
+
   enemy.c
   enemy.h
 
@@ -35,6 +38,9 @@ set(SOURCE
 
   window.c
   window.h
+
+  shaders/debug.vert.glsl
+  shaders/debug.frag.glsl
 
   shaders/vert.glsl
   shaders/frag.glsl
