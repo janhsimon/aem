@@ -17,11 +17,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ENEMY_RADIUS 0.5f
-#define ENEMY_HEIGHT 1.8f
+#define ENEMY_COLLIDER_RADIUS 0.5f
+#define ENEMY_COLLIDER_HEIGHT 1.8f
 
 #define ENEMY_MOVE_SPEED 0.1f
 #define ENEMY_TURN_ANGLE 2.5f
+
+#define ENEMY_HITBOX_HEAD_RADIUS 0.11f
+#define ENEMY_HITBOX_HEAD_X 0.0f
+#define ENEMY_HITBOX_HEAD_BOTTOM_Y 0.3f
+#define ENEMY_HITBOX_HEAD_TOP_Y 0.7f
+#define ENEMY_HITBOX_HEAD_Z 0.2f
 
 static const struct AEMModel* model = NULL;
 
@@ -32,7 +38,9 @@ static struct AEMAnimationMixer* mixer;
 static struct AEMAnimationChannel* channel;
 
 static mat4 transform;
-static float rot = 0.2f;
+static float rot = 0.0f;
+
+static vec3 hitbox_head_bottom, hitbox_head_top;
 
 // enum
 //{
@@ -40,7 +48,7 @@ static float rot = 0.2f;
 //   EnemyState_WalkingRight
 // } state = EnemyState_WalkingLeft;
 
-bool alive = true;
+static bool alive = true;
 
 bool load_enemy(const struct AEMModel* model_)
 {
@@ -113,64 +121,77 @@ void update_enemy(float delta_time)
         alive = true;
       }
     }
-
-    return;
   }
-
-  vec3 old_pos;
-  glm_vec3_copy(transform[3], old_pos);
-
-  // Update position
+  else
   {
-    /*if (state == EnemyState_WalkingLeft)
+    vec3 old_pos;
+    glm_vec3_copy(transform[3], old_pos);
+
+    // Update position
     {
-      glm_rotate_y(transform, glm_rad(0.2f), transform);
-    }
-    else if (state == EnemyState_WalkingRight)
-    {
-      glm_rotate_y(transform, glm_rad(-0.2f), transform);
-    }*/
+      /*if (state == EnemyState_WalkingLeft)
+      {
+        glm_rotate_y(transform, glm_rad(0.2f), transform);
+      }
+      else if (state == EnemyState_WalkingRight)
+      {
+        glm_rotate_y(transform, glm_rad(-0.2f), transform);
+      }*/
 
-    glm_rotate_y(transform, glm_rad(rot), transform);
-    glm_translate_z(transform, ENEMY_MOVE_SPEED * delta_time);
-  }
-
-  vec3 velocity;
-  glm_vec3_sub(transform[3], old_pos, velocity);
-
-  // New-style collision
-  {
-    const float magnitude = glm_vec3_norm(velocity);
-    const int step_count = (magnitude / ENEMY_RADIUS) + 1;
-    const float step_length = magnitude / step_count;
-
-    vec3 step_vector;
-    glm_vec3_scale_as(velocity, step_length, step_vector);
-
-    old_pos[1] += ENEMY_RADIUS; // From feet to capsule bottom center
-
-    for (int step = 0; step < step_count; ++step)
-    {
-      glm_vec3_add(old_pos, step_vector, old_pos);
-
-      vec3 top;
-      top[0] = old_pos[0];
-      top[1] = old_pos[1] + ENEMY_HEIGHT - ENEMY_RADIUS - ENEMY_RADIUS;
-      top[2] = old_pos[2];
-
-      collide_capsule(top, old_pos, ENEMY_RADIUS);
+      glm_rotate_y(transform, glm_rad(rot), transform);
+      glm_translate_z(transform, ENEMY_MOVE_SPEED * delta_time);
     }
 
-    old_pos[1] -= ENEMY_RADIUS; // From capsule bottom center to feet
-    glm_vec3_copy(old_pos, transform[3]);
+    vec3 velocity;
+    glm_vec3_sub(transform[3], old_pos, velocity);
+
+    // New-style collision
+    {
+      const float magnitude = glm_vec3_norm(velocity);
+      const int step_count = (magnitude / ENEMY_COLLIDER_RADIUS) + 1;
+      const float step_length = magnitude / step_count;
+
+      vec3 step_vector;
+      glm_vec3_scale_as(velocity, step_length, step_vector);
+
+      old_pos[1] += ENEMY_COLLIDER_RADIUS; // From feet to capsule bottom center
+
+      for (int step = 0; step < step_count; ++step)
+      {
+        glm_vec3_add(old_pos, step_vector, old_pos);
+
+        vec3 top;
+        top[0] = old_pos[0];
+        top[1] = old_pos[1] + ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
+        top[2] = old_pos[2];
+
+        collide_capsule(top, old_pos, ENEMY_COLLIDER_RADIUS);
+      }
+
+      old_pos[1] -= ENEMY_COLLIDER_RADIUS; // From capsule bottom center to feet
+      glm_vec3_copy(old_pos, transform[3]);
+    }
+
+    // Update animation
+    aem_update_animation(model, mixer, delta_time, **joint_transforms);
+
+    if (rand() % 100 == 22)
+    {
+      rot = ((rand() % 100) / 100.0f) * ENEMY_TURN_ANGLE - (ENEMY_TURN_ANGLE / 2.0f);
+    }
   }
 
-  // Update animation
-  aem_update_animation(model, mixer, delta_time, **joint_transforms);
-
-  if (rand() % 100 == 22)
+  // Update hitboxes
   {
-    rot = ((rand() % 100) / 100.0f) * ENEMY_TURN_ANGLE - (ENEMY_TURN_ANGLE / 2.0f);
+    mat4 hitbox_head_transform;
+    aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)hitbox_head_transform);
+    glm_mat4_mul(transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
+
+    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_bottom);
+    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_TOP_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_top);
+
+    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_bottom, 1.0f, hitbox_head_bottom);
+    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_top, 1.0f, hitbox_head_top);
   }
 }
 
@@ -186,46 +207,30 @@ void prepare_enemy_rendering()
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
 }
 
-void debug_draw_enemy()
+void debug_draw_enemy(float aspect, float fov)
 {
-  mat4 t;
-  aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)t);
+  {
+    vec3 collider_bottom, collider_top;
+    glm_vec3_copy(transform[3], collider_bottom);
+    collider_bottom[1] += ENEMY_COLLIDER_RADIUS;
 
-  glm_mat4_mul(transform, t, t);
+    glm_vec3_copy(collider_bottom, collider_top);
+    collider_top[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
 
-  vec3 from = GLM_VEC3_ZERO_INIT;
-  vec3 to;
-  glm_vec3_copy(GLM_YUP, to);
+    debug_render_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP, aspect, fov);
+  }
 
-  glm_mat4_mulv3(t, from, 1.0f, from);
-  glm_mat4_mulv3(t, to, 1.0f, to);
-
-  set_line(0, from, to, GLM_ZUP);
+  debug_render_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP, aspect, fov);
 }
 
 bool is_enemy_hit(vec3 from, vec3 to)
 {
-  vec3 head_base, head_top;
-  {
-    mat4 head_transform;
-    aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)head_transform);
-    glm_mat4_mul(transform, head_transform, head_transform); // Model to world space
+  vec3 a, b;
+  closest_segment_segment(from, to, hitbox_head_bottom, hitbox_head_top, a, b);
+  glm_vec3_sub(a, b, a);
 
-    glm_vec3_copy(GLM_VEC3_ZERO, head_base);
-    glm_vec3_copy(GLM_YUP, head_top);
-
-    glm_mat4_mulv3(head_transform, head_base, 1.0f, head_base);
-    glm_mat4_mulv3(head_transform, head_top, 1.0f, head_top);
-  }
-
-  vec3 out_a, out_b;
-  closest_segment_segment(from, to, head_base, head_top, out_a, out_b);
-
-  vec3 i;
-  glm_vec3_sub(out_a, out_b, i);
-
-  const float dist = glm_vec3_norm(i);
-  return dist < 0.08f;
+  const float dist = glm_vec3_norm(a);
+  return dist < ENEMY_HITBOX_HEAD_RADIUS;
 }
 
 void enemy_die(vec3 dir)

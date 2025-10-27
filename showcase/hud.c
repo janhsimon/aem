@@ -34,21 +34,21 @@ bool load_hud()
   return true;
 }
 
-void update_hud(uint32_t screen_width, uint32_t screen_height)
+void update_hud(uint32_t screen_width, uint32_t screen_height, float player_speed)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   igNewFrame();
 
+  ImDrawList* draw_list = igGetForegroundDrawList_WindowPtr(context->CurrentWindow);
+
+  const ImU32 color = igGetColorU32_Vec4((ImVec4){ 0.0f, 1.0f, 0.0f, 1.0f });
+
+  const float half_screen_width = (float)(screen_width / 2);
+  const float half_screen_height = (float)(screen_height / 2);
+
   // Crosshair
   {
-    ImDrawList* draw_list = igGetForegroundDrawList_WindowPtr(context->CurrentWindow);
-
-    const ImU32 color = igGetColorU32_Vec4((ImVec4){ 0.0f, 1.0f, 0.0f, 1.0f });
-
-    const float half_screen_width = (float)(screen_width / 2);
-    const float half_screen_height = (float)(screen_height / 2);
-
     const float gap_size = 6.0f;
     const float half_gap_size = gap_size / 2.0f;
     const float line_size = 8.0f;
@@ -64,6 +64,12 @@ void update_hud(uint32_t screen_width, uint32_t screen_height)
                        (ImVec2){ half_screen_width, half_screen_height - half_gap_size }, color, 1.0f);
     ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width, half_screen_height + half_gap_size },
                        (ImVec2){ half_screen_width, half_screen_height + half_gap_size + line_size }, color, 1.0f);
+  }
+
+  {
+    char s[64];
+    sprintf(s, "Movement speed: %f", player_speed);
+    ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, screen_height - 100.0f }, color, s, NULL);
   }
 }
 

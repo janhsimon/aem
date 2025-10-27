@@ -126,7 +126,7 @@ void update_view_model(bool moving, float delta_time)
       glm_vec3_add(from, ray, to);
 
       collide_ray(from, to, to);
-      draw_line(from, to, GLM_YUP);
+      add_debug_line(from, to);
 
       if (is_enemy_hit(from, to))
       {

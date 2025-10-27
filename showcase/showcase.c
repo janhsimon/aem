@@ -12,7 +12,7 @@
 
 #include <aem/model.h>
 
-#include <cglm/util.h>
+#include <cglm/vec3.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
 
       update_enemy(delta_time);
 
-      update_hud(window_width, window_height);
+      update_hud(window_width, window_height, get_player_speed());
     }
 
     // Render
@@ -181,8 +181,8 @@ int main(int argc, char* argv[])
       {
         glDisable(GL_DEPTH_TEST);
 
-        debug_render(window_aspect, 75.0f);
-        debug_draw_enemy();
+        debug_render_lines(GLM_YUP, window_aspect, 75.0f);
+        debug_draw_enemy(window_aspect, 75.0f);
 
         start_render_frame();
 
