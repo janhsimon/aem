@@ -33,6 +33,9 @@ set(SOURCE
 
   showcase.c
 
+  sound.c
+  sound.h
+
   view_model.c
   view_model.h
 
@@ -52,6 +55,7 @@ set(DEPENDENCIES
   glad
   glfw
   libaem
+  miniaudio
   util
 )
 
@@ -78,3 +82,4 @@ endforeach()
 # Copy assets
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/models" "$<TARGET_FILE_DIR:${TARGET_NAME}>/models")
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "$<TARGET_FILE_DIR:${TARGET_NAME}>/sounds")

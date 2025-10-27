@@ -5,6 +5,7 @@
 #include "debug_renderer.h"
 #include "enemy.h"
 #include "renderer.h"
+#include "sound.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
@@ -111,6 +112,8 @@ void update_view_model(bool moving, float delta_time)
       aem_set_animation_mixer_blend_speed(mixer, 10.0f);
       aem_blend_to_animation_mixer_channel(mixer, 3); // To shoot
 
+      play_ak47_fire_sound();
+
       vec3 from;
       cam_get_position(from);
 
@@ -132,6 +135,12 @@ void update_view_model(bool moving, float delta_time)
       {
         glm_vec3_negate(ray);
         enemy_die(ray);
+
+        play_headshot_sound();
+      }
+      else
+      {
+        play_impact_sound();
       }
     }
     else
@@ -154,6 +163,8 @@ void update_view_model(bool moving, float delta_time)
           reload_channel->is_playing = true;
           aem_set_animation_mixer_blend_speed(mixer, 10.0f);
           aem_blend_to_animation_mixer_channel(mixer, 2); // To reload
+
+          play_ak47_reload_sound();
         }
         else
         {

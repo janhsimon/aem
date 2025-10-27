@@ -7,6 +7,7 @@
 #include "model_manager.h"
 #include "player.h"
 #include "renderer.h"
+#include "sound.h"
 #include "view_model.h"
 #include "window.h"
 
@@ -71,6 +72,12 @@ int main(int argc, char* argv[])
   if (!load_debug_renderer())
   {
     printf("Failed to load debug renderer\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!load_sound())
+  {
+    printf("Failed to load sound engine\n");
     return EXIT_FAILURE;
   }
 
@@ -218,6 +225,8 @@ int main(int argc, char* argv[])
     free_map();
     free_models();
     free_window();
+
+    free_sound(); // This needs to be at the end for some reason
   }
 
   return EXIT_SUCCESS;
