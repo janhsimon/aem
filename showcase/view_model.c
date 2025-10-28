@@ -4,6 +4,7 @@
 #include "collision.h"
 #include "debug_renderer.h"
 #include "enemy.h"
+#include "input.h"
 #include "renderer.h"
 #include "sound.h"
 
@@ -17,6 +18,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static const struct AEMModel* model = NULL;
 
@@ -24,10 +26,12 @@ static GLuint joint_transform_buffer, joint_transform_texture;
 static mat4* joint_transforms;
 
 static struct AEMAnimationMixer* mixer;
-static struct AEMAnimationChannel *reload_channel, *shoot_channel;
+static struct AEMAnimationChannel *walk_channel, *reload_channel, *shoot_channel;
 
 static bool prev_moving = false;
 static bool is_reloading = false, is_shooting = false;
+
+static float moving_start_time; // Used for footstep sounds
 
 bool load_view_model(const struct AEMModel* model_)
 {
@@ -54,10 +58,10 @@ bool load_view_model(const struct AEMModel* model_)
 
   // Walking
   {
-    struct AEMAnimationChannel* channel = aem_get_animation_mixer_channel(mixer, 1);
-    channel->animation_index = 9;
-    channel->is_playing = true;
-    channel->playback_speed = 4.0f;
+    walk_channel = aem_get_animation_mixer_channel(mixer, 1);
+    walk_channel->animation_index = 9;
+    walk_channel->is_playing = true;
+    walk_channel->playback_speed = 4.0f;
   }
 
   // Reloading
@@ -140,7 +144,7 @@ void update_view_model(bool moving, float delta_time)
       }
       else
       {
-        play_impact_sound();
+        play_impact_sound(to);
       }
     }
     else
@@ -172,6 +176,11 @@ void update_view_model(bool moving, float delta_time)
           {
             aem_set_animation_mixer_blend_speed(mixer, 5.0f);
             aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
+
+            if (moving)
+            {
+              moving_start_time = walk_channel->time;
+            }
           }
         }
       }
@@ -179,6 +188,37 @@ void update_view_model(bool moving, float delta_time)
   }
 
   aem_update_animation(model, mixer, delta_time, **joint_transforms);
+
+  // Footstep sounds
+  if (moving)
+  {
+    static int footstep_counter = 0;
+
+    static float duration = 0.0f;
+    if (duration <= 0.0f)
+    {
+      duration = aem_get_model_animation_duration(model, 9);
+    }
+
+    float relative_time = (walk_channel->time - moving_start_time) / duration;
+    if (relative_time < 0.0f)
+    {
+      relative_time += 1.0f;
+    }
+
+    for (int step_index = 0; step_index < 8; ++step_index)
+    {
+      const float period_start = 0.125f * step_index + 0.05f;
+      if (footstep_counter == step_index && relative_time >= period_start && relative_time < period_start + 0.125f)
+      {
+        const int sound_index = (rand() % 2) * 2 + (step_index % 2);
+        play_player_footstep_sound(sound_index);
+
+        footstep_counter = (footstep_counter + 1) % 8;
+        break;
+      }
+    }
+  }
 
   prev_moving = moving;
 }

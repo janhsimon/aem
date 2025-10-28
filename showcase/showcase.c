@@ -146,6 +146,8 @@ int main(int argc, char* argv[])
       update_enemy(delta_time);
 
       update_hud(window_width, window_height, get_player_speed());
+
+      update_sound();
     }
 
     // Render

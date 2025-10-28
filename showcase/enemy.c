@@ -3,6 +3,7 @@
 #include "collision.h"
 #include "debug_renderer.h"
 #include "renderer.h"
+#include "sound.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
@@ -69,7 +70,7 @@ bool load_enemy(const struct AEMModel* model_)
 
   aem_set_animation_mixer_enabled(mixer, true);
 
-  // Idle
+  // Walking
   {
     channel = aem_get_animation_mixer_channel(mixer, 0);
     channel->animation_index = 1;
@@ -178,6 +179,39 @@ void update_enemy(float delta_time)
     if (rand() % 100 == 22)
     {
       rot = ((rand() % 100) / 100.0f) * ENEMY_TURN_ANGLE - (ENEMY_TURN_ANGLE / 2.0f);
+    }
+
+    // Footstep sounds
+    {
+      static int footstep_counter = 0;
+
+      static float duration = 0.0f;
+      if (duration <= 0.0f)
+      {
+        duration = aem_get_model_animation_duration(model, 1);
+      }
+
+      float relative_time = channel->time / duration;
+      if (relative_time < 0.0f)
+      {
+        relative_time += 1.0f;
+      }
+
+      for (int step_index = 0; step_index < 2; ++step_index)
+      {
+        const float period_start = 0.5f * step_index + 0.25f;
+        if (footstep_counter == step_index && relative_time >= period_start && relative_time < period_start + 0.5f)
+        {
+          const int sound_index = (rand() % 2) * 2 + (step_index % 2);
+          
+          vec3 feet;
+          glm_vec3_copy(transform[3], feet);
+          play_enemy_footstep_sound(sound_index, feet);
+
+          footstep_counter = (footstep_counter + 1) % 2;
+          break;
+        }
+      }
     }
   }
 
