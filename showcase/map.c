@@ -1,7 +1,7 @@
 #include "map.h"
 
 #include "model_manager.h"
-#include "renderer.h"
+#include "model_renderer.h"
 
 #include <aem/model.h>
 
@@ -30,16 +30,23 @@ bool load_map()
     car = load_model("models/car.aem");
   }
 
+  if (!sponza_base || !sponza_curtains || !sponza_ivy || !sponza_tree || !car)
+  {
+    return false;
+  }
+
   // Position the car
   {
     glm_translate_make(car_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
     glm_rotate(car_matrix, glm_rad(15.0f), GLM_YUP);
     glm_scale(car_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-  }
 
-  if (!sponza_base || !sponza_curtains || !sponza_ivy || !sponza_tree || !car)
-  {
-    return false;
+    const uint32_t car_vertex_count = aem_get_model_vertex_count(car->model);
+    float* car_vertices = aem_get_model_vertex_buffer(car->model);
+    for (uint32_t v = 0; v < car_vertex_count; ++v)
+    {
+      glm_mat4_mulv3(car_matrix, &car_vertices[v * 22], 1.0f, &car_vertices[v * 22]);
+    }
   }
 
   struct AEMModel *sponza_c = NULL, *car_c = NULL;
@@ -101,37 +108,20 @@ bool load_map()
 
 void draw_map_opaque()
 {
-  // Car
-  {
-    mat4 world_matrix;
-    glm_translate_make(world_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
-    glm_rotate(world_matrix, glm_rad(15.0f), GLM_YUP);
-    glm_scale(world_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-    use_world_matrix(world_matrix);
-
-    render_model(car, ModelRenderMode_AllMeshes);
-  }
-
-  // Sponza (opaque parts)
-  {
-    use_world_matrix(GLM_MAT4_IDENTITY);
-
-    render_model(sponza_base, ModelRenderMode_AllMeshes);
-    render_model(sponza_curtains, ModelRenderMode_AllMeshes);
-    render_model(sponza_ivy, ModelRenderMode_AllMeshes);
-    render_model(sponza_tree, ModelRenderMode_AllMeshes);
-  }
+  render_model(sponza_base, ModelRenderMode_AllMeshes);
+  render_model(sponza_curtains, ModelRenderMode_AllMeshes);
+  render_model(sponza_ivy, ModelRenderMode_AllMeshes);
+  render_model(sponza_tree, ModelRenderMode_AllMeshes);
+  render_model(car, ModelRenderMode_AllMeshes);
 }
 
 void draw_map_transparent()
 {
-  // Sponza (transparent parts)
-  {
-    render_model(sponza_base, ModelRenderMode_TransparentMeshesOnly);
-    render_model(sponza_curtains, ModelRenderMode_TransparentMeshesOnly);
-    render_model(sponza_ivy, ModelRenderMode_TransparentMeshesOnly);
-    render_model(sponza_tree, ModelRenderMode_TransparentMeshesOnly);
-  }
+  render_model(sponza_base, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza_curtains, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza_ivy, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza_tree, ModelRenderMode_TransparentMeshesOnly);
+  // The car does not have transparent meshes
 }
 
 void free_map()

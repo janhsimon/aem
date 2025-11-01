@@ -3,8 +3,6 @@
 #include <cglm/cam.h>
 #include <cglm/quat.h>
 
-#define NEAR 0.01f
-#define FAR 1000.0f
 #define PITCH_CLAMP 1.5533f // 89 deg in rad
 
 static vec3 position = GLM_VEC3_ZERO_INIT;
@@ -64,7 +62,7 @@ void calc_view_matrix(mat4 view_matrix)
   glm_lookat(position, target, GLM_YUP, view_matrix);
 }
 
-void calc_proj_matrix(float aspect, float fov, mat4 proj_matrix)
+void calc_proj_matrix(float aspect, float fov, float near, float far, mat4 proj_matrix)
 {
-  glm_perspective(glm_rad(fov), aspect, NEAR, FAR, proj_matrix);
+  glm_perspective(glm_rad(fov), aspect, near, far, proj_matrix);
 }

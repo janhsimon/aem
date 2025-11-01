@@ -2,10 +2,9 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug_renderer.h"
+//#include "debug_renderer.h"
 #include "enemy.h"
 #include "input.h"
-#include "renderer.h"
 #include "sound.h"
 
 #include <aem/animation_mixer.h>
@@ -223,34 +222,28 @@ void update_view_model(bool moving, float delta_time)
   prev_moving = moving;
 }
 
+void view_model_get_world_matrix(mat4 world_matrix)
+{
+  // Copy the camera position
+  vec3 camera_position;
+  cam_get_position(camera_position);
+  glm_translate_make((vec4*)world_matrix, camera_position);
+
+  // And insert the camera orientation
+  mat3 camera_orientation;
+  cam_get_orientation(camera_orientation);
+  glm_mat4_ins3(camera_orientation, world_matrix);
+
+  // Offset slightly
+  glm_translate_y(world_matrix, -0.02f);
+  glm_translate_z(world_matrix, 0.1f);
+
+  // Scale way down
+  glm_scale_uni(world_matrix, 0.02f);
+}
+
 void prepare_view_model_rendering(float aspect)
 {
-  // Reduced fixed fov
-  use_fov(aspect, 50.0f);
-
-  // World matrix
-  {
-    mat4 world_matrix;
-
-    // Copy the camera position
-    vec3 camera_position;
-    cam_get_position(camera_position);
-    glm_translate_make((vec4*)world_matrix, camera_position);
-
-    // And insert the camera orientation
-    mat3 camera_orientation;
-    cam_get_orientation(camera_orientation);
-    glm_mat4_ins3(camera_orientation, world_matrix);
-
-    // Offset slightly
-    glm_translate_y(world_matrix, -0.02f);
-    glm_translate_z(world_matrix, 0.1f);
-
-    // Scale way down
-    glm_scale_uni(world_matrix, 0.02f);
-    use_world_matrix(world_matrix);
-  }
-
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
   glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
 

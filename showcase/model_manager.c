@@ -2,8 +2,6 @@
 
 #include <aem/model.h>
 
-#include <util/util.h>
-
 #include <glad/gl.h>
 
 #include <assert.h>
@@ -59,7 +57,8 @@ void finish_model_loading()
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &index_buffer);
 
-  bind_vertex_index_buffers();
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 
   glBufferData(GL_ARRAY_BUFFER, total_vertex_count * AEM_VERTEX_SIZE, NULL, GL_STATIC_DRAW);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, total_index_count * AEM_INDEX_SIZE, NULL, GL_STATIC_DRAW);
@@ -88,40 +87,9 @@ void finish_model_loading()
   }
 }
 
-void bind_vertex_index_buffers()
+unsigned int* model_manager_get_texture_handles()
 {
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-}
-
-void render_model(struct ModelRenderInfo* mri, enum ModelRenderMode mode)
-{
-  const struct AEMModel* model = mri->model;
-
-  const uint32_t mesh_count = aem_get_model_mesh_count(model);
-  for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
-  {
-    const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
-    const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
-
-    if (mode == ModelRenderMode_TransparentMeshesOnly && material->type != AEMMaterialType_Transparent)
-    {
-      continue;
-    }
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture_handles[mri->first_texture + material->base_color_texture_index]);
-
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, texture_handles[mri->first_texture + material->normal_texture_index]);
-
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, texture_handles[mri->first_texture + material->pbr_texture_index]);
-
-    glDrawElementsBaseVertex(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT,
-                             (void*)(uintptr_t)((mri->first_index + mesh->first_index) * AEM_INDEX_SIZE),
-                             mri->first_vertex);
-  }
+  return texture_handles;
 }
 
 void free_models()

@@ -72,15 +72,7 @@ bool load_window(enum WindowMode mode)
     return false;
   }
 
-  // Raw mouse input
-  {
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    if (glfwRawMouseMotionSupported())
-    {
-      glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    }
-  }
+  set_cursor_mode(true);
 
   // Register callbacks
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -106,6 +98,24 @@ void get_window_size(uint32_t* width_, uint32_t* height_)
 {
   *width_ = width;
   *height_ = height;
+}
+
+void set_cursor_mode(bool first_person)
+{
+  if (first_person)
+  {
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // Raw mouse input
+    if (glfwRawMouseMotionSupported())
+    {
+      glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    }
+  }
+  else
+  {
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+  }
 }
 
 bool should_window_close()

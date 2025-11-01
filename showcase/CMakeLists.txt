@@ -7,11 +7,17 @@ set(SOURCE
   collision.c
   collision.h
 
+  debug_pipeline.c
+  debug_pipeline.h
+
   debug_renderer.c
   debug_renderer.h
 
   enemy.c
   enemy.h
+
+  forward_pipeline.c
+  forward_pipeline.h
 
   hud.c
   hud.h
@@ -25,11 +31,14 @@ set(SOURCE
   model_manager.c
   model_manager.h
 
+  model_renderer.c
+  model_renderer.h
+
   player.c
   player.h
 
-  renderer.c
-  renderer.h
+  shadow_pipeline.c
+  shadow_pipeline.h
 
   showcase.c
 
@@ -42,11 +51,12 @@ set(SOURCE
   window.c
   window.h
 
-  shaders/debug.vert.glsl
   shaders/debug.frag.glsl
+  shaders/forward.frag.glsl
+  shaders/null.frag.glsl
 
-  shaders/vert.glsl
-  shaders/frag.glsl
+  shaders/simple.vert.glsl
+  shaders/skinned.vert.glsl
 )
 
 set(DEPENDENCIES

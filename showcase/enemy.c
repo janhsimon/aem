@@ -2,7 +2,6 @@
 
 #include "collision.h"
 #include "debug_renderer.h"
-#include "renderer.h"
 #include "sound.h"
 
 #include <aem/animation_mixer.h>
@@ -203,7 +202,7 @@ void update_enemy(float delta_time)
         if (footstep_counter == step_index && relative_time >= period_start && relative_time < period_start + 0.5f)
         {
           const int sound_index = (rand() % 2) * 2 + (step_index % 2);
-          
+
           vec3 feet;
           glm_vec3_copy(transform[3], feet);
           play_enemy_footstep_sound(sound_index, feet);
@@ -231,14 +230,17 @@ void update_enemy(float delta_time)
 
 void prepare_enemy_rendering()
 {
-  use_world_matrix(transform);
-
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
   glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
 
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
+}
+
+void get_enemy_world_matrix(mat4 world_matrix)
+{
+  glm_mat4_copy(transform, world_matrix);
 }
 
 void debug_draw_enemy(float aspect, float fov)
@@ -251,10 +253,10 @@ void debug_draw_enemy(float aspect, float fov)
     glm_vec3_copy(collider_bottom, collider_top);
     collider_top[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
 
-    debug_render_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP, aspect, fov);
+    debug_render_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP);
   }
 
-  debug_render_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP, aspect, fov);
+  debug_render_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
 }
 
 bool is_enemy_hit(vec3 from, vec3 to)

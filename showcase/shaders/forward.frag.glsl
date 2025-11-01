@@ -6,13 +6,16 @@ const int RENDER_PASS_TRANSPARENT = 1;
 uniform int render_pass;
 
 uniform vec4 ambient_color = vec4(0.85, 0.75, 1.0, 0.1); // In linear space, RGB, A: intensity
-uniform vec3 light_dir = vec3(1.0, -1.0, 1.0);
 uniform vec4 light_color = vec4(0.97, 0.72, 0.47, 10.0); // In linear space, RGB, A: intensity
+uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
+uniform mat4 light_viewproj;
 
 uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
+
+uniform sampler2D shadow_tex;
 
 in VERT_TO_FRAG {
   vec3 position; // In world space
@@ -107,6 +110,27 @@ vec3 filmic(vec3 x)
 
 void main()
 {
+  // Hack in shadow mapping here for now
+  float shadow = 1.0;
+  {
+    vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
+
+    // Perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5; // to [0,1]
+
+    // Don’t shadow outside map
+    if (projCoords.z <= 1.0) {
+      // Read depth from shadow map
+      float closestDepth = texture(shadow_tex, projCoords.xy).r;
+      float currentDepth = projCoords.z;
+      
+      // Basic shadow test (add bias to reduce acne)
+      const float bias = 0.0025;
+      shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
+    }
+  }
+
   vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space
 
   float opacity = base_color_sample.a;
@@ -166,7 +190,7 @@ void main()
 
   vec3 emissive = emissive_intensity * albedo;
 
-  vec3 color = ambient + Lo + emissive;
+  vec3 color = ambient + Lo * shadow + emissive;
 
   // Postprocessing
   // if (postprocessing_mode != POSTPROCESSING_MODE_LINEAR) {

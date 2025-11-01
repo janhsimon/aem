@@ -11,4 +11,4 @@ void camera_add_yaw_pitch(float yaw, float pitch);
 void camera_add_move(vec3 move);
 
 void calc_view_matrix(mat4 view_matrix);
-void calc_proj_matrix(float aspect, float fov, mat4 proj_matrix);
+void calc_proj_matrix(float aspect, float fov, float near, float far, mat4 proj_matrix);

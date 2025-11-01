@@ -1,6 +1,6 @@
 #include "debug_renderer.h"
 
-#include "camera.h"
+#include "debug_pipeline.h"
 
 #include <util/util.h>
 
@@ -19,9 +19,6 @@ size_t dynamic_start_vertex;
 
 GLuint vao;
 GLuint vbo;
-
-GLuint shader_program;
-GLint world_uniform_location, viewproj_uniform_location, color_uniform_location;
 
 void add_debug_line(vec3 from, vec3 to)
 {
@@ -142,7 +139,7 @@ static void add_capsule_center()
   capsule_center_vertex_count = vertex_count - capsule_center_start_vertex;
 }
 
-bool load_debug_renderer()
+void load_debug_renderer()
 {
   glGenVertexArrays(1, &vao);
   glGenBuffers(1, &vbo);
@@ -154,44 +151,16 @@ bool load_debug_renderer()
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
 
-  glBindVertexArray(0);
-
-  // Load shaders
-  {
-    GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/debug.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
-    {
-      return false;
-    }
-
-    if (!load_shader("shaders/debug.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
-    {
-      return false;
-    }
-
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
-    {
-      return false;
-    }
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    // Retrieve uniform locations and set constant uniforms
-    {
-      glUseProgram(shader_program);
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
-      color_uniform_location = get_uniform_location(shader_program, "color");
-    }
-  }
-
   add_capsule_cap();
   add_capsule_center();
 
   dynamic_start_vertex = vertex_count;
+}
 
-  return true;
+void free_debug_renderer()
+{
+  glDeleteVertexArrays(1, &vao);
+  glDeleteBuffers(1, &vbo);
 }
 
 static void make_cylinder_rotation(vec3 A, vec3 B, mat4 rot)
@@ -231,21 +200,16 @@ static void make_cylinder_rotation(vec3 A, vec3 B, mat4 rot)
   glm_rotate_make(rot, angle, axis);
 }
 
-void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color, float aspect, float fov)
+void start_debug_rendering()
 {
-  mat4 view_matrix, proj_matrix;
-  calc_view_matrix(view_matrix);
-  calc_proj_matrix(aspect, fov, proj_matrix);
-  glm_mat4_mul(proj_matrix, view_matrix, proj_matrix);
-
-  glUseProgram(shader_program);
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
-
-  glUniform3fv(color_uniform_location, 1, (float*)color);
-
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_count * sizeof(float) * 3, vertices);
+}
+
+void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color)
+{
+  debug_pipeline_use_color(color);
 
   // Capsule center
   {
@@ -259,7 +223,7 @@ void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color, float as
     const float length = glm_vec3_distance(from, to);
     glm_scale(world_matrix, (vec3){ radius, length, radius });
 
-    glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
+    debug_pipeline_use_world_matrix(world_matrix);
     glDrawArrays(GL_LINES, capsule_center_start_vertex, capsule_center_vertex_count);
   }
 
@@ -274,7 +238,7 @@ void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color, float as
 
     glm_scale(world_matrix, (vec3){ radius, -radius, radius });
 
-    glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
+    debug_pipeline_use_world_matrix(world_matrix);
     glDrawArrays(GL_LINES, capsule_cap_start_vertex, capsule_cap_vertex_count);
   }
 
@@ -289,33 +253,25 @@ void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color, float as
 
     glm_scale(world_matrix, (vec3){ radius, radius, radius });
 
-    glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
+    debug_pipeline_use_world_matrix(world_matrix);
     glDrawArrays(GL_LINES, capsule_cap_start_vertex, capsule_cap_vertex_count);
   }
 }
 
 void debug_render_lines(vec3 color, float aspect, float fov)
 {
-  if (vertex_count == 0)
+  debug_pipeline_use_color(color);
+  debug_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+
+  const size_t vc = vertex_count - dynamic_start_vertex;
+  if (vc == 0)
   {
     return;
   }
-
-  mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-
-  mat4 view_matrix, proj_matrix;
-  calc_view_matrix(view_matrix);
-  calc_proj_matrix(aspect, fov, proj_matrix);
-  glm_mat4_mul(proj_matrix, view_matrix, proj_matrix);
-
-  glUseProgram(shader_program);
-  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
-  glUniform3fv(color_uniform_location, 1, (float*)color);
 
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_count * sizeof(float) * 3, vertices);
 
-  glDrawArrays(GL_LINES, dynamic_start_vertex, vertex_count - dynamic_start_vertex);
+  glDrawArrays(GL_LINES, dynamic_start_vertex, vc);
 }

@@ -14,18 +14,10 @@ struct ModelRenderInfo
   uint32_t first_vertex, first_index, first_texture;
 };
 
-enum ModelRenderMode
-{
-  ModelRenderMode_AllMeshes,
-  ModelRenderMode_TransparentMeshesOnly
-};
-
 void prepare_model_loading(uint32_t model_count);
 struct ModelRenderInfo* load_model(const char* filename);
 void finish_model_loading();
 
-void bind_vertex_index_buffers();
-
-void render_model(struct ModelRenderInfo* model_render_info, enum ModelRenderMode mode);
+unsigned int* model_manager_get_texture_handles();
 
 void free_models();

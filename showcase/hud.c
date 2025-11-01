@@ -2,6 +2,8 @@
 
 #include "window.h"
 
+#include <cglm/vec3.h>
+
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
 
@@ -34,7 +36,12 @@ bool load_hud()
   return true;
 }
 
-void update_hud(uint32_t screen_width, uint32_t screen_height, float player_speed)
+void update_hud(uint32_t screen_width,
+                uint32_t screen_height,
+                bool debug_mode,
+                float player_speed,
+                vec3 light_dir,
+                bool* debug_render)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -71,6 +78,21 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, float player_spee
     sprintf(s, "Movement speed: %f", player_speed);
     ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, screen_height - 100.0f }, color, s, NULL);
   }
+
+  // Debug window
+  if (debug_mode)
+  {
+    bool open = true;
+    igBegin("Debug", &open, 0);
+
+    igCheckbox("Debug Render", debug_render);
+
+    igSliderFloat3("Light Dir", light_dir, -1.0f, 1.0f, "%f", 0);
+    igEnd();
+  }
+
+  // bool yes = true;
+  // igShowDemoWindow(&yes);
 }
 
 void render_hud()

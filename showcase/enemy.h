@@ -11,6 +11,8 @@ bool load_enemy(const struct AEMModel* model);
 void update_enemy(float delta_time);
 void prepare_enemy_rendering();
 
+void get_enemy_world_matrix(mat4 world_matrix);
+
 void debug_draw_enemy(float aspect, float fov);
 
 bool is_enemy_hit(vec3 from, vec3 to);

@@ -1,0 +1,107 @@
+#include "forward_pipeline.h"
+
+#include "window.h"
+
+#include <util/util.h>
+
+#include <glad/gl.h>
+
+static uint32_t screen_width, screen_height;
+
+static GLuint shader_program;
+static GLint world_uniform_location, viewproj_uniform_location, render_pass_uniform_location,
+  light_dir_uniform_location, camera_pos_uniform_location, light_viewproj_uniform_location;
+
+bool load_forward_pipeline()
+{
+  get_window_size(&screen_width, &screen_height);
+
+  // Load shaders
+  {
+    GLuint vertex_shader, fragment_shader;
+    if (!load_shader("shaders/skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+    {
+      return false;
+    }
+
+    if (!load_shader("shaders/forward.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    {
+      return false;
+    }
+
+    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    {
+      return false;
+    }
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    // Retrieve uniform locations and set constant uniforms
+    {
+      glUseProgram(shader_program);
+
+      world_uniform_location = get_uniform_location(shader_program, "world");
+      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      render_pass_uniform_location = get_uniform_location(shader_program, "render_pass");
+      light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
+      camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
+      light_viewproj_uniform_location = get_uniform_location(shader_program, "light_viewproj");
+
+      const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
+      glUniform1i(joint_transform_tex_uniform_location, 0);
+
+      const GLint base_color_tex_uniform_location = get_uniform_location(shader_program, "base_color_tex");
+      glUniform1i(base_color_tex_uniform_location, 1);
+
+      const GLint normal_tex_uniform_location = get_uniform_location(shader_program, "normal_tex");
+      glUniform1i(normal_tex_uniform_location, 2);
+
+      const GLint pbr_tex_uniform_location = get_uniform_location(shader_program, "pbr_tex");
+      glUniform1i(pbr_tex_uniform_location, 3);
+
+      const GLint shadow_tex_uniform_location = get_uniform_location(shader_program, "shadow_tex");
+      glUniform1i(shadow_tex_uniform_location, 4);
+    }
+  }
+
+  return true;
+}
+
+void free_forward_pipeline()
+{
+  glDeleteProgram(shader_program);
+}
+
+void forward_pipeline_start_rendering()
+{
+  glViewport(0, 0, screen_width, screen_height);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glUseProgram(shader_program);
+}
+
+void forward_pipeline_use_world_matrix(mat4 world_matrix)
+{
+  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
+}
+
+void forward_pipeline_use_viewproj_matrix(mat4 viewproj_matrix)
+{
+  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+}
+
+void forward_pipeline_use_render_pass(enum ForwardPipelineRenderPass pass)
+{
+  glUniform1i(render_pass_uniform_location, (GLint)pass);
+}
+
+void forward_pipeline_use_camera(vec3 camera_pos)
+{
+  glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
+}
+
+void forward_pipeline_use_light(vec3 light_dir, mat4 viewproj_matrix)
+{
+  glUniform3fv(light_dir_uniform_location, 1, light_dir);
+  glUniformMatrix4fv(light_viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+}
