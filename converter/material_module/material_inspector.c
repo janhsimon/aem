@@ -72,15 +72,13 @@ void get_texture_transform_from_texture_views(cgltf_texture_view* base_color_alp
                                               cgltf_texture_view* emissive,
                                               cgltf_texture_transform* transform)
 {
+  bool found_transform = false;
   make_identity_transform(transform);
 
-  bool found_transform = false;
   if (base_color_alpha)
   {
-    if (base_color_alpha)
+    if (base_color_alpha->has_transform && !is_transform_identity(&base_color_alpha->transform))
     {
-      if (base_color_alpha->has_transform)
-      {
         if (!found_transform)
         {
           copy_transforms(&base_color_alpha->transform, transform);
@@ -90,111 +88,110 @@ void get_texture_transform_from_texture_views(cgltf_texture_view* base_color_alp
         {
           assert(compare_transforms(&base_color_alpha->transform, transform));
         }
+    }
+    else
+    {
+      assert(!found_transform);
+    }
+  }
+
+  if (normal)
+  {
+    if (normal->has_transform && !is_transform_identity(&normal->transform))
+    {
+      if (!found_transform)
+      {
+        copy_transforms(&normal->transform, transform);
+        found_transform = true;
       }
       else
       {
-        assert(!found_transform);
+        assert(compare_transforms(&normal->transform, transform));
       }
     }
-
-    if (normal)
+    else
     {
-      if (normal->has_transform)
+      assert(!found_transform);
+    }
+  }
+
+  if (metallic_roughness)
+  {
+    if (metallic_roughness->has_transform && !is_transform_identity(&metallic_roughness->transform))
+    {
+      if (!found_transform)
       {
-        if (!found_transform)
-        {
-          copy_transforms(&normal->transform, transform);
-          found_transform = true;
-        }
-        else
-        {
-          assert(compare_transforms(&normal->transform, transform));
-        }
+        copy_transforms(&metallic_roughness->transform, transform);
+        found_transform = true;
       }
       else
       {
-        assert(!found_transform);
+        assert(compare_transforms(&metallic_roughness->transform, transform));
       }
     }
-
-    if (metallic_roughness)
+    else
     {
-      if (metallic_roughness->has_transform)
+      assert(!found_transform);
+    }
+  }
+
+  if (specular_glossiness)
+  {
+    if (specular_glossiness->has_transform && !is_transform_identity(&specular_glossiness->transform))
+    {
+      if (!found_transform)
       {
-        if (!found_transform)
-        {
-          copy_transforms(&metallic_roughness->transform, transform);
-          found_transform = true;
-        }
-        else
-        {
-          assert(compare_transforms(&metallic_roughness->transform, transform));
-        }
+        copy_transforms(&specular_glossiness->transform, transform);
+        found_transform = true;
       }
       else
       {
-        assert(!found_transform);
+        assert(compare_transforms(&specular_glossiness->transform, transform));
       }
     }
-
-    if (specular_glossiness)
+    else
     {
-      if (specular_glossiness->has_transform)
+      assert(!found_transform);
+    }
+  }
+
+  if (occlusion)
+  {
+    if (occlusion->has_transform && !is_transform_identity(&occlusion->transform))
+    {
+      if (!found_transform)
       {
-        if (!found_transform)
-        {
-          copy_transforms(&specular_glossiness->transform, transform);
-          found_transform = true;
-        }
-        else
-        {
-          assert(compare_transforms(&specular_glossiness->transform, transform));
-        }
+        copy_transforms(&occlusion->transform, transform);
+        found_transform = true;
       }
       else
       {
-        assert(!found_transform);
+        assert(compare_transforms(&occlusion->transform, transform));
       }
     }
-
-    if (occlusion)
+    else
     {
-      if (occlusion->has_transform)
+      assert(!found_transform);
+    }
+  }
+
+  if (emissive)
+  {
+    if (emissive->has_transform && !is_transform_identity(&emissive->transform))
+    {
+      if (!found_transform)
       {
-        if (!found_transform)
-        {
-          copy_transforms(&occlusion->transform, transform);
-          found_transform = true;
-        }
-        else
-        {
-          assert(compare_transforms(&occlusion->transform, transform));
-        }
+        copy_transforms(&emissive->transform, transform);
+        found_transform = true;
       }
       else
       {
-        assert(!found_transform);
+        assert(compare_transforms(&emissive->transform, transform));
       }
     }
-
-    if (emissive)
+    else
     {
-      if (emissive->has_transform)
-      {
-        if (!found_transform)
-        {
-          copy_transforms(&emissive->transform, transform);
-          found_transform = true;
-        }
-        else
-        {
-          assert(compare_transforms(&emissive->transform, transform));
-        }
-      }
-      else
-      {
-        assert(!found_transform);
-      }
+      assert(!found_transform);
     }
   }
 }

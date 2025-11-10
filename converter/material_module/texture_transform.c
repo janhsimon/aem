@@ -58,6 +58,26 @@ bool compare_transforms(cgltf_texture_transform* a, cgltf_texture_transform* b)
   return true;
 }
 
+bool is_transform_identity(cgltf_texture_transform* transform)
+{
+  if (!glm_vec2_eqv_eps(transform->offset, GLM_VEC2_ZERO))
+  {
+    return false;
+  }
+
+  if (fabsf(transform->rotation) > GLM_FLT_EPSILON)
+  {
+    return false;
+  }
+
+  if (!glm_vec2_eqv_eps(transform->scale, GLM_VEC2_ONE))
+  {
+    return false;
+  }
+
+  return true;
+}
+
 void transform_to_mat3(cgltf_texture_transform* transform, mat3 matrix)
 {
   glm_translate2d_make(matrix, transform->offset);
