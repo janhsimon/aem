@@ -5,6 +5,7 @@
 void load_debug_renderer();
 void free_debug_renderer();
 
+void clear_debug_lines();
 void add_debug_line(vec3 from, vec3 to);
 
 void start_debug_rendering();

@@ -37,6 +37,9 @@ set(SOURCE
   player.c
   player.h
 
+  preferences.c
+  preferences.h
+
   shadow_pipeline.c
   shadow_pipeline.h
 

@@ -18,4 +18,5 @@ void forward_pipeline_use_world_matrix(mat4 world_matrix);
 void forward_pipeline_use_viewproj_matrix(mat4 viewproj_matrix);
 void forward_pipeline_use_render_pass(enum ForwardPipelineRenderPass pass);
 void forward_pipeline_use_camera(vec3 camera_pos);
-void forward_pipeline_use_light(vec3 light_dir, mat4 viewproj_matrix);
+void forward_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity, mat4 viewproj_matrix);
+void forward_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity);

@@ -2,9 +2,10 @@
 
 #include "camera.h"
 #include "collision.h"
-//#include "debug_renderer.h"
+#include "debug_renderer.h"
 #include "enemy.h"
 #include "input.h"
+#include "preferences.h"
 #include "sound.h"
 
 #include <aem/animation_mixer.h>
@@ -18,6 +19,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#define IDLE_ANIMATION_INDEX 1
+#define WALK_ANIMATION_INDEX 2   // AK: 9
+#define SHOOT_ANIMATION_INDEX 4  // AK: 2
+#define RELOAD_ANIMATION_INDEX 6 // AK: 12
 
 static const struct AEMModel* model = NULL;
 
@@ -57,23 +63,23 @@ bool load_view_model(const struct AEMModel* model_)
 
   // Walking
   {
-    walk_channel = aem_get_animation_mixer_channel(mixer, 1);
-    walk_channel->animation_index = 9;
+    walk_channel = aem_get_animation_mixer_channel(mixer, IDLE_ANIMATION_INDEX);
+    walk_channel->animation_index = WALK_ANIMATION_INDEX;
     walk_channel->is_playing = true;
-    walk_channel->playback_speed = 4.0f;
+    // walk_channel->playback_speed = 4.0f;
   }
 
   // Reloading
   {
     reload_channel = aem_get_animation_mixer_channel(mixer, 2);
-    reload_channel->animation_index = 12;
+    reload_channel->animation_index = RELOAD_ANIMATION_INDEX;
     reload_channel->is_looping = false;
   }
 
   // Shooting
   {
     shoot_channel = aem_get_animation_mixer_channel(mixer, 3);
-    shoot_channel->animation_index = 2;
+    shoot_channel->animation_index = SHOOT_ANIMATION_INDEX;
     shoot_channel->is_looping = false;
   }
 
@@ -98,7 +104,7 @@ void update_view_model(bool moving, float delta_time)
 {
   if (is_shooting)
   {
-    if (shoot_channel->time >= aem_get_model_animation_duration(model, 2) - 0.1f)
+    if (shoot_channel->time >= aem_get_model_animation_duration(model, SHOOT_ANIMATION_INDEX) - 0.1f)
     {
       is_shooting = false;
       aem_set_animation_mixer_blend_speed(mixer, 10.0f);
@@ -150,7 +156,7 @@ void update_view_model(bool moving, float delta_time)
     {
       if (is_reloading)
       {
-        if (reload_channel->time >= aem_get_model_animation_duration(model, 12) - 0.2f)
+        if (reload_channel->time >= aem_get_model_animation_duration(model, RELOAD_ANIMATION_INDEX) - 0.2f)
         {
           is_reloading = false;
           aem_set_animation_mixer_blend_speed(mixer, 10.0f);
@@ -196,7 +202,7 @@ void update_view_model(bool moving, float delta_time)
     static float duration = 0.0f;
     if (duration <= 0.0f)
     {
-      duration = aem_get_model_animation_duration(model, 9);
+      duration = aem_get_model_animation_duration(model, WALK_ANIMATION_INDEX);
     }
 
     float relative_time = (walk_channel->time - moving_start_time) / duration;
@@ -222,7 +228,7 @@ void update_view_model(bool moving, float delta_time)
   prev_moving = moving;
 }
 
-void view_model_get_world_matrix(mat4 world_matrix)
+void view_model_get_world_matrix(const struct Preferences* preferences, mat4 world_matrix)
 {
   // Copy the camera position
   vec3 camera_position;
@@ -234,12 +240,8 @@ void view_model_get_world_matrix(mat4 world_matrix)
   cam_get_orientation(camera_orientation);
   glm_mat4_ins3(camera_orientation, world_matrix);
 
-  // Offset slightly
-  glm_translate_y(world_matrix, -0.02f);
-  glm_translate_z(world_matrix, 0.1f);
-
-  // Scale way down
-  glm_scale_uni(world_matrix, 0.02f);
+  glm_translate(world_matrix, preferences->view_model_position);
+  glm_scale_uni(world_matrix, preferences->view_model_scale);
 }
 
 void prepare_view_model_rendering(float aspect)

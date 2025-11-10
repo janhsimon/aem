@@ -5,8 +5,8 @@ const int RENDER_PASS_TRANSPARENT = 1;
 
 uniform int render_pass;
 
-uniform vec4 ambient_color = vec4(0.85, 0.75, 1.0, 0.1); // In linear space, RGB, A: intensity
-uniform vec4 light_color = vec4(0.97, 0.72, 0.47, 10.0); // In linear space, RGB, A: intensity
+uniform vec4 ambient_color; // In linear space, RGB, A: intensity
+uniform vec4 light_color; // In linear space, RGB, A: intensity
 uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
 uniform mat4 light_viewproj;
@@ -70,9 +70,13 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 }
 
 vec3 linear_to_srgb(vec3 c) {
+    const float gamma = 2.2; // 2.4
+
     vec3 a = 12.92 * c;
-    vec3 b = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;
+    vec3 b = 1.055 * pow(c, vec3(1.0 / gamma)) - 0.055;
     return mix(a, b, step(0.0031308, c));
+
+    //return pow(c, vec3(1.0 / gamma));
 }
 
 vec3 reinhard(vec3 color)
@@ -111,24 +115,55 @@ vec3 filmic(vec3 x)
 void main()
 {
   // Hack in shadow mapping here for now
+  //float shadow = 1.0;
+  //{
+  //  vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
+  //
+  //  // Perspective divide
+  //  vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+  //  projCoords = projCoords * 0.5 + 0.5; // to [0,1]
+  //
+  //  // Don’t shadow outside map
+  //  if (projCoords.z <= 1.0) {
+  //    // Read depth from shadow map
+  //    float closestDepth = texture(shadow_tex, projCoords.xy).r;
+  //    float currentDepth = projCoords.z;
+  //    
+  //    // Basic shadow test (add bias to reduce acne)
+  //    const float bias = 0.0025;
+  //    shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
+  //  }
+  //}
+
+
   float shadow = 1.0;
-  {
-    vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
 
-    // Perspective divide
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5; // to [0,1]
-
-    // Don’t shadow outside map
-    if (projCoords.z <= 1.0) {
-      // Read depth from shadow map
-      float closestDepth = texture(shadow_tex, projCoords.xy).r;
-      float currentDepth = projCoords.z;
-      
-      // Basic shadow test (add bias to reduce acne)
-      const float bias = 0.0025;
-      shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
+  vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
+  vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+  projCoords = projCoords * 0.5 + 0.5;
+  
+  if (projCoords.z <= 1.0) {
+    const float bias = 0.0015; // From 0.0025
+    
+    // Get texture coordinate offset (1 pixel in texture space)
+    vec2 texelSize = 1.0 / textureSize(shadow_tex, 0);
+    const float radius = 2.0; // try 1.5–3.0
+    float visibility = 0.0;
+    
+    // 5x5 PCF kernel
+    for (int x = -2; x <= 2; ++x) {
+      for (int y = -2; y <= 2; ++y) {
+        vec2 offset = vec2(x, y) * texelSize * radius;
+        
+        //vec2 offset = vec2(x, y) * texelSize;
+        float closestDepth = texture(shadow_tex, projCoords.xy + offset).r;
+        float currentDepth = projCoords.z - bias;
+        visibility += currentDepth <= closestDepth ? 1.0 : 0.0;
+      }
     }
+    
+    // Average result
+    shadow = visibility / 25.0;
   }
 
   vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space

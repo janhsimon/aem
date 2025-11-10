@@ -9,6 +9,7 @@
 #include "model_manager.h"
 #include "model_renderer.h"
 #include "player.h"
+#include "preferences.h"
 #include "shadow_pipeline.h"
 #include "sound.h"
 #include "view_model.h"
@@ -30,17 +31,15 @@
 #define CAM_NEAR 0.01f
 #define CAM_FAR 35.0f
 
-#define WORLD_FOV 75.0f
-#define VIEW_MODEL_FOV 50.0f
-
 static struct ModelRenderInfo *soldier = NULL, *ak = NULL;
 static bool debug_mode_enabled = false;
-static bool debug_render = false;
 
-static vec3 light_dir = { 0.22f, -0.97f, 0.12f };
+static struct Preferences preferences;
 
 int main(int argc, char* argv[])
 {
+  load_default_preferences(&preferences);
+
 #ifndef NDEBUG
   if (!load_window(WindowMode_Windowed))
 #else
@@ -68,7 +67,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    ak = load_model("models/ak.aem");
+    ak = load_model("models/cz.aem");
     if (!ak)
     {
       printf("Failed to load view model\n");
@@ -175,7 +174,7 @@ int main(int argc, char* argv[])
 
       update_enemy(delta_time);
 
-      update_hud(window_width, window_height, debug_mode_enabled, get_player_speed(), light_dir, &debug_render);
+      update_hud(window_width, window_height, debug_mode_enabled, get_player_speed(), &preferences);
 
       update_sound();
     }
@@ -191,7 +190,8 @@ int main(int argc, char* argv[])
         shadow_pipeline_start_rendering();
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        shadow_pipeline_calc_light_viewproj(light_dir, window_aspect, WORLD_FOV, CAM_NEAR, CAM_FAR);
+        shadow_pipeline_calc_light_viewproj(preferences.light_dir, window_aspect, preferences.camera_fov, CAM_NEAR,
+                                            CAM_FAR);
 
         // Map
         {
@@ -218,10 +218,12 @@ int main(int argc, char* argv[])
 
         shadow_pipeline_bind_shadow_map(4);
 
+        forward_pipeline_use_ambient_color(preferences.ambient_color, preferences.ambient_intensity);
+
         mat4 view_matrix, viewproj_matrix;
         {
           calc_view_matrix(view_matrix);
-          calc_proj_matrix(window_aspect, WORLD_FOV, CAM_NEAR, CAM_FAR, viewproj_matrix);
+          calc_proj_matrix(window_aspect, preferences.camera_fov, CAM_NEAR, CAM_FAR, viewproj_matrix);
           glm_mat4_mul(viewproj_matrix, view_matrix, viewproj_matrix);
         }
 
@@ -237,7 +239,8 @@ int main(int argc, char* argv[])
         {
           mat4 light_viewproj;
           shadow_pipeline_get_light_viewproj(light_viewproj);
-          forward_pipeline_use_light(light_dir, light_viewproj);
+          forward_pipeline_use_light(preferences.light_dir, preferences.light_color, preferences.light_intensity,
+                                     light_viewproj);
         }
 
         // Map
@@ -278,13 +281,13 @@ int main(int argc, char* argv[])
 
           {
             mat4 view_model_world_matrix;
-            view_model_get_world_matrix(view_model_world_matrix);
+            view_model_get_world_matrix(&preferences, view_model_world_matrix);
             forward_pipeline_use_world_matrix(view_model_world_matrix);
           }
 
           {
             mat4 view_model_viewproj_matrix;
-            calc_proj_matrix(window_aspect, VIEW_MODEL_FOV, CAM_NEAR, CAM_FAR, view_model_viewproj_matrix);
+            calc_proj_matrix(window_aspect, preferences.view_model_fov, CAM_NEAR, CAM_FAR, view_model_viewproj_matrix);
             glm_mat4_mul(view_model_viewproj_matrix, view_matrix, view_model_viewproj_matrix);
             forward_pipeline_use_viewproj_matrix(view_model_viewproj_matrix);
           }
@@ -294,15 +297,15 @@ int main(int argc, char* argv[])
         }
 
         // Debug draw
-        if (debug_render)
+        if (preferences.debug_render)
         {
           glDisable(GL_DEPTH_TEST);
 
           start_debug_rendering();
           debug_pipeline_start_rendering();
           debug_pipeline_use_viewproj_matrix(viewproj_matrix);
-          debug_render_lines(GLM_YUP, window_aspect, WORLD_FOV);
-          debug_draw_enemy(window_aspect, WORLD_FOV);
+          debug_render_lines(GLM_YUP, window_aspect, preferences.camera_fov);
+          debug_draw_enemy(window_aspect, preferences.camera_fov);
 
           glEnable(GL_DEPTH_TEST);
         }

@@ -1,5 +1,7 @@
 #include "hud.h"
 
+#include "debug_renderer.h"
+#include "preferences.h"
 #include "window.h"
 
 #include <cglm/vec3.h>
@@ -40,8 +42,7 @@ void update_hud(uint32_t screen_width,
                 uint32_t screen_height,
                 bool debug_mode,
                 float player_speed,
-                vec3 light_dir,
-                bool* debug_render)
+                struct Preferences* preferences)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -73,6 +74,7 @@ void update_hud(uint32_t screen_width,
                        (ImVec2){ half_screen_width, half_screen_height + half_gap_size + line_size }, color, 1.0f);
   }
 
+  if (preferences->show_player_move_speed)
   {
     char s[64];
     sprintf(s, "Movement speed: %f", player_speed);
@@ -85,14 +87,50 @@ void update_hud(uint32_t screen_width,
     bool open = true;
     igBegin("Debug", &open, 0);
 
-    igCheckbox("Debug Render", debug_render);
+    if (igCollapsingHeader_TreeNodeFlags("Debugging", ImGuiTreeNodeFlags_None))
+    {
+      igCheckbox("Debug render", &preferences->debug_render);
+      if (igButton("Clear lines", (ImVec2){ 0.0f, 0.0f }))
+      {
+        clear_debug_lines();
+      }
 
-    igSliderFloat3("Light Dir", light_dir, -1.0f, 1.0f, "%f", 0);
+      igCheckbox("Show player move speed", &preferences->show_player_move_speed);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_None))
+    {
+      igSliderFloat("Field of view##Camera", &preferences->camera_fov, 0.0f, 180.0f, "%f", ImGuiSliderFlags_None);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("Ambient lighting", ImGuiTreeNodeFlags_None))
+    {
+      igColorEdit3("Color", preferences->ambient_color, ImGuiColorEditFlags_None);
+      igSliderFloat("Intensity", &preferences->ambient_intensity, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("Directional lighting", ImGuiTreeNodeFlags_None))
+    {
+      igColorEdit3("Color", preferences->light_color, ImGuiColorEditFlags_None);
+      igSliderFloat("Intensity", &preferences->light_intensity, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat3("Direction", preferences->light_dir, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("View model", ImGuiTreeNodeFlags_None))
+    {
+      igSliderFloat3("Position", preferences->view_model_position, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Scale", &preferences->view_model_scale, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Field of view##ViewModel", &preferences->view_model_fov, 0.0f, 180.0f, "%f",
+                    ImGuiSliderFlags_None);
+    }
+
     igEnd();
   }
 
-  // bool yes = true;
-  // igShowDemoWindow(&yes);
+  /*
+  bool yes = true;
+  igShowDemoWindow(&yes);
+  */
 }
 
 void render_hud()

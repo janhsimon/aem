@@ -13,7 +13,7 @@
 
 #include <stdio.h>
 
-#define SHADOW_MAP_SIZE 4096
+#define SHADOW_MAP_SIZE 4096 * 2
 
 static GLuint shadow_framebuffer, shadow_map;
 
@@ -29,8 +29,8 @@ bool load_shadow_pipeline()
   // Create depth texture
   glGenTextures(1, &shadow_map);
   glBindTexture(GL_TEXTURE_2D, shadow_map);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-               NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT,
+               GL_FLOAT, NULL);
 
   // Texture parameters
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

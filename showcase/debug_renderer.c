@@ -15,10 +15,15 @@ float vertices[3 * 10000];
 
 size_t capsule_cap_start_vertex, capsule_cap_vertex_count;
 size_t capsule_center_start_vertex, capsule_center_vertex_count;
-size_t dynamic_start_vertex;
+size_t lines_start_vertex;
 
 GLuint vao;
 GLuint vbo;
+
+void clear_debug_lines()
+{
+  vertex_count = lines_start_vertex;
+}
 
 void add_debug_line(vec3 from, vec3 to)
 {
@@ -154,7 +159,7 @@ void load_debug_renderer()
   add_capsule_cap();
   add_capsule_center();
 
-  dynamic_start_vertex = vertex_count;
+  lines_start_vertex = vertex_count;
 }
 
 void free_debug_renderer()
@@ -263,7 +268,7 @@ void debug_render_lines(vec3 color, float aspect, float fov)
   debug_pipeline_use_color(color);
   debug_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
 
-  const size_t vc = vertex_count - dynamic_start_vertex;
+  const size_t vc = vertex_count - lines_start_vertex;
   if (vc == 0)
   {
     return;
@@ -273,5 +278,5 @@ void debug_render_lines(vec3 color, float aspect, float fov)
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_count * sizeof(float) * 3, vertices);
 
-  glDrawArrays(GL_LINES, dynamic_start_vertex, vc);
+  glDrawArrays(GL_LINES, lines_start_vertex, vc);
 }

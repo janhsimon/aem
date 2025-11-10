@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cglm/types.h>
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -11,8 +9,7 @@ void update_hud(uint32_t screen_width,
                 uint32_t screen_height,
                 bool debug_mode,
                 float player_speed,
-                vec3 light_dir,
-                bool* debug_render);
+                struct Preferences* preferences);
 void render_hud();
 
 void free_hud();
