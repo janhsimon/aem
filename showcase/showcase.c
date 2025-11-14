@@ -26,8 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CLEAR_COLOR 0.58f, 0.71f, 1.0f
-
 #define CAM_NEAR 0.01f
 #define CAM_FAR 35.0f
 
@@ -213,7 +211,8 @@ int main(int argc, char* argv[])
       // Forward render
       {
         forward_pipeline_start_rendering();
-        glClearColor(CLEAR_COLOR, 1.0f);
+        glClearColor(preferences.camera_background_color[0], preferences.camera_background_color[1],
+                     preferences.camera_background_color[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shadow_pipeline_bind_shadow_map(4);

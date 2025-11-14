@@ -228,7 +228,7 @@ void update_view_model(bool moving, float delta_time)
   prev_moving = moving;
 }
 
-void view_model_get_world_matrix(const struct Preferences* preferences, mat4 world_matrix)
+void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_matrix)
 {
   // Copy the camera position
   vec3 camera_position;
