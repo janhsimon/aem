@@ -208,6 +208,7 @@ The time of the keyframe is defined in seconds. Keyframes are generic, they can 
 
 | Asset | Title | Author | License |
 | --- | --- | --- | --- |
+| `showcase/fonts/lambda.ttf` | [HalfLife2](https://www.dafont.com/halflife2.font) | [Valve](https://www.dafont.com/valve-software.d1034) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `showcase/models/ak.aem` | [AK-74M](https://sketchfab.com/3d-models/ak-74m-animations-blender-effd52406532433eaac9454740572c57) | [LokitoBlu](https://sketchfab.com/martinezequielgorno) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `showcase/models/car.aem` | [Keller's Car](https://sketchfab.com/3d-models/kellers-car-wolf-new-order-930c8edf1ee341ddad215724efc6d081) | [Nazar Okruzhko](https://sketchfab.com/Hot-Dog_1947) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `showcase/models/cz.aem` | [CZ Scorpion Evo3 A1](https://sketchfab.com/3d-models/cz-scorpion-evo3-a1-first-person-animations-f2bdfac775344004ad38d0318f0664a4) | [1Matzh](https://sketchfab.com/1Matzh) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |

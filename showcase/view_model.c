@@ -25,6 +25,10 @@
 #define SHOOT_ANIMATION_INDEX 4  // AK: 2
 #define RELOAD_ANIMATION_INDEX 6 // AK: 12
 
+#define SHOT_COOLDOWN 0.1f
+
+#define BULLET_COUNT 30
+
 static const struct AEMModel* model = NULL;
 
 static GLuint joint_transform_buffer, joint_transform_texture;
@@ -36,7 +40,10 @@ static struct AEMAnimationChannel *walk_channel, *reload_channel, *shoot_channel
 static bool prev_moving = false;
 static bool is_reloading = false, is_shooting = false;
 
+static float shot_cooldown = 0.0f;
 static float moving_start_time; // Used for footstep sounds
+
+static int ammo = BULLET_COUNT;
 
 bool load_view_model(const struct AEMModel* model_)
 {
@@ -102,70 +109,102 @@ bool load_view_model(const struct AEMModel* model_)
 
 void update_view_model(bool moving, float delta_time)
 {
+  shot_cooldown -= delta_time;
+  show_muzzleflash = false;
+
   if (is_shooting)
   {
-    if (shoot_channel->time >= aem_get_model_animation_duration(model, SHOOT_ANIMATION_INDEX) - 0.1f)
+    const float duration = aem_get_model_animation_duration(model, SHOOT_ANIMATION_INDEX);
+    if (shoot_channel->time < duration / 4.0f)
+    {
+      show_muzzleflash = true;
+    }
+
+    if (shoot_channel->time >= duration - 0.165f)
     {
       is_shooting = false;
       aem_set_animation_mixer_blend_speed(mixer, 10.0f);
       aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
     }
   }
-  else
+  // else
   {
-    if (get_shoot_button_down() && !is_reloading)
+    if (get_shoot_button_down() && !is_reloading && shot_cooldown <= 0.0f)
     {
-      is_shooting = true;
-      shoot_channel->time = 0.0f;
-      shoot_channel->is_playing = true;
-      aem_set_animation_mixer_blend_speed(mixer, 10.0f);
-      aem_blend_to_animation_mixer_channel(mixer, 3); // To shoot
-
-      play_ak47_fire_sound();
-
-      vec3 from;
-      cam_get_position(from);
-
-      mat3 cam_dir;
-      cam_get_orientation(cam_dir);
-
-      vec3 ray = { 0.0f, 0.0f, 1.0f };
-      glm_mat3_mulv(cam_dir, ray, ray);
-
-      glm_vec3_scale_as(ray, 10000.0f, ray);
-
-      vec3 to;
-      glm_vec3_add(from, ray, to);
-
-      collide_ray(from, to, to);
-      add_debug_line(from, to);
-
-      if (is_enemy_hit(from, to))
+      if (ammo <= 0)
       {
-        glm_vec3_negate(ray);
-        enemy_die(ray);
-
-        play_headshot_sound();
+        play_ak47_dry_sound();
+        shot_cooldown = SHOT_COOLDOWN * 4.0f;
       }
       else
       {
-        play_impact_sound(to);
+
+        is_shooting = true;
+        shoot_channel->time = 0.0f;
+        shoot_channel->is_playing = true;
+        aem_set_animation_mixer_blend_speed(mixer, 10.0f);
+        aem_blend_to_animation_mixer_channel(mixer, 3); // To shoot
+
+        play_ak47_fire_sound();
+
+        vec3 from;
+        cam_get_position(from);
+
+        mat3 cam_dir;
+        cam_get_orientation(cam_dir);
+
+        vec3 ray = { 0.0f, 0.0f, 1.0f };
+        glm_mat3_mulv(cam_dir, ray, ray);
+
+        glm_vec3_scale_as(ray, 10000.0f, ray);
+
+        vec3 to;
+        glm_vec3_add(from, ray, to);
+
+        collide_ray(from, to, to);
+        add_debug_line(from, to);
+
+        if (is_enemy_hit(from, to))
+        {
+          glm_vec3_negate(ray);
+          enemy_die(ray);
+
+          play_headshot_sound();
+        }
+        else
+        {
+          play_impact_sound(to);
+        }
+
+        --ammo;
+        shot_cooldown = SHOT_COOLDOWN;
+
+        // Randomize muzzleflash
+        {
+          muzzleflash_angle = glm_rad(rand() % 4 * 90.0f + (rand() % 40) - 20.0f);
+          muzzleflash_scale = (rand() % 10) * 0.04f + 0.4f;
+        }
       }
     }
     else
     {
       if (is_reloading)
       {
+        const float duration = aem_get_model_animation_duration(model, RELOAD_ANIMATION_INDEX);
         if (reload_channel->time >= aem_get_model_animation_duration(model, RELOAD_ANIMATION_INDEX) - 0.2f)
         {
           is_reloading = false;
           aem_set_animation_mixer_blend_speed(mixer, 10.0f);
           aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
         }
+        else if (reload_channel->time >= duration / 2.0f && ammo != BULLET_COUNT)
+        {
+          ammo = BULLET_COUNT;
+        }
       }
       else
       {
-        if (get_reload_key_down())
+        if (get_reload_key_down() && ammo < BULLET_COUNT)
         {
           is_reloading = true;
           reload_channel->time = 0.0f;
@@ -262,4 +301,9 @@ void free_view_model()
   glDeleteBuffers(1, &joint_transform_buffer);
 
   free(joint_transforms);
+}
+
+int view_model_get_ammo()
+{
+  return ammo;
 }

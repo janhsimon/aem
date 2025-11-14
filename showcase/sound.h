@@ -10,6 +10,7 @@ void update_sound();
 
 void play_ak47_fire_sound();
 void play_ak47_reload_sound();
+void play_ak47_dry_sound();
 void play_headshot_sound();
 void play_impact_sound(vec3 position);
 void play_player_footstep_sound(int index);

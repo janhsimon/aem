@@ -14,8 +14,13 @@
 #define CIMGUI_USE_OPENGL3
 #include <cimgui/cimgui_impl.h>
 
+#define FONT_SIZE 40.0f
+#define AMMO_OFFSET_X 25.0f
+#define AMMO_OFFSET_Y 10.0f
+
 static ImGuiContext* context = NULL;
 static ImGuiIO* io = NULL;
+static ImFont* font = NULL;
 
 bool load_hud()
 {
@@ -24,6 +29,17 @@ bool load_hud()
   io = igGetIO_ContextPtr(context);
   io->IniFilename = NULL;
   io->LogFilename = NULL;
+
+  ImFontAtlas_AddFontDefault(io->Fonts, NULL); // Keep the built-in default font for debug text
+
+  // Load the UI font
+  {
+    font = ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/lambda.ttf", FONT_SIZE, NULL, NULL);
+    if (!font)
+    {
+      return false;
+    }
+  }
 
   const char* glsl_version = "#version 330 core";
   if (!ImGui_ImplGlfw_InitForOpenGL(get_window(), true))
@@ -88,6 +104,60 @@ void update_hud(uint32_t screen_width,
                        (ImVec2){ half_screen_width, half_screen_height - half_gap_size }, color, 1.0f);
     ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width, half_screen_height + half_gap_size },
                        (ImVec2){ half_screen_width, half_screen_height + half_gap_size + line_size }, color, 1.0f);
+  }
+
+  // Health display
+  {
+    char s[16];
+    sprintf(s, "+ 100   * 100");
+    igPushFont(font, FONT_SIZE * screen_height / 720.0f);
+
+    igSetNextWindowPos((ImVec2){ AMMO_OFFSET_X, screen_height - AMMO_OFFSET_Y }, ImGuiCond_Always,
+                       (ImVec2){ 0.0f, 1.0f });
+
+    igPushStyleColor_Vec4(ImGuiCol_Text, foreground_color);
+    igPushStyleColor_Vec4(ImGuiCol_WindowBg, background_color);
+
+    igPushStyleVar_Float(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    igPushStyleVar_Float(ImGuiStyleVar_WindowRounding, 12.0f);
+    igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){ 20.0f, 5.0f });
+
+    bool open = true;
+    igBegin("Health", &open, ImGuiWindowFlags_NoDecoration);
+    igText(s);
+    igPopFont();
+
+    igPopStyleVar(3);
+    igPopStyleColor(2);
+
+    igEnd();
+  }
+
+  // Ammo display
+  {
+    char s[16];
+    sprintf(s, "a %d / 120", view_model_get_ammo());
+    igPushFont(font, FONT_SIZE * screen_height / 720.0f);
+
+    igSetNextWindowPos((ImVec2){ screen_width - AMMO_OFFSET_X, screen_height - AMMO_OFFSET_Y }, ImGuiCond_Always,
+                       (ImVec2){ 1.0f, 1.0f });
+
+    igPushStyleColor_Vec4(ImGuiCol_Text, foreground_color);
+    igPushStyleColor_Vec4(ImGuiCol_WindowBg, background_color);
+
+    igPushStyleVar_Float(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    igPushStyleVar_Float(ImGuiStyleVar_WindowRounding, 12.0f);
+    igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){ 20.0f, 5.0f });
+
+    bool open = true;
+    igBegin("Ammo", &open, ImGuiWindowFlags_NoDecoration);
+    igText(s);
+    igPopFont();
+
+    igPopStyleVar(3);
+    igPopStyleColor(2);
+
+    igEnd();
   }
 
   if (preferences->show_player_move_speed)
