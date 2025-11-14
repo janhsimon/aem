@@ -8,6 +8,8 @@
 #include "map.h"
 #include "model_manager.h"
 #include "model_renderer.h"
+#include "particle_pipeline.h"
+#include "particle_renderer.h"
 #include "player.h"
 #include "preferences.h"
 #include "shadow_pipeline.h"
@@ -78,6 +80,10 @@ int main(int argc, char* argv[])
   }
 
   load_debug_renderer();
+  if (!load_particle_renderer())
+  {
+    printf("Failed to load particle renderer\n");
+  }
 
   if (!load_forward_pipeline())
   {
@@ -94,6 +100,12 @@ int main(int argc, char* argv[])
   if (!load_shadow_pipeline())
   {
     printf("Failed to load shadow pipeline\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!load_particle_pipeline())
+  {
+    printf("Failed to load particle pipeline\n");
     return EXIT_FAILURE;
   }
 
@@ -127,10 +139,7 @@ int main(int argc, char* argv[])
   // Set up initial OpenGL state
   {
     glEnable(GL_DEPTH_TEST);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     glEnable(GL_MULTISAMPLE);
-
     glDisable(GL_CULL_FACE);
   }
 
@@ -254,6 +263,7 @@ int main(int argc, char* argv[])
           // Don't write depth (but do still test it) and enable blending
           glDepthMask(GL_FALSE);
           glEnable(GL_BLEND);
+          glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Alpha blending
 
           draw_map_transparent();
 
@@ -295,6 +305,30 @@ int main(int argc, char* argv[])
           render_model(ak, ModelRenderMode_AllMeshes);
         }
 
+        // Draw muzzleflash
+        if (view_model_show_muzzleflash())
+        {
+          start_particle_rendering();
+          particle_pipeline_start_rendering();
+
+          mat4 muzzleflash_world_matrix;
+          view_model_get_muzzleflash_world_matrix(&preferences, muzzleflash_world_matrix);
+          particle_pipeline_use_world_matrix(muzzleflash_world_matrix);
+
+          particle_pipeline_use_viewproj_matrix(viewproj_matrix);
+
+          // Don't write depth (but do still test it) and enable blending
+          glDepthMask(GL_FALSE);
+          glEnable(GL_BLEND);
+          glBlendFunc(GL_ONE, GL_ONE); // Additive blending
+
+          render_particle();
+
+          // Reset OpenGL state
+          glDepthMask(GL_TRUE);
+          glDisable(GL_BLEND);
+        }
+
         // Debug draw
         if (preferences.debug_render)
         {
@@ -329,11 +363,13 @@ int main(int argc, char* argv[])
     free_hud();
     free_enemy();
     free_view_model();
+    free_particle_pipeline();
     free_shadow_pipeline();
     free_debug_pipeline();
     free_forward_pipeline();
     free_map();
     free_models();
+    free_particle_renderer();
     free_debug_renderer();
     free_model_renderer();
     free_window();

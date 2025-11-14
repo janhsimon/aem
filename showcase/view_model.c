@@ -45,6 +45,10 @@ static float moving_start_time; // Used for footstep sounds
 
 static int ammo = BULLET_COUNT;
 
+static bool show_muzzleflash = false;
+static float muzzleflash_angle;
+static float muzzleflash_scale;
+
 bool load_view_model(const struct AEMModel* model_)
 {
   model = model_;
@@ -281,6 +285,25 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 
   glm_translate(world_matrix, preferences->view_model_position);
   glm_scale_uni(world_matrix, preferences->view_model_scale);
+}
+
+void view_model_get_muzzleflash_world_matrix(struct Preferences* preferences, mat4 muzzleflash_world_matrix)
+{
+  view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
+
+  mat4 temp;
+  aem_get_animation_mixer_joint_transform(model, mixer, 1054, (float*)temp);
+
+  glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
+
+  glm_translate(muzzleflash_world_matrix, (vec3){ -0.1f, -0.05f, -0.01f });
+  glm_rotate_z(muzzleflash_world_matrix, muzzleflash_angle, muzzleflash_world_matrix);
+  glm_scale_uni(muzzleflash_world_matrix, muzzleflash_scale);
+}
+
+bool view_model_show_muzzleflash()
+{
+  return show_muzzleflash;
 }
 
 void prepare_view_model_rendering(float aspect)

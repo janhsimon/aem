@@ -34,6 +34,12 @@ set(SOURCE
   model_renderer.c
   model_renderer.h
 
+  particle_pipeline.c
+  particle_pipeline.h
+
+  particle_renderer.c
+  particle_renderer.h
+
   player.c
   player.h
 
@@ -57,7 +63,9 @@ set(SOURCE
   shaders/debug.frag.glsl
   shaders/forward.frag.glsl
   shaders/null.frag.glsl
+  shaders/particle.frag.glsl
 
+  shaders/particle.vert.glsl
   shaders/simple.vert.glsl
   shaders/skinned.vert.glsl
 )
@@ -69,6 +77,7 @@ set(DEPENDENCIES
   glfw
   libaem
   miniaudio
+  stb
   util
 )
 
@@ -97,3 +106,4 @@ add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARG
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/models" "$<TARGET_FILE_DIR:${TARGET_NAME}>/models")
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")
 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "$<TARGET_FILE_DIR:${TARGET_NAME}>/sounds")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/textures" "$<TARGET_FILE_DIR:${TARGET_NAME}>/textures")
