@@ -279,7 +279,6 @@ bool is_enemy_hit(vec3 from, vec3 to)
   if (hit)
   {
     glm_vec3_copy(b, to);
-    glm_vec3_copy(b, to);
   }
 
   return hit;

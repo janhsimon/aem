@@ -181,7 +181,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         glm_vec3_add(from, ray, to);
 
         vec3 n;
-        collide_ray(from, to, to, n);
+        const bool level_hit = collide_ray(from, to, to, n);
         add_debug_line(from, to);
 
         spawn_muzzleflash(GLM_VEC3_ZERO);
@@ -191,10 +191,12 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
           glm_vec3_negate(ray);
           enemy_die(preferences, ray);
 
+          glm_vec3_sub(to, from, n);
+          glm_vec3_normalize(n);
           spawn_blood(to, n);
           play_headshot_sound();
         }
-        else
+        else if (level_hit)
         {
           spawn_smoke(to, n);
           spawn_shrapnel(to, n);
