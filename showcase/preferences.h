@@ -3,12 +3,34 @@
 #include <cglm/types.h>
 
 #include <stdbool.h>
+#include <stdint.h>
+
+struct ParticleSystemPreferences
+{
+  uint32_t particle_count;
+  bool additive;
+  vec3 tint;
+  float direction_spread;
+  float radius;
+  float gravity;
+  float opacity, opacity_spread, opacity_falloff;
+  float scale, scale_spread, scale_falloff;
+};
 
 struct Preferences
 {
   // Debug
   bool debug_render;
   bool show_player_move_speed;
+  bool infinite_ammo;
+  
+  // AI
+  bool ai_walking;
+  bool ai_turning;
+  bool ai_death;
+
+  // Audio
+  float master_volume;
 
   // Camera
   vec3 camera_background_color;
@@ -29,6 +51,10 @@ struct Preferences
   // HUD
   vec4 hud_background_color;
   vec4 hud_foreground_color;
+
+  // Particle systems
+  struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,
+    blood_particle_system;
 };
 
 void load_default_preferences(struct Preferences* preferences);

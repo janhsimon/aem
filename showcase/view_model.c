@@ -5,6 +5,7 @@
 #include "debug_renderer.h"
 #include "enemy.h"
 #include "input.h"
+#include "particle_manager.h"
 #include "preferences.h"
 #include "sound.h"
 
@@ -46,8 +47,18 @@ static float moving_start_time; // Used for footstep sounds
 static int ammo = BULLET_COUNT;
 
 static bool show_muzzleflash = false;
-static float muzzleflash_angle;
-static float muzzleflash_scale;
+
+static void view_model_get_muzzleflash_world_matrix(struct Preferences* preferences, mat4 muzzleflash_world_matrix)
+{
+  view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
+
+  mat4 temp;
+  aem_get_animation_mixer_joint_transform(model, mixer, 1054, (float*)temp);
+
+  glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
+
+  glm_translate(muzzleflash_world_matrix, (vec3){ -0.1f, -0.05f, -0.01f });
+}
 
 bool load_view_model(const struct AEMModel* model_)
 {
@@ -111,18 +122,23 @@ bool load_view_model(const struct AEMModel* model_)
   return true;
 }
 
-void update_view_model(bool moving, float delta_time)
+void update_view_model(struct Preferences* preferences, bool moving, float delta_time)
 {
   shot_cooldown -= delta_time;
-  show_muzzleflash = false;
+
+  // Move muzzleflash particle emitter to the right position
+  {
+    mat4 m;
+    view_model_get_muzzleflash_world_matrix(preferences, m);
+
+    vec3 p = GLM_VEC3_ZERO_INIT;
+    glm_mat4_mulv3(m, p, 1.0f, p);
+    set_muzzleflash_position(p);
+  }
 
   if (is_shooting)
   {
     const float duration = aem_get_model_animation_duration(model, SHOOT_ANIMATION_INDEX);
-    if (shoot_channel->time < duration / 4.0f)
-    {
-      show_muzzleflash = true;
-    }
 
     if (shoot_channel->time >= duration - 0.165f)
     {
@@ -142,7 +158,6 @@ void update_view_model(bool moving, float delta_time)
       }
       else
       {
-
         is_shooting = true;
         shoot_channel->time = 0.0f;
         shoot_channel->is_playing = true;
@@ -165,29 +180,33 @@ void update_view_model(bool moving, float delta_time)
         vec3 to;
         glm_vec3_add(from, ray, to);
 
-        collide_ray(from, to, to);
+        vec3 n;
+        collide_ray(from, to, to, n);
         add_debug_line(from, to);
+
+        spawn_muzzleflash(GLM_VEC3_ZERO);
 
         if (is_enemy_hit(from, to))
         {
           glm_vec3_negate(ray);
-          enemy_die(ray);
+          enemy_die(preferences, ray);
 
+          spawn_blood(to, n);
           play_headshot_sound();
         }
         else
         {
+          spawn_smoke(to, n);
+          spawn_shrapnel(to, n);
           play_impact_sound(to);
         }
 
-        --ammo;
-        shot_cooldown = SHOT_COOLDOWN;
-
-        // Randomize muzzleflash
+        if (!preferences->infinite_ammo)
         {
-          muzzleflash_angle = glm_rad(rand() % 4 * 90.0f + (rand() % 40) - 20.0f);
-          muzzleflash_scale = (rand() % 10) * 0.04f + 0.4f;
+          --ammo;
         }
+
+        shot_cooldown = SHOT_COOLDOWN;
       }
     }
     else
@@ -285,25 +304,6 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 
   glm_translate(world_matrix, preferences->view_model_position);
   glm_scale_uni(world_matrix, preferences->view_model_scale);
-}
-
-void view_model_get_muzzleflash_world_matrix(struct Preferences* preferences, mat4 muzzleflash_world_matrix)
-{
-  view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
-
-  mat4 temp;
-  aem_get_animation_mixer_joint_transform(model, mixer, 1054, (float*)temp);
-
-  glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
-
-  glm_translate(muzzleflash_world_matrix, (vec3){ -0.1f, -0.05f, -0.01f });
-  glm_rotate_z(muzzleflash_world_matrix, muzzleflash_angle, muzzleflash_world_matrix);
-  glm_scale_uni(muzzleflash_world_matrix, muzzleflash_scale);
-}
-
-bool view_model_show_muzzleflash()
-{
-  return show_muzzleflash;
 }
 
 void prepare_view_model_rendering(float aspect)

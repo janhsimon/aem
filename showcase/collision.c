@@ -260,7 +260,7 @@ bool collide_capsule(vec3 base, vec3 top, float radius)
   return contact;
 }
 
-bool collide_ray(vec3 from, vec3 to, vec3 hit)
+bool collide_ray(vec3 from, vec3 to, vec3 hit, vec3 normal)
 {
   vec3 dir;
   glm_vec3_sub(to, from, dir);
@@ -280,6 +280,14 @@ bool collide_ray(vec3 from, vec3 to, vec3 hit)
       {
         best_d = d;
         contact = true;
+
+        // Build normal
+        {
+          vec3 e0, e1;
+          glm_vec3_sub(v1, v0, e0);
+          glm_vec3_sub(v2, v0, e1);
+          glm_cross(e0, e1, normal);
+        }
       }
     }
   }
@@ -291,6 +299,13 @@ bool collide_ray(vec3 from, vec3 to, vec3 hit)
 
   glm_vec3_scale(dir, best_d, dir);
   glm_vec3_add(from, dir, hit);
+
+  glm_normalize(dir);
+  glm_normalize(normal);
+  if (glm_dot(normal, dir) > 0.0f)
+  {
+    glm_vec3_negate(normal);
+  }
 
   return true;
 }

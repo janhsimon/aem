@@ -6,6 +6,8 @@
 
 bool load_sound();
 
+void set_master_volume(float volume);
+
 void update_sound();
 
 void play_ak47_fire_sound();

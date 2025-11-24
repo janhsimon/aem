@@ -6,8 +6,8 @@
 
 #include <stdlib.h>
 
-GLuint shader_program;
-GLint world_uniform_location, viewproj_uniform_location, color_uniform_location;
+static GLuint shader_program;
+static GLint world_uniform_location, viewproj_uniform_location, color_uniform_location;
 
 bool load_debug_pipeline()
 {
@@ -66,5 +66,5 @@ void debug_pipeline_use_viewproj_matrix(mat4 viewproj_matrix)
 
 void debug_pipeline_use_color(vec3 color)
 {
-  glUniform3fv(color_uniform_location, 1, (float*)color);
+  glUniform3fv(color_uniform_location, 1, color);
 }

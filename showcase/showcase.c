@@ -8,6 +8,7 @@
 #include "map.h"
 #include "model_manager.h"
 #include "model_renderer.h"
+#include "particle_manager.h"
 #include "particle_pipeline.h"
 #include "particle_renderer.h"
 #include "player.h"
@@ -19,6 +20,7 @@
 
 #include <aem/model.h>
 
+#include <cglm/affine.h>
 #include <cglm/mat4.h>
 #include <cglm/vec3.h>
 #include <glad/gl.h>
@@ -44,7 +46,6 @@ int main(int argc, char* argv[])
   if (!load_window(WindowMode_Windowed))
 #else
   if (!load_window(WindowMode_Fullscreen))
-
 #endif
   {
     printf("Failed to open window\n");
@@ -80,10 +81,14 @@ int main(int argc, char* argv[])
   }
 
   load_debug_renderer();
+
   if (!load_particle_renderer())
   {
     printf("Failed to load particle renderer\n");
   }
+
+  load_particle_manager();
+  sync_particle_manager(&preferences);
 
   if (!load_forward_pipeline())
   {
@@ -168,21 +173,26 @@ int main(int argc, char* argv[])
       if (get_debug_key_up())
       {
         debug_mode_enabled = !debug_mode_enabled;
-
         set_cursor_mode(!debug_mode_enabled);
       }
 
-      if (!debug_mode_enabled)
+      bool player_moving;
+      player_update(!debug_mode_enabled, delta_time, &player_moving);
+
+      if (debug_mode_enabled)
       {
-        bool player_moving;
-        player_update(delta_time, &player_moving);
-        update_view_model(player_moving, delta_time);
+        set_master_volume(preferences.master_volume);
+        sync_particle_manager(&preferences);
       }
 
-      update_enemy(delta_time);
+      if (!debug_mode_enabled || !has_debug_window_focus())
+      {
+        update_view_model(&preferences, player_moving, delta_time);
+      }
 
+      update_enemy(&preferences, delta_time);
+      update_particle_manager(delta_time);
       update_hud(window_width, window_height, debug_mode_enabled, get_player_speed(), &preferences);
-
       update_sound();
     }
 
@@ -228,11 +238,11 @@ int main(int argc, char* argv[])
 
         forward_pipeline_use_ambient_color(preferences.ambient_color, preferences.ambient_intensity);
 
-        mat4 view_matrix, viewproj_matrix;
+        mat4 view_matrix, proj_matrix, viewproj_matrix;
         {
           calc_view_matrix(view_matrix);
-          calc_proj_matrix(window_aspect, preferences.camera_fov, CAM_NEAR, CAM_FAR, viewproj_matrix);
-          glm_mat4_mul(viewproj_matrix, view_matrix, viewproj_matrix);
+          calc_proj_matrix(window_aspect, preferences.camera_fov, CAM_NEAR, CAM_FAR, proj_matrix);
+          glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
         }
 
         forward_pipeline_use_viewproj_matrix(viewproj_matrix);
@@ -284,8 +294,29 @@ int main(int argc, char* argv[])
           render_model(soldier, ModelRenderMode_AllMeshes);
         }
 
+        // Particles
+        {
+          start_particle_rendering();
+          particle_pipeline_start_rendering();
+
+          particle_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
+
+          // Don't write depth (but do still test it) and enable blending
+          glDepthMask(GL_FALSE);
+          glEnable(GL_BLEND);
+
+          render_particle_manager();
+
+          // Reset OpenGL state
+          glDepthMask(GL_TRUE);
+          glDisable(GL_BLEND);
+        }
+
         // Draw view model
         {
+          start_model_rendering();
+          forward_pipeline_start_rendering();
+
           glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
 
           {
@@ -305,30 +336,6 @@ int main(int argc, char* argv[])
           render_model(ak, ModelRenderMode_AllMeshes);
         }
 
-        // Draw muzzleflash
-        if (view_model_show_muzzleflash())
-        {
-          start_particle_rendering();
-          particle_pipeline_start_rendering();
-
-          mat4 muzzleflash_world_matrix;
-          view_model_get_muzzleflash_world_matrix(&preferences, muzzleflash_world_matrix);
-          particle_pipeline_use_world_matrix(muzzleflash_world_matrix);
-
-          particle_pipeline_use_viewproj_matrix(viewproj_matrix);
-
-          // Don't write depth (but do still test it) and enable blending
-          glDepthMask(GL_FALSE);
-          glEnable(GL_BLEND);
-          glBlendFunc(GL_ONE, GL_ONE); // Additive blending
-
-          render_particle();
-
-          // Reset OpenGL state
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-        }
-
         // Debug draw
         if (preferences.debug_render)
         {
@@ -337,8 +344,8 @@ int main(int argc, char* argv[])
           start_debug_rendering();
           debug_pipeline_start_rendering();
           debug_pipeline_use_viewproj_matrix(viewproj_matrix);
-          debug_render_lines(GLM_YUP, window_aspect, preferences.camera_fov);
-          debug_draw_enemy(window_aspect, preferences.camera_fov);
+          debug_render_lines(GLM_YUP);
+          debug_draw_enemy();
 
           glEnable(GL_DEPTH_TEST);
         }

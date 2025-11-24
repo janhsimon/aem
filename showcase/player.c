@@ -18,7 +18,7 @@
 
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
 
-void player_update(float delta_time, bool* moving)
+void player_update(bool mouse_look, float delta_time, bool* moving)
 {
   // Movement
   vec3 start_cam_pos;
@@ -84,9 +84,12 @@ void player_update(float delta_time, bool* moving)
   }
 
   // Mouse look
-  double delta_x, delta_y;
-  get_mouse_delta(&delta_x, &delta_y);
-  camera_add_yaw_pitch(delta_x * 0.001f, delta_y * 0.001f);
+  if (mouse_look)
+  {
+    double delta_x, delta_y;
+    get_mouse_delta(&delta_x, &delta_y);
+    camera_add_yaw_pitch(delta_x * 0.001f, delta_y * 0.001f);
+  }
 }
 
 float get_player_speed()

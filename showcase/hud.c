@@ -22,6 +22,8 @@ static ImGuiContext* context = NULL;
 static ImGuiIO* io = NULL;
 static ImFont* font = NULL;
 
+static bool debug_window_focus = false;
+
 bool load_hud()
 {
   context = igCreateContext(NULL);
@@ -53,6 +55,31 @@ bool load_hud()
   }
 
   return true;
+}
+
+bool has_debug_window_focus()
+{
+  return debug_window_focus;
+}
+
+static void update_particle_system(struct ParticleSystemPreferences* preferences)
+{
+  igSliderInt("Particle count", &preferences->particle_count, 0, 10000, "%d", ImGuiSliderFlags_None);
+  igCheckbox("Additive", &preferences->additive);
+  igColorEdit3("Particle color", preferences->tint, ImGuiColorEditFlags_None);
+  igSliderFloat("Direction spread", &preferences->direction_spread, 0.0f, 360.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Emitter radius", &preferences->radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Gravity", &preferences->gravity, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+
+  // Opacity
+  igSliderFloat("Particle opacity", &preferences->opacity, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Particle opacity spread", &preferences->opacity_spread, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Particle opacity falloff", &preferences->opacity_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+
+  // Scale
+  igSliderFloat("Particle scale", &preferences->scale, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Particle scale spread", &preferences->scale_spread, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
 void update_hud(uint32_t screen_width,
@@ -172,6 +199,9 @@ void update_hud(uint32_t screen_width,
   // Debug window
   if (debug_mode)
   {
+    igSetNextWindowSizeConstraints((ImVec2){ screen_width / 4.0f, screen_height / 2.0f },
+                                   (ImVec2){ screen_width, screen_height }, NULL, NULL);
+
     bool open = true;
     igBegin("Debug", &open, ImGuiWindowFlags_NoTitleBar);
 
@@ -184,6 +214,19 @@ void update_hud(uint32_t screen_width,
       }
 
       igCheckbox("Show player move speed", &preferences->show_player_move_speed);
+      igCheckbox("Infinite ammo", &preferences->infinite_ammo);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("AI", ImGuiTreeNodeFlags_None))
+    {
+      igCheckbox("Walking", &preferences->ai_walking);
+      igCheckbox("Turning", &preferences->ai_turning);
+      igCheckbox("Death", &preferences->ai_death);
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("Audio", ImGuiTreeNodeFlags_None))
+    {
+      igSliderFloat("Master Volume", &preferences->master_volume, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
     }
 
     if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_None))
@@ -192,18 +235,25 @@ void update_hud(uint32_t screen_width,
       igColorEdit3("Background color##Camera", preferences->camera_background_color, ImGuiColorEditFlags_None);
     }
 
-    if (igCollapsingHeader_TreeNodeFlags("Ambient lighting", ImGuiTreeNodeFlags_None))
+    if (igCollapsingHeader_TreeNodeFlags("Lighting", ImGuiTreeNodeFlags_None))
     {
-      igColorEdit3("Color##Ambient", preferences->ambient_color, ImGuiColorEditFlags_None);
-      igSliderFloat("Intensity##Ambient", &preferences->ambient_intensity, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
-    }
+      if (igTreeNode_Str("Ambient"))
+      {
+        igColorEdit3("Color##Ambient", preferences->ambient_color, ImGuiColorEditFlags_None);
+        igSliderFloat("Intensity##Ambient", &preferences->ambient_intensity, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 
-    if (igCollapsingHeader_TreeNodeFlags("Directional lighting", ImGuiTreeNodeFlags_None))
-    {
-      igColorEdit3("Color##Directional", preferences->light_color, ImGuiColorEditFlags_None);
-      igSliderFloat("Intensity##Directional", &preferences->light_intensity, 0.0f, 1000.0f, "%f",
-                    ImGuiSliderFlags_None);
-      igSliderFloat3("Direction", preferences->light_dir, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+        igTreePop();
+      }
+
+      if (igTreeNode_Str("Directional"))
+      {
+        igColorEdit3("Color##Directional", preferences->light_color, ImGuiColorEditFlags_None);
+        igSliderFloat("Intensity##Directional", &preferences->light_intensity, 0.0f, 1000.0f, "%f",
+                      ImGuiSliderFlags_None);
+        igSliderFloat3("Direction", preferences->light_dir, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+
+        igTreePop();
+      }
     }
 
     if (igCollapsingHeader_TreeNodeFlags("View model", ImGuiTreeNodeFlags_None))
@@ -220,13 +270,41 @@ void update_hud(uint32_t screen_width,
       igColorEdit4("Background color##HUD", preferences->hud_background_color, ImGuiColorEditFlags_None);
     }
 
+    if (igCollapsingHeader_TreeNodeFlags("Particle systems", ImGuiTreeNodeFlags_None))
+    {
+      if (igTreeNode_Str("Smoke"))
+      {
+        update_particle_system(&preferences->smoke_particle_system);
+        igTreePop();
+      }
+
+      if (igTreeNode_Str("Shrapnel"))
+      {
+        update_particle_system(&preferences->shrapnel_particle_system);
+        igTreePop();
+      }
+
+      if (igTreeNode_Str("Muzzleflash"))
+      {
+        update_particle_system(&preferences->muzzleflash_particle_system);
+        igTreePop();
+      }
+
+      if (igTreeNode_Str("Blood"))
+      {
+        update_particle_system(&preferences->blood_particle_system);
+        igTreePop();
+      }
+    }
+
+    debug_window_focus =
+      igIsWindowFocused(ImGuiFocusedFlags_AnyWindow) || igIsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+
     igEnd();
   }
 
-  /*
-  bool yes = true;
-  igShowDemoWindow(&yes);
-  */
+  /*bool yes = true;
+  igShowDemoWindow(&yes);*/
 }
 
 void render_hud()

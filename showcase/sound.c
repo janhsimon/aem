@@ -136,6 +136,11 @@ bool load_sound()
   return true;
 }
 
+void set_master_volume(float volume)
+{
+  ma_engine_set_volume(engine, volume);
+}
+
 void update_sound()
 {
   calc_view_matrix(view_matrix);

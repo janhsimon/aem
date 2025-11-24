@@ -6,8 +6,8 @@
 
 #include <stdlib.h>
 
-GLuint shader_program;
-GLint world_uniform_location, viewproj_uniform_location;
+static GLuint shader_program;
+static GLint view_uniform_location, proj_uniform_location, tint_uniform_location;
 
 bool load_particle_pipeline()
 {
@@ -35,11 +35,12 @@ bool load_particle_pipeline()
     // Retrieve uniform locations and set constant uniforms
     {
       glUseProgram(shader_program);
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      view_uniform_location = get_uniform_location(shader_program, "view");
+      proj_uniform_location = get_uniform_location(shader_program, "proj");
+      tint_uniform_location = get_uniform_location(shader_program, "tint");
 
-      const GLint tex_uniform_location = get_uniform_location(shader_program, "tex");
-      glUniform1i(tex_uniform_location, 0);
+      const GLint tex0_uniform_location = get_uniform_location(shader_program, "tex");
+      glUniform1i(tex0_uniform_location, 0);
     }
   }
 
@@ -56,12 +57,13 @@ void particle_pipeline_start_rendering()
   glUseProgram(shader_program);
 }
 
-void particle_pipeline_use_world_matrix(mat4 world_matrix)
+void particle_pipeline_use_viewproj_matrix(mat4 view_matrix, mat4 proj_matrix)
 {
-  glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
+  glUniformMatrix4fv(view_uniform_location, 1, GL_FALSE, (float*)view_matrix);
+  glUniformMatrix4fv(proj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
 }
 
-void particle_pipeline_use_viewproj_matrix(mat4 viewproj_matrix)
+void particle_pipeline_use_tint(vec3 tint)
 {
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+  glUniform3fv(tint_uniform_location, 1, tint);
 }

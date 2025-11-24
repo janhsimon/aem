@@ -10,15 +10,15 @@
 
 #include <glad/gl.h>
 
-size_t vertex_count;
-float vertices[3 * 10000];
+static size_t vertex_count;
+static float vertices[3 * 10000];
 
-size_t capsule_cap_start_vertex, capsule_cap_vertex_count;
-size_t capsule_center_start_vertex, capsule_center_vertex_count;
-size_t lines_start_vertex;
+static size_t capsule_cap_start_vertex, capsule_cap_vertex_count;
+static size_t capsule_center_start_vertex, capsule_center_vertex_count;
+static size_t lines_start_vertex;
 
-GLuint vao;
-GLuint vbo;
+static GLuint vao;
+static GLuint vbo;
 
 void clear_debug_lines()
 {
@@ -263,7 +263,7 @@ void debug_render_capsule(vec3 from, vec3 to, float radius, vec3 color)
   }
 }
 
-void debug_render_lines(vec3 color, float aspect, float fov)
+void debug_render_lines(vec3 color)
 {
   debug_pipeline_use_color(color);
   debug_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);

@@ -2,6 +2,7 @@
 
 #include "collision.h"
 #include "debug_renderer.h"
+#include "preferences.h"
 #include "sound.h"
 
 #include <aem/animation_mixer.h>
@@ -94,7 +95,7 @@ bool load_enemy(const struct AEMModel* model_)
   return true;
 }
 
-void update_enemy(float delta_time)
+void update_enemy(const struct Preferences* preferences, float delta_time)
 {
   if (!alive)
   {
@@ -138,8 +139,15 @@ void update_enemy(float delta_time)
         glm_rotate_y(transform, glm_rad(-0.2f), transform);
       }*/
 
-      glm_rotate_y(transform, glm_rad(rot), transform);
-      glm_translate_z(transform, ENEMY_MOVE_SPEED * delta_time);
+      if (preferences->ai_turning)
+      {
+        glm_rotate_y(transform, glm_rad(rot), transform);
+      }
+
+      if (preferences->ai_walking)
+      {
+        glm_translate_z(transform, ENEMY_MOVE_SPEED * delta_time);
+      }
     }
 
     vec3 velocity;
@@ -243,7 +251,7 @@ void get_enemy_world_matrix(mat4 world_matrix)
   glm_mat4_copy(transform, world_matrix);
 }
 
-void debug_draw_enemy(float aspect, float fov)
+void debug_draw_enemy()
 {
   {
     vec3 collider_bottom, collider_top;
@@ -266,12 +274,20 @@ bool is_enemy_hit(vec3 from, vec3 to)
   glm_vec3_sub(a, b, a);
 
   const float dist = glm_vec3_norm(a);
-  return dist < ENEMY_HITBOX_HEAD_RADIUS;
+  const bool hit = dist < ENEMY_HITBOX_HEAD_RADIUS;
+
+  if (hit)
+  {
+    glm_vec3_copy(b, to);
+    glm_vec3_copy(b, to);
+  }
+
+  return hit;
 }
 
-void enemy_die(vec3 dir)
+void enemy_die(const struct Preferences* preferences, vec3 dir)
 {
-  if (!alive)
+  if (!alive || !preferences->ai_death)
   {
     return;
   }

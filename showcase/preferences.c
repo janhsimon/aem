@@ -7,6 +7,15 @@ void load_default_preferences(struct Preferences* preferences)
   // Debug
   preferences->debug_render = false;
   preferences->show_player_move_speed = false;
+  preferences->infinite_ammo = false;
+
+  // AI
+  preferences->ai_walking = true;
+  preferences->ai_turning = true;
+  preferences->ai_death = true;
+
+  // Audio
+  preferences->master_volume = 1.0f;
 
   // Camera
   preferences->camera_fov = 75.0f;
@@ -32,4 +41,60 @@ void load_default_preferences(struct Preferences* preferences)
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);
   glm_vec4_copy((vec4){ 1.0f, 0.74f, 0.0f, 1.0f }, preferences->hud_foreground_color);
+
+  // Smoke particle system
+  preferences->smoke_particle_system.particle_count = 600;
+  preferences->smoke_particle_system.additive = true;
+  glm_vec3_copy((vec3){ 1.0f, 0.84f, 0.7f }, preferences->smoke_particle_system.tint);
+  preferences->smoke_particle_system.direction_spread = 1.0f;
+  preferences->smoke_particle_system.radius = 0.01f;
+  preferences->smoke_particle_system.gravity = 0.0f;
+  preferences->smoke_particle_system.opacity = 0.0f;
+  preferences->smoke_particle_system.opacity_spread = 0.1f;
+  preferences->smoke_particle_system.opacity_falloff = 0.04f;
+  preferences->smoke_particle_system.scale = 0.5f;
+  preferences->smoke_particle_system.scale_spread = 0.5f;
+  preferences->smoke_particle_system.scale_falloff = 0.02f;
+
+  // Shrapnel particle system
+  preferences->shrapnel_particle_system.particle_count = 100;
+  preferences->shrapnel_particle_system.additive = true;
+  glm_vec3_copy(GLM_VEC3_ONE, preferences->shrapnel_particle_system.tint);
+  preferences->shrapnel_particle_system.direction_spread = 0.25f;
+  preferences->shrapnel_particle_system.radius = 0.0f;
+  preferences->shrapnel_particle_system.gravity = 1.73f;
+  preferences->shrapnel_particle_system.opacity = 0.5f;
+  preferences->shrapnel_particle_system.opacity_spread = 0.07f;
+  preferences->shrapnel_particle_system.opacity_falloff = 0.02f;
+  preferences->shrapnel_particle_system.scale = 0.0f;
+  preferences->shrapnel_particle_system.scale_spread = 0.14f;
+  preferences->shrapnel_particle_system.scale_falloff = 0.03f;
+
+  // Muzzleflash particle system
+  preferences->muzzleflash_particle_system.particle_count = 1;
+  preferences->muzzleflash_particle_system.additive = true;
+  glm_vec3_copy(GLM_VEC3_ONE, preferences->muzzleflash_particle_system.tint);
+  preferences->muzzleflash_particle_system.direction_spread = 0.0f;
+  preferences->muzzleflash_particle_system.radius = 0.0f;
+  preferences->muzzleflash_particle_system.gravity = 0.0f;
+  preferences->muzzleflash_particle_system.opacity = 1.0f;
+  preferences->muzzleflash_particle_system.opacity_spread = 0.0f;
+  preferences->muzzleflash_particle_system.opacity_falloff = 0.0f;
+  preferences->muzzleflash_particle_system.scale = 0.35f;
+  preferences->muzzleflash_particle_system.scale_spread = 0.04f;
+  preferences->muzzleflash_particle_system.scale_falloff = 0.0f;
+
+  // Blood particle system
+  preferences->blood_particle_system.particle_count = 600;
+  preferences->blood_particle_system.additive = false;
+  glm_vec3_copy((vec3){ 0.27f, 0.0f, 0.0f }, preferences->blood_particle_system.tint);
+  preferences->blood_particle_system.direction_spread = 5.8f;
+  preferences->blood_particle_system.radius = 0.01f;
+  preferences->blood_particle_system.gravity = 10.0f;
+  preferences->blood_particle_system.opacity = 1.0f;
+  preferences->blood_particle_system.opacity_spread = 0.12f;
+  preferences->blood_particle_system.opacity_falloff = 0.0f;
+  preferences->blood_particle_system.scale = 0.56f;
+  preferences->blood_particle_system.scale_spread = 0.76f;
+  preferences->blood_particle_system.scale_falloff = 0.03f;
 }

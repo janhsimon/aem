@@ -34,6 +34,9 @@ set(SOURCE
   model_renderer.c
   model_renderer.h
 
+  particle_manager.c
+  particle_manager.h
+
   particle_pipeline.c
   particle_pipeline.h
 
