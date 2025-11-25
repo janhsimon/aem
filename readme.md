@@ -1,3 +1,6 @@
+
+![ezgif-2ea8a006bf0ee649](https://github.com/user-attachments/assets/6242b263-df2c-43c8-8786-bab9aef7bce2)
+
 # What is *AEM*?
 
 *AEM* is ***a**n **e**xcellent **m**odel* file format. :wink:
@@ -14,6 +17,7 @@ This repository contains:
 - `libaem`: A minimal and dependency-free C library that can load and animate *AEM* models efficiently
 - `converter`: A command-line tool that can convert GLB files into *AEM*s
 - `viewer`: A viewer application that illustrates how to load and render *AEM* models with `libaem` and OpenGL 3.3 and can be used to inspect and debug *AEM* models
+- `showcase`: A simple first-person shooter game that demonstrates what *AEM* can do
 
 
 # Specification
