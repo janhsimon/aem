@@ -111,6 +111,8 @@ void set_cursor_mode(bool first_person)
     {
       glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
+
+    reset_mouse_move(); // Avoid snapping the camera when entering first-person mode
   }
   else
   {

@@ -159,3 +159,10 @@ bool get_debug_key_up()
   prev_debug_key_down = is_debug_key_down;
   return up;
 }
+
+void reset_mouse_move()
+{
+  mouse_x = prev_mouse_x;
+  mouse_y = prev_mouse_y;
+  mouse_position_received = false;
+}

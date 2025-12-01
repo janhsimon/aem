@@ -17,3 +17,5 @@ bool get_exit_key_down();
 void get_move_vector(vec3 move, bool* moving);
 bool get_reload_key_down();
 bool get_debug_key_up();
+
+void reset_mouse_move();

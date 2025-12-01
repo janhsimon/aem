@@ -23,6 +23,7 @@ struct Preferences
   bool debug_render;
   bool show_player_move_speed;
   bool infinite_ammo;
+  bool no_clip;
   
   // AI
   bool ai_walking;
@@ -37,9 +38,12 @@ struct Preferences
   float camera_fov;
 
   // Lighting
-  vec3 light_dir;
-  vec3 light_color;
-  float light_intensity;
+  vec3 light_dir0;
+  vec3 light_color0;
+  float light_intensity0;
+  vec3 light_dir1;
+  vec3 light_color1;
+  float light_intensity1;
   vec3 ambient_color;
   float ambient_intensity;
 

@@ -143,6 +143,8 @@ closest_point_segment_triangle(vec3 p0, vec3 p1, vec3 a, vec3 b, vec3 c, vec3 ou
 
   float best_dist2 = 1e30f;
   vec3 best_seg, best_tri;
+
+  // Test segment vs triangle edges
   {
     vec3 cp_seg, cp_tri;
     for (int i = 0; i < 3; ++i)
@@ -157,43 +159,45 @@ closest_point_segment_triangle(vec3 p0, vec3 p1, vec3 a, vec3 b, vec3 c, vec3 ou
     }
   }
 
-  vec3 ab, ac, n;
-  glm_vec3_sub(b, a, ab);
-  glm_vec3_sub(c, a, ac);
-  glm_vec3_cross(ab, ac, n);
-  const float nlen2 = glm_vec3_dot(n, n);
-
-  if (nlen2 > 1e-8f)
+  // Test segment endpoints projected onto inside of triangle
   {
-    for (int k = 0; k < 2; k++)
+    vec3 ab, ac, n;
+    glm_vec3_sub(b, a, ab);
+    glm_vec3_sub(c, a, ac);
+    glm_vec3_cross(ab, ac, n);
+    const float nlen2 = glm_vec3_dot(n, n);
+
+    if (nlen2 > 1e-8f)
     {
-      vec3 p = { p0[0], p0[1], p0[2] };
-      if (k == 1)
+      for (int k = 0; k < 2; ++k)
       {
-        glm_vec3_copy(p1, p);
-      }
-
-      vec3 ap;
-      glm_vec3_sub(a, p, ap);
-      const float t = glm_vec3_dot(n, ap) / nlen2;
-
-      vec3 proj;
-      vec3 tmp;
-      glm_vec3_scale(n, t, tmp);
-      glm_vec3_add(p, tmp, proj);
-
-      if (point_in_triangle(proj, a, b, c))
-      {
-        vec3 d;
-        glm_vec3_sub(p, proj, d);
-
-        const float d2 = glm_vec3_dot(d, d);
-
-        if (d2 < best_dist2)
+        vec3 p = { p0[0], p0[1], p0[2] };
+        if (k == 1)
         {
-          best_dist2 = d2;
-          glm_vec3_copy(p, best_seg);
-          glm_vec3_copy(proj, best_tri);
+          glm_vec3_copy(p1, p);
+        }
+
+        vec3 ap;
+        glm_vec3_sub(a, p, ap);
+        const float t = glm_vec3_dot(n, ap) / nlen2;
+
+        vec3 proj, tmp;
+        glm_vec3_scale(n, t, tmp);
+        glm_vec3_add(p, tmp, proj);
+
+        if (point_in_triangle(proj, a, b, c))
+        {
+          vec3 d;
+          glm_vec3_sub(p, proj, d);
+
+          const float d2 = glm_vec3_dot(d, d);
+
+          if (d2 < best_dist2)
+          {
+            best_dist2 = d2;
+            glm_vec3_copy(p, best_seg);
+            glm_vec3_copy(proj, best_tri);
+          }
         }
       }
     }
@@ -203,61 +207,97 @@ closest_point_segment_triangle(vec3 p0, vec3 p1, vec3 a, vec3 b, vec3 c, vec3 ou
   glm_vec3_copy(best_tri, out_closest_tri);
 }
 
-bool collide_capsule(vec3 base, vec3 top, float radius)
+bool collide_capsule(vec3 base, vec3 top, float radius, CollisionPhase phase)
 {
-  bool contact = false;
+  bool had_contact = false;
 
-  const uint32_t map_index_count = get_map_collision_index_count();
+  const uint32_t tri_count = get_map_collision_index_count();
+
   for (int iter = 0; iter < ITERATION_COUNT; iter++)
   {
     bool contact_this_iter = false;
 
-    float best_push_len;
-    vec3 best_push;
+    vec3 best_push = { 0 };
+    float best_push_len = 0.0f;
 
-    for (uint32_t map_index = 0; map_index < map_index_count; map_index += 3)
+    // Find deepest penetration
+    for (uint32_t tri = 0; tri < tri_count; tri += 3)
     {
       vec3 v0, v1, v2;
-      get_map_collision_triangle(map_index, v0, v1, v2);
+      get_map_collision_triangle(tri, v0, v1, v2);
 
+      // Compute triangle normal
+      vec3 n;
+      {
+        vec3 a, b;
+        glm_vec3_sub(v1, v0, a);
+        glm_vec3_sub(v2, v0, b);
+        glm_vec3_cross(a, b, n);
+        glm_vec3_normalize(n);
+      }
+
+      if (n[1] < 0.0f)
+      {
+        glm_vec3_negate(n);
+      }
+
+      // Skip triangles not valid for this phase
+      // if (!triangle_filter(n))
+      if ((phase == CollisionPhase_Walls) == (n[1] > 0.8f))
+      {
+        continue;
+      }
+
+      // Compute penetration
       vec3 closest_seg, closest_tri;
       closest_point_segment_triangle(base, top, v0, v1, v2, closest_seg, closest_tri);
 
-      vec3 v;
-      glm_vec3_sub(closest_seg, closest_tri, v);
+      vec3 sep;
+      glm_vec3_sub(closest_seg, closest_tri, sep);
+      float dist = glm_vec3_norm(sep);
 
-      const float v_len = glm_vec3_norm(v);
-      if (v_len < radius)
+      if (dist < radius)
       {
-        const float push_len = radius - v_len;
+        float push_len = radius - dist;
 
         if (!contact_this_iter || push_len > best_push_len)
         {
+          glm_vec3_scale_as(sep, push_len, best_push);
           best_push_len = push_len;
-
-          glm_vec3_normalize(v);
-          glm_vec3_scale(v, push_len, v);
-
-          glm_vec3_scale_as(v, push_len, best_push);
         }
 
-        contact = true;
         contact_this_iter = true;
+        had_contact = true;
       }
     }
 
-    if (contact_this_iter)
-    {
-      glm_vec3_add(base, best_push, base);
-      glm_vec3_add(top, best_push, top);
-    }
-    else
+    if (!contact_this_iter)
     {
       break;
     }
+
+    // Correct the push vector depending on the phase
+    if (phase == CollisionPhase_Walls)
+    {
+      // Horizontal resolution
+      // best_push[1] = 0.0f;
+      if (best_push[1] < 0.0f)
+      {
+        best_push[1] = 0.0f;
+      }
+    }
+    else if (phase == CollisionPhase_Floors)
+    {
+      // Vertical resolution
+      best_push[0] = best_push[2] = 0.0f;
+    }
+
+    // And apply it to the capsule
+    glm_vec3_add(base, best_push, base);
+    glm_vec3_add(top, best_push, top);
   }
 
-  return contact;
+  return had_contact;
 }
 
 bool collide_ray(vec3 from, vec3 to, vec3 hit, vec3 normal)

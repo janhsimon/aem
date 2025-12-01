@@ -168,12 +168,8 @@ void update_enemy(const struct Preferences* preferences, float delta_time)
       {
         glm_vec3_add(old_pos, step_vector, old_pos);
 
-        vec3 top;
-        top[0] = old_pos[0];
-        top[1] = old_pos[1] + ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
-        top[2] = old_pos[2];
-
-        collide_capsule(top, old_pos, ENEMY_COLLIDER_RADIUS);
+        vec3 top = { old_pos[0], old_pos[1] + ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS * 2, old_pos[2] };
+        collide_capsule(top, old_pos, ENEMY_COLLIDER_RADIUS, CollisionPhase_Walls);
       }
 
       old_pos[1] -= ENEMY_COLLIDER_RADIUS; // From capsule bottom center to feet

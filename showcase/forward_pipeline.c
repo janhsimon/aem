@@ -12,8 +12,9 @@ static uint32_t screen_width, screen_height;
 
 static GLuint shader_program;
 static GLint world_uniform_location, viewproj_uniform_location, render_pass_uniform_location,
-  light_dir_uniform_location, camera_pos_uniform_location, light_viewproj_uniform_location,
-  ambient_color_uniform_location, light_color_uniform_location;
+  light0_dir_uniform_location, light1_dir_uniform_location, camera_pos_uniform_location,
+  light_viewproj_uniform_location, ambient_color_uniform_location, light0_color_uniform_location,
+  light1_color_uniform_location;
 
 bool load_forward_pipeline()
 {
@@ -47,11 +48,13 @@ bool load_forward_pipeline()
       world_uniform_location = get_uniform_location(shader_program, "world");
       viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
       render_pass_uniform_location = get_uniform_location(shader_program, "render_pass");
-      light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
+      light0_dir_uniform_location = get_uniform_location(shader_program, "light_dir0");
+      light1_dir_uniform_location = get_uniform_location(shader_program, "light_dir1");
       camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
       light_viewproj_uniform_location = get_uniform_location(shader_program, "light_viewproj");
       ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
-      light_color_uniform_location = get_uniform_location(shader_program, "light_color");
+      light0_color_uniform_location = get_uniform_location(shader_program, "light_color0");
+      light1_color_uniform_location = get_uniform_location(shader_program, "light_color1");
 
       const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
       glUniform1i(joint_transform_tex_uniform_location, 0);
@@ -105,14 +108,30 @@ void forward_pipeline_use_camera(vec3 camera_pos)
   glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
 }
 
-void forward_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity, mat4 viewproj_matrix)
+void forward_pipeline_use_lights(vec3 light_dir0,
+                                 vec3 light_dir1,
+                                 vec3 light_color0,
+                                 vec3 light_color1,
+                                 float light_intensity0,
+                                 float light_intensity1,
+                                 mat4 viewproj_matrix)
 {
-  vec4 l;
-  glm_vec3_copy(light_color, l);
-  l[3] = light_intensity;
+  vec4 l0;
+  {
+    glm_vec3_copy(light_color0, l0);
+    l0[3] = light_intensity0;
+  }
 
-  glUniform3fv(light_dir_uniform_location, 1, light_dir);
-  glUniform4fv(light_color_uniform_location, 1, l);
+  vec4 l1;
+  {
+    glm_vec3_copy(light_color1, l1);
+    l1[3] = light_intensity1;
+  }
+
+  glUniform3fv(light0_dir_uniform_location, 1, light_dir0);
+  glUniform3fv(light1_dir_uniform_location, 1, light_dir1);
+  glUniform4fv(light0_color_uniform_location, 1, l0);
+  glUniform4fv(light1_color_uniform_location, 1, l1);
   glUniformMatrix4fv(light_viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
 }
 

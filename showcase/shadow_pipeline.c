@@ -240,7 +240,7 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
       }
     }
 
-    glm_ortho(minLS[0], maxLS[0], minLS[1], maxLS[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 100.0f, light_proj);
+    glm_ortho(minLS[0], maxLS[0], minLS[1], maxLS[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 500.0f, light_proj);
   }
 
   glm_mat4_mul(light_proj, light_view, light_viewproj);

@@ -215,6 +215,7 @@ void update_hud(uint32_t screen_width,
 
       igCheckbox("Show player move speed", &preferences->show_player_move_speed);
       igCheckbox("Infinite ammo", &preferences->infinite_ammo);
+      igCheckbox("No clip", &preferences->no_clip);
     }
 
     if (igCollapsingHeader_TreeNodeFlags("AI", ImGuiTreeNodeFlags_None))
@@ -245,12 +246,22 @@ void update_hud(uint32_t screen_width,
         igTreePop();
       }
 
-      if (igTreeNode_Str("Directional"))
+      if (igTreeNode_Str("Primary directional"))
       {
-        igColorEdit3("Color##Directional", preferences->light_color, ImGuiColorEditFlags_None);
-        igSliderFloat("Intensity##Directional", &preferences->light_intensity, 0.0f, 1000.0f, "%f",
+        igColorEdit3("Color##Directional0", preferences->light_color0, ImGuiColorEditFlags_None);
+        igSliderFloat("Intensity##Directional0", &preferences->light_intensity0, 0.0f, 1000.0f, "%f",
                       ImGuiSliderFlags_None);
-        igSliderFloat3("Direction", preferences->light_dir, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+        igSliderFloat3("Direction0", preferences->light_dir0, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+
+        igTreePop();
+      }
+
+      if (igTreeNode_Str("Secondary directional"))
+      {
+        igColorEdit3("Color##Directional1", preferences->light_color1, ImGuiColorEditFlags_None);
+        igSliderFloat("Intensity##Directional1", &preferences->light_intensity1, 0.0f, 1000.0f, "%f",
+                      ImGuiSliderFlags_None);
+        igSliderFloat3("Direction1", preferences->light_dir1, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 
         igTreePop();
       }

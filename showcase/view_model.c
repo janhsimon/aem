@@ -259,7 +259,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
   aem_update_animation(model, mixer, delta_time, **joint_transforms);
 
   // Footstep sounds
-  if (moving)
+  if (moving && !preferences->no_clip)
   {
     static int footstep_counter = 0;
 

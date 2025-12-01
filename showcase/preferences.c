@@ -8,6 +8,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->debug_render = false;
   preferences->show_player_move_speed = false;
   preferences->infinite_ammo = false;
+  preferences->no_clip = false;
 
   // AI
   preferences->ai_walking = true;
@@ -23,10 +24,13 @@ void load_default_preferences(struct Preferences* preferences)
 
   // Lighting
   glm_vec3_copy((vec3){ 0.85f, 0.75f, 1.0f }, preferences->ambient_color);
-  preferences->ambient_intensity = 0.1f;
-  glm_vec3_copy((vec3){ 0.97f, 0.72f, 0.47f }, preferences->light_color);
-  preferences->light_intensity = 10.0f;
-  glm_vec3_copy((vec3){ 0.22f, -0.97f, 0.12f }, preferences->light_dir);
+  preferences->ambient_intensity = 0.02f;
+  glm_vec3_copy((vec3){ 0.97f, 0.63f, 0.3f }, preferences->light_color0);
+  preferences->light_intensity0 = 27.5f;
+  glm_vec3_copy((vec3){ 0.22f, -0.97f, 0.12f }, preferences->light_dir0);
+  glm_vec3_copy((vec3){ 0.97f, 0.92f, 0.88f }, preferences->light_color1);
+  preferences->light_intensity1 = 3.0f;
+  glm_vec3_copy((vec3){ -0.22f, -0.97f, -0.12f }, preferences->light_dir1);
 
   // AK
   // glm_vec3_copy((vec3){ 0.0f, -0.02f, 0.1f }, preferences->view_model_position);

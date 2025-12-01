@@ -31,7 +31,7 @@
 #include <string.h>
 
 #define CAM_NEAR 0.01f
-#define CAM_FAR 35.0f
+#define CAM_FAR /*35.0f*/ 80.0f
 
 static struct ModelRenderInfo *soldier = NULL, *ak = NULL;
 static bool debug_mode_enabled = false;
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
   }
 
   {
-    prepare_model_loading(5 + 1 + 1); // 5 map models, 1 enemy model, 1 view weapon model
+    prepare_model_loading(/*5*/ 1 + 1 + 1); // 5 map models, 1 enemy model, 1 view weapon model
 
     if (!load_map())
     {
@@ -138,7 +138,8 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  cam_set_position((float[]){ -5.0f, 3.0f, 0.0f });
+  //cam_set_position((float[]){ -5.0f, 3.0f, 0.0f }); // Sponza
+  cam_set_position((float[]){ -10.0f, 3.0f, 0.0f }); // Test level
   camera_add_yaw_pitch(glm_rad(-90.0f), 0.0f);
 
   // Set up initial OpenGL state
@@ -173,11 +174,12 @@ int main(int argc, char* argv[])
       if (get_debug_key_up())
       {
         debug_mode_enabled = !debug_mode_enabled;
+
         set_cursor_mode(!debug_mode_enabled);
       }
 
       bool player_moving;
-      player_update(!debug_mode_enabled, delta_time, &player_moving);
+      player_update(&preferences, !debug_mode_enabled, delta_time, &player_moving);
 
       if (debug_mode_enabled)
       {
@@ -207,7 +209,7 @@ int main(int argc, char* argv[])
         shadow_pipeline_start_rendering();
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        shadow_pipeline_calc_light_viewproj(preferences.light_dir, window_aspect, preferences.camera_fov, CAM_NEAR,
+        shadow_pipeline_calc_light_viewproj(preferences.light_dir0, window_aspect, preferences.camera_fov, CAM_NEAR,
                                             CAM_FAR);
 
         // Map
@@ -257,8 +259,9 @@ int main(int argc, char* argv[])
         {
           mat4 light_viewproj;
           shadow_pipeline_get_light_viewproj(light_viewproj);
-          forward_pipeline_use_light(preferences.light_dir, preferences.light_color, preferences.light_intensity,
-                                     light_viewproj);
+          forward_pipeline_use_lights(preferences.light_dir0, preferences.light_dir1, preferences.light_color0,
+                                      preferences.light_color1, preferences.light_intensity0,
+                                      preferences.light_intensity1, light_viewproj);
         }
 
         // Map
