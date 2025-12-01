@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  //cam_set_position((float[]){ -5.0f, 3.0f, 0.0f }); // Sponza
+  // cam_set_position((float[]){ -5.0f, 3.0f, 0.0f }); // Sponza
   cam_set_position((float[]){ -10.0f, 3.0f, 0.0f }); // Test level
   camera_add_yaw_pitch(glm_rad(-90.0f), 0.0f);
 
@@ -176,6 +176,11 @@ int main(int argc, char* argv[])
         debug_mode_enabled = !debug_mode_enabled;
 
         set_cursor_mode(!debug_mode_enabled);
+      }
+
+      if (get_noclip_key_up())
+      {
+        preferences.no_clip = !preferences.no_clip;
       }
 
       bool player_moving;

@@ -59,9 +59,15 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         player_velocity[1] = 0.0f;
       }
 
-      if (glm_vec3_norm(player_velocity) > PLAYER_MOVE_SPEED * delta_time)
+      float speed_limit = PLAYER_MOVE_SPEED * delta_time;
+      if (preferences->no_clip)
       {
-        glm_vec3_scale_as(player_velocity, PLAYER_MOVE_SPEED * delta_time, player_velocity);
+        speed_limit *= 2.0f; // Go faster in noclip
+      }
+
+      if (glm_vec3_norm(player_velocity) > speed_limit)
+      {
+        glm_vec3_scale_as(player_velocity, speed_limit, player_velocity);
       }
 
       if (!preferences->no_clip)

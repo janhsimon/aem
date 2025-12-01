@@ -11,6 +11,7 @@
 #define KEY_BINDING_STRAFE_RIGHT GLFW_KEY_D
 #define KEY_BINDING_RELOAD GLFW_KEY_R
 #define KEY_BINDING_DEBUG GLFW_KEY_TAB
+#define KEY_BINDING_NOCLIP GLFW_KEY_T
 
 #define BUTTON_BINDING_SHOOT GLFW_MOUSE_BUTTON_1
 
@@ -23,9 +24,9 @@ static bool is_shoot_button_down = false;
 
 static bool is_exit_key_down = false, is_forward_key_down = false, is_backwards_key_down = false,
             is_strafe_left_key_down = false, is_strafe_right_key_down = false, is_reload_key_down = false,
-            is_debug_key_down;
+            is_debug_key_down = false, is_noclip_key_down = false;
 
-static bool prev_debug_key_down;
+static bool prev_debug_key_down, prev_noclip_key_down;
 
 void on_mouse_move(double x, double y)
 {
@@ -86,6 +87,10 @@ void on_key_down(int key)
   {
     is_debug_key_down = true;
   }
+  else if (key == KEY_BINDING_NOCLIP)
+  {
+    is_noclip_key_down = true;
+  }
 }
 
 void on_key_up(int key)
@@ -117,6 +122,10 @@ void on_key_up(int key)
   else if (key == KEY_BINDING_DEBUG)
   {
     is_debug_key_down = false;
+  }
+  else if (key == KEY_BINDING_NOCLIP)
+  {
+    is_noclip_key_down = false;
   }
 }
 
@@ -157,6 +166,13 @@ bool get_debug_key_up()
 {
   const bool up = prev_debug_key_down && !is_debug_key_down;
   prev_debug_key_down = is_debug_key_down;
+  return up;
+}
+
+bool get_noclip_key_up()
+{
+  const bool up = prev_noclip_key_down && !is_noclip_key_down;
+  prev_noclip_key_down = is_noclip_key_down;
   return up;
 }
 
