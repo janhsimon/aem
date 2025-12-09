@@ -5,14 +5,11 @@
 
 #include <aem/model.h>
 
-#include <cglm/affine.h>
+#include <cglm/vec3.h>
 
 #include <string.h>
 
-static struct ModelRenderInfo /**sponza_base = NULL, *sponza_curtains = NULL, *sponza_ivy = NULL, *sponza_tree = NULL,
-                              *car = NULL*/*sponza;
-
-// mat4 car_matrix;
+static struct ModelRenderInfo *sponza1 = NULL, *sponza2 = NULL, *sponza3 = NULL;
 
 static uint32_t collision_index_count = 0;
 
@@ -23,113 +20,58 @@ bool load_map()
 {
   // Load visual models
   {
-    /*sponza_base = load_model("models/sponza_base.aem");
-    sponza_curtains = load_model("models/sponza_curtains.aem");
-    sponza_ivy = load_model("models/sponza_ivy.aem");
-    sponza_tree = load_model("models/sponza_tree.aem");
-    car = load_model("models/car.aem");*/
-
-    // sponza = load_model("models/sponza_single.aem");
-    sponza = load_model("models/test_level.aem");
+    sponza1 = load_model("models/sponza_single_b1.aem");
+    sponza2 = load_model("models/sponza_single_b2.aem");
+    sponza3 = load_model("models/sponza_single_b3.aem");
   }
 
-  // if (!sponza_base || !sponza_curtains || !sponza_ivy || !sponza_tree || !car)
-  if (!sponza)
+  if (!sponza1 || !sponza2 || !sponza3)
   {
     return false;
   }
 
-  // Position the car
-  /*{
-    glm_translate_make(car_matrix, (vec3){ 6.0f, 0.02f, 0.0f });
-    glm_rotate(car_matrix, glm_rad(15.0f), GLM_YUP);
-    glm_scale(car_matrix, (vec3){ 0.8f, 0.8f, 0.8f });
-
-    const uint32_t car_vertex_count = aem_get_model_vertex_count(car->model);
-    float* car_vertices = aem_get_model_vertex_buffer(car->model);
-    for (uint32_t v = 0; v < car_vertex_count; ++v)
+  {
+    // Load collision model
+    struct AEMModel* sponza_c = NULL;
+    if (aem_load_model("models/sponza_single_c.aem", &sponza_c) != AEMModelResult_Success)
     {
-      glm_mat4_mulv3(car_matrix, &car_vertices[v * 22], 1.0f, &car_vertices[v * 22]);
+      return false;
     }
-  }*/
 
-  struct AEMModel* sponza_c = NULL /*, *car_c = NULL*/;
-  // if (aem_load_model("models/sponza_single_c.aem", &sponza_c) != AEMModelResult_Success)
-  if (aem_load_model("models/test_level.aem", &sponza_c) != AEMModelResult_Success)
-  {
-    return false;
-  }
-
-  /*if (aem_load_model("models/car_c.aem", &car_c) != AEMModelResult_Success)
-  {
-    return false;
-  }*/
-
-  const uint32_t sponza_c_vertex_count = aem_get_model_vertex_count(sponza_c);
-  // const uint32_t car_c_vertex_count = aem_get_model_vertex_count(car_c);
-
-  uint32_t collision_vertex_count;
-  {
-    collision_vertex_count = sponza_c_vertex_count /*+ car_c_vertex_count*/;
-
-    collision_vertices = malloc(AEM_VERTEX_SIZE * collision_vertex_count);
-
-    memcpy(collision_vertices, aem_get_model_vertex_buffer(sponza_c), AEM_VERTEX_SIZE * sponza_c_vertex_count);
-    /*memcpy(collision_vertices + sponza_c_vertex_count * 22, aem_get_model_vertex_buffer(car_c),
-           AEM_VERTEX_SIZE * car_c_vertex_count);*/
-
-    /*for (uint32_t v = 0; v < car_c_vertex_count; ++v)
+    // Copy vertices into collision_vertices
     {
-      glm_mat4_mulv3(car_matrix, &collision_vertices[(sponza_c_vertex_count + v) * 22], 1.0f,
-                     &collision_vertices[(sponza_c_vertex_count + v) * 22]);
-    }*/
-  }
+      const uint32_t collision_vertex_count = aem_get_model_vertex_count(sponza_c);
+      collision_vertices = malloc(AEM_VERTEX_SIZE * collision_vertex_count);
+      memcpy(collision_vertices, aem_get_model_vertex_buffer(sponza_c), AEM_VERTEX_SIZE * collision_vertex_count);
+    }
 
-  {
-    const uint32_t index_count1 = aem_get_model_index_count(sponza_c);
-    // const uint32_t index_count2 = aem_get_model_index_count(car_c);
-
-    collision_index_count = index_count1 /*+ index_count2*/;
-
-    collision_indices = malloc(AEM_INDEX_SIZE * collision_index_count);
-
-    memcpy(collision_indices, aem_get_model_index_buffer(sponza_c), AEM_INDEX_SIZE * index_count1);
-    // memcpy(collision_indices + index_count1, aem_get_model_index_buffer(car_c), AEM_INDEX_SIZE * index_count2);
-
-    /*for (uint32_t i = 0; i < index_count2; ++i)
+    // Copy indices into collision_indices and remember the index count
     {
-      collision_indices[index_count1 + i] += sponza_c_vertex_count;
-    }*/
+      collision_index_count = aem_get_model_index_count(sponza_c);
+      collision_indices = malloc(AEM_INDEX_SIZE * collision_index_count);
+      memcpy(collision_indices, aem_get_model_index_buffer(sponza_c), AEM_INDEX_SIZE * collision_index_count);
+    }
+
+    // Clean up the collision model
+    aem_finish_loading_model(sponza_c);
+    aem_free_model(sponza_c);
   }
-
-  aem_finish_loading_model(sponza_c);
-  // aem_finish_loading_model(car_c);
-
-  aem_free_model(sponza_c);
-  // aem_free_model(car_c);
 
   return true;
 }
 
 void draw_map_opaque()
 {
-  /*render_model(sponza_base, ModelRenderMode_AllMeshes);
-  render_model(sponza_curtains, ModelRenderMode_AllMeshes);
-  render_model(sponza_ivy, ModelRenderMode_AllMeshes);
-  render_model(sponza_tree, ModelRenderMode_AllMeshes);
-  render_model(car, ModelRenderMode_AllMeshes);*/
-  render_model(sponza, ModelRenderMode_AllMeshes);
+  render_model(sponza1, ModelRenderMode_AllMeshes);
+  render_model(sponza2, ModelRenderMode_AllMeshes);
+  render_model(sponza3, ModelRenderMode_AllMeshes);
 }
 
 void draw_map_transparent()
 {
-  /* render_model(sponza_base, ModelRenderMode_TransparentMeshesOnly);
-   render_model(sponza_curtains, ModelRenderMode_TransparentMeshesOnly);
-   render_model(sponza_ivy, ModelRenderMode_TransparentMeshesOnly);
-   render_model(sponza_tree, ModelRenderMode_TransparentMeshesOnly);*/
-  // The car does not have transparent meshes
-
-  render_model(sponza, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza1, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza2, ModelRenderMode_TransparentMeshesOnly);
+  render_model(sponza3, ModelRenderMode_TransparentMeshesOnly);
 }
 
 void free_map()

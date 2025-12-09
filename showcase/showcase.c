@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
   }
 
   {
-    prepare_model_loading(/*5*/ 1 + 1 + 1); // 5 map models, 1 enemy model, 1 view weapon model
+    prepare_model_loading(/*5*/ 3 + 1 + 1); // 5 map models, 1 enemy model, 1 view weapon model
 
     if (!load_map())
     {
@@ -138,8 +138,8 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  // cam_set_position((float[]){ -5.0f, 3.0f, 0.0f }); // Sponza
-  cam_set_position((float[]){ -10.0f, 3.0f, 0.0f }); // Test level
+  cam_set_position((float[]){ -5.0f, 3.0f, 0.0f }); // Sponza
+  // cam_set_position((float[]){ -10.0f, 3.0f, 0.0f }); // Test level
   camera_add_yaw_pitch(glm_rad(-90.0f), 0.0f);
 
   // Set up initial OpenGL state
