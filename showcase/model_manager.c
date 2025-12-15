@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 static uint32_t model_index, model_count;
 static uint32_t total_vertex_count, total_index_count, total_texture_count;
@@ -23,8 +24,12 @@ void prepare_model_loading(uint32_t model_count_)
 
   model_count = model_count_;
 
-  model_render_infos = malloc(sizeof(*model_render_infos) * model_count);
-  assert(model_render_infos);
+  {
+    const uint32_t size = sizeof(*model_render_infos) * model_count;
+    model_render_infos = malloc(size);
+    assert(model_render_infos);
+    memset(model_render_infos, 0, size);
+  }
 }
 
 struct ModelRenderInfo* load_model(const char* filename)
@@ -71,6 +76,10 @@ void finish_model_loading()
   {
     const struct ModelRenderInfo* mri = &model_render_infos[model_index_];
     const struct AEMModel* model = mri->model;
+    if (!model)
+    {
+      continue;
+    }
 
     glBufferSubData(GL_ARRAY_BUFFER, mri->first_vertex * AEM_VERTEX_SIZE, mri->vertex_count * AEM_VERTEX_SIZE,
                     aem_get_model_vertex_buffer(model));
@@ -100,7 +109,13 @@ void free_models()
   for (uint32_t model_index_ = 0; model_index_ < model_count; ++model_index_)
   {
     const struct ModelRenderInfo* mri = &model_render_infos[model_index_];
-    aem_free_model(mri->model);
+    struct AEMModel* model = mri->model;
+    if (!model)
+    {
+      continue;
+    }
+
+    aem_free_model(model);
   }
 
   glDeleteTextures(total_texture_count, texture_handles);
