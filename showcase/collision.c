@@ -242,7 +242,6 @@ bool collide_capsule(vec3 base, vec3 top, float radius, CollisionPhase phase)
       }
 
       // Skip triangles not valid for this phase
-      // if (!triangle_filter(n))
       if ((phase == CollisionPhase_Walls) == (n[1] > 0.8f))
       {
         continue;
@@ -254,7 +253,14 @@ bool collide_capsule(vec3 base, vec3 top, float radius, CollisionPhase phase)
 
       vec3 sep;
       glm_vec3_sub(closest_seg, closest_tri, sep);
-      float dist = glm_vec3_norm(sep);
+
+      // Skip walls that do not face towards the capsule
+      if (phase == CollisionPhase_Walls && glm_dot(sep, n) < 0.0f)
+      {
+        continue;
+      }
+
+      const float dist = glm_vec3_norm(sep);
 
       if (dist < radius)
       {
@@ -280,11 +286,7 @@ bool collide_capsule(vec3 base, vec3 top, float radius, CollisionPhase phase)
     if (phase == CollisionPhase_Walls)
     {
       // Horizontal resolution
-      // best_push[1] = 0.0f;
-      if (best_push[1] < 0.0f)
-      {
-        best_push[1] = 0.0f;
-      }
+      best_push[1] = 0.0f;
     }
     else if (phase == CollisionPhase_Floors)
     {
