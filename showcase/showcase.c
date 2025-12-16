@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
 
       // Forward render
       {
-        forward_pipeline_start_rendering();
+        forward_pipeline_start_rendering(window_width, window_height);
         glClearColor(preferences.camera_background_color[0], preferences.camera_background_color[1],
                      preferences.camera_background_color[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -329,7 +329,7 @@ int main(int argc, char* argv[])
         // Draw view model
         {
           start_model_rendering();
-          forward_pipeline_start_rendering();
+          forward_pipeline_start_rendering(window_width, window_height);
 
           glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
 

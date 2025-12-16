@@ -3,6 +3,7 @@
 #include <cglm/types.h>
 
 #include <stdbool.h>
+#include <stdint.h>
 
 enum ForwardPipelineRenderPass
 {
@@ -13,7 +14,7 @@ enum ForwardPipelineRenderPass
 bool load_forward_pipeline();
 void free_forward_pipeline();
 
-void forward_pipeline_start_rendering();
+void forward_pipeline_start_rendering(uint32_t screen_width, uint32_t screen_height);
 void forward_pipeline_use_world_matrix(mat4 world_matrix);
 void forward_pipeline_use_viewproj_matrix(mat4 viewproj_matrix);
 void forward_pipeline_use_render_pass(enum ForwardPipelineRenderPass pass);

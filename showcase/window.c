@@ -14,8 +14,6 @@ static void framebuffer_size_callback(GLFWwindow* window, int width_, int height
 {
   width = (uint32_t)width_;
   height = (uint32_t)height_;
-
-  glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 }
 
 static void cursor_pos_callback(GLFWwindow* window, double x, double y)

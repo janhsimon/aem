@@ -1,14 +1,10 @@
 #include "forward_pipeline.h"
 
-#include "window.h"
-
 #include <util/util.h>
 
 #include <cglm/vec3.h>
 
 #include <glad/gl.h>
-
-static uint32_t screen_width, screen_height;
 
 static GLuint shader_program;
 static GLint world_uniform_location, viewproj_uniform_location, render_pass_uniform_location,
@@ -18,8 +14,6 @@ static GLint world_uniform_location, viewproj_uniform_location, render_pass_unif
 
 bool load_forward_pipeline()
 {
-  get_window_size(&screen_width, &screen_height);
-
   // Load shaders
   {
     GLuint vertex_shader, fragment_shader;
@@ -81,7 +75,7 @@ void free_forward_pipeline()
   glDeleteProgram(shader_program);
 }
 
-void forward_pipeline_start_rendering()
+void forward_pipeline_start_rendering(uint32_t screen_width, uint32_t screen_height)
 {
   glViewport(0, 0, screen_width, screen_height);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
