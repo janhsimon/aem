@@ -52,7 +52,11 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     {
       const float original_y = player_velocity[1];
       glm_vec3_scale(player_velocity, 1.0f - (PLAYER_DECEL * delta_time), player_velocity);
-      player_velocity[1] = original_y;
+
+      if (!preferences->no_clip)
+      {
+        player_velocity[1] = original_y;
+      }
     }
 
     // Limit max speed
