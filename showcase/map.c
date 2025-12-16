@@ -141,6 +141,6 @@ void get_current_map_player_spawn_position(vec3 spawn_position)
   }
   else if (current_map == Map_Sponza)
   {
-    glm_vec3_copy((vec3){ -5.0f, 3.0f, 0.0f }, spawn_position);
+    glm_vec3_copy((vec3){ 5.0f, 3.0f, 0.0f }, spawn_position);
   }
 }

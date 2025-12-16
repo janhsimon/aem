@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     get_current_map_player_spawn_position(player_spawn_position);
     cam_set_position(player_spawn_position);
 
-    camera_add_yaw_pitch(glm_rad(-90.0f), 0.0f);
+    camera_add_yaw_pitch(glm_rad(90.0f), 0.0f);
   }
 
   // Set up initial OpenGL state
