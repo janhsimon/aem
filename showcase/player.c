@@ -8,7 +8,7 @@
 #include <cglm/mat3.h>
 #include <cglm/vec3.h>
 
-#define GRAVITY 100.0f
+#define GRAVITY 40.0f
 
 #define PLAYER_RADIUS 0.25f
 #define PLAYER_HEIGHT 1.8f
@@ -17,7 +17,10 @@
 #define PLAYER_DECEL 20.0f
 #define PLAYER_MOVE_SPEED 5.0f
 
+#define PLAYER_JUMP_STRENGTH 10.0f
+
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
+static bool player_grounded = false;
 
 void player_update(const struct Preferences* preferences, bool mouse_look, float delta_time, bool* moving)
 {
@@ -47,7 +50,9 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     }
     else
     {
+      const float original_y = player_velocity[1];
       glm_vec3_scale(player_velocity, 1.0f - (PLAYER_DECEL * delta_time), player_velocity);
+      player_velocity[1] = original_y;
     }
 
     // Limit max speed
@@ -80,43 +85,65 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   // Collision
   if (!preferences->no_clip)
   {
-    vec3 start_pos;
-    cam_get_position(start_pos);
-
     // Phase 1: Horizontal movement versus walls
     vec3 pos;
     {
+      cam_get_position(pos);
+
       vec3 horizontal_move = { player_velocity[0], 0.0f, player_velocity[2] };
-      glm_vec3_add(start_pos, horizontal_move, pos);
 
-      // Capsule endpoints for collision
-      vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
-      vec3 top = { pos[0], pos[1], pos[2] };
+      const float magnitude = glm_vec3_norm(horizontal_move);
+      const int step_count = (magnitude / PLAYER_RADIUS) + 1;
+      const float step_length = magnitude / step_count;
 
-      // Resolve walls only, no floors
-      collide_capsule(base, top, PLAYER_RADIUS, CollisionPhase_Walls);
-      glm_vec3_copy(top, pos); // Update pos from capsule end
+      vec3 step_vector;
+      glm_vec3_scale_as(horizontal_move, step_length, step_vector);
+
+      for (int step = 0; step < step_count; ++step)
+      {
+        glm_vec3_add(pos, step_vector, pos);
+        vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
+        collide_capsule(base, pos, PLAYER_RADIUS, CollisionPhase_Walls); // Resolve walls only, no floors
+      }
     }
 
     // Phase 2: Vertical movement versus floors
     {
       float vy = player_velocity[1];
+
+      if (player_grounded && get_jump_key_down())
+      {
+        vy = PLAYER_JUMP_STRENGTH;
+      }
+
       vy -= GRAVITY * delta_time;
 
       vec3 vertical_move = { 0.0f, vy * delta_time, 0.0f };
-      glm_vec3_add(pos, vertical_move, pos);
 
-      // Capsule endpoints for collision
-      vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
-      vec3 top = { pos[0], pos[1], pos[2] };
+      const float magnitude = glm_vec3_norm(vertical_move);
+      const int step_count = (magnitude / PLAYER_RADIUS) + 1;
+      const float step_length = magnitude / step_count;
 
-      const bool grounded = collide_capsule(base, top, PLAYER_RADIUS, CollisionPhase_Floors);
-      glm_vec3_copy(top, pos); // Update final pos
+      vec3 step_vector;
+      glm_vec3_scale_as(vertical_move, step_length, step_vector);
 
-      // Ground behavior
-      if (grounded && vy < 0.0f)
+      for (int step = 0; step < step_count; ++step)
       {
-        vy = 0.0f;
+        glm_vec3_add(pos, step_vector, pos);
+        vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
+        player_grounded =
+          collide_capsule(base, pos, PLAYER_RADIUS, CollisionPhase_Floors); // Resolve floors only, no walls
+
+        // Ground behavior
+        if (player_grounded)
+        {
+          if (vy < 0.0f)
+          {
+            vy = 0.0f;
+          }
+
+          break;
+        }
       }
 
       player_velocity[1] = vy;
@@ -139,10 +166,28 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   }
 }
 
-float get_player_speed()
+void get_player_position(vec3 position)
 {
-  vec3 flat_speed;
-  glm_vec3_copy(player_velocity, flat_speed);
-  flat_speed[1] = 0.0f;
-  return glm_vec3_norm(flat_speed);
+  cam_get_position(position);
+  position[1] -= PLAYER_HEIGHT - PLAYER_RADIUS;
+}
+
+void get_player_velocity(vec3 velocity)
+{
+  glm_vec3_copy(player_velocity, velocity);
+}
+
+bool get_player_grounded()
+{
+  return player_grounded;
+}
+
+void player_jump()
+{
+  if (!player_grounded)
+  {
+    return;
+  }
+
+  player_velocity[1] = 10.0f;
 }

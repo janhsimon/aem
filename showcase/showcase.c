@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
   {
     prepare_model_loading(3 + 1 + 1); // Max 3 map models, 1 enemy model, 1 view weapon model
 
-    if (!load_map(Map_Sponza))
+    if (!load_map(Map_Sponza /*Map_TestLevel*/))
     {
       printf("Failed to load map\n");
       return EXIT_FAILURE;
@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
     printf("Failed to load sound engine\n");
     return EXIT_FAILURE;
   }
+  set_master_volume(preferences.master_volume);
 
   if (!load_view_model(ak->model))
   {
@@ -204,7 +205,7 @@ int main(int argc, char* argv[])
 
       update_enemy(&preferences, delta_time);
       update_particle_manager(delta_time);
-      update_hud(window_width, window_height, debug_mode_enabled, get_player_speed(), &preferences);
+      update_hud(window_width, window_height, debug_mode_enabled, &preferences);
       update_sound();
     }
 

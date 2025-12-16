@@ -15,6 +15,7 @@ void get_mouse_delta(double* x, double* y);
 bool get_shoot_button_down();
 bool get_exit_key_down();
 void get_move_vector(vec3 move, bool* moving);
+bool get_jump_key_down();
 bool get_reload_key_down();
 bool get_debug_key_up();
 bool get_noclip_key_up();

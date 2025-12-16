@@ -6,7 +6,7 @@ void load_default_preferences(struct Preferences* preferences)
 {
   // Debug
   preferences->debug_render = false;
-  preferences->show_player_move_speed = false;
+  preferences->show_player_info = false;
   preferences->infinite_ammo = false;
   preferences->no_clip = false;
 
@@ -38,7 +38,7 @@ void load_default_preferences(struct Preferences* preferences)
   // preferences->view_model_fov = 50.0f;
 
   // CZ
-  glm_vec3_copy((vec3){ -0.07f, -1.62f, 0.1f }, preferences->view_model_position);
+  glm_vec3_copy((vec3) { -0.07f, -1.62f, 0.1f }, preferences->view_model_position);
   preferences->view_model_scale = 1.0f;
   preferences->view_model_fov = 40.0f;
 

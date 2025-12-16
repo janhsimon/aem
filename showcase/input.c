@@ -9,6 +9,7 @@
 #define KEY_BINDING_BACKWARDS GLFW_KEY_S
 #define KEY_BINDING_STRAFE_LEFT GLFW_KEY_A
 #define KEY_BINDING_STRAFE_RIGHT GLFW_KEY_D
+#define KEY_BINDING_JUMP GLFW_KEY_SPACE
 #define KEY_BINDING_RELOAD GLFW_KEY_R
 #define KEY_BINDING_DEBUG GLFW_KEY_TAB
 #define KEY_BINDING_NOCLIP GLFW_KEY_T
@@ -23,8 +24,8 @@ static bool mouse_position_received = false;
 static bool is_shoot_button_down = false;
 
 static bool is_exit_key_down = false, is_forward_key_down = false, is_backwards_key_down = false,
-            is_strafe_left_key_down = false, is_strafe_right_key_down = false, is_reload_key_down = false,
-            is_debug_key_down = false, is_noclip_key_down = false;
+            is_strafe_left_key_down = false, is_strafe_right_key_down = false, is_jump_key_down = false,
+            is_reload_key_down = false, is_debug_key_down = false, is_noclip_key_down = false;
 
 static bool prev_debug_key_down, prev_noclip_key_down;
 
@@ -79,6 +80,10 @@ void on_key_down(int key)
   {
     is_strafe_right_key_down = true;
   }
+  else if (key == KEY_BINDING_JUMP)
+  {
+    is_jump_key_down = true;
+  }
   else if (key == KEY_BINDING_RELOAD)
   {
     is_reload_key_down = true;
@@ -114,6 +119,10 @@ void on_key_up(int key)
   else if (key == KEY_BINDING_STRAFE_RIGHT)
   {
     is_strafe_right_key_down = false;
+  }
+  else if (key == KEY_BINDING_JUMP)
+  {
+    is_jump_key_down = false;
   }
   else if (key == KEY_BINDING_RELOAD)
   {
@@ -155,6 +164,11 @@ void get_move_vector(vec3 move, bool* moving)
   move[2] = (float)is_forward_key_down - (float)is_backwards_key_down;
 
   *moving = (move[0] != 0.0f || move[2] != 0.0f);
+}
+
+bool get_jump_key_down()
+{
+  return is_jump_key_down;
 }
 
 bool get_reload_key_down()

@@ -1,6 +1,7 @@
 #include "hud.h"
 
 #include "debug_renderer.h"
+#include "player.h"
 #include "preferences.h"
 #include "view_model.h"
 #include "window.h"
@@ -82,11 +83,7 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
-void update_hud(uint32_t screen_width,
-                uint32_t screen_height,
-                bool debug_mode,
-                float player_speed,
-                struct Preferences* preferences)
+void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, struct Preferences* preferences)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -187,13 +184,32 @@ void update_hud(uint32_t screen_width,
     igEnd();
   }
 
-  if (preferences->show_player_move_speed)
+  if (preferences->show_player_info)
   {
-    char s[64];
-    sprintf(s, "Movement speed: %f", player_speed);
-
     const ImU32 color = igGetColorU32_Vec4(foreground_color);
-    ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, screen_height - 100.0f }, color, s, NULL);
+
+    {
+      vec3 player_position;
+      get_player_position(player_position);
+
+      char s[128];
+      sprintf(s, "Player position: %.2f, %.2f, %.2f", player_position[0], player_position[1], player_position[2]);
+      ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 100.0f }, color, s, NULL);
+    }
+
+    {
+      vec3 player_velocity;
+      get_player_velocity(player_velocity);
+
+      char s[128];
+      sprintf(s, "Player velocity: %.2f, %.2f, %.2f", player_velocity[0], player_velocity[1], player_velocity[2]);
+      ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 120.0f }, color, s, NULL);
+    }
+
+    {
+      ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 140.0f }, color,
+                              get_player_grounded() ? "Grounded" : "In air", NULL);
+    }
   }
 
   // Debug window
@@ -213,7 +229,7 @@ void update_hud(uint32_t screen_width,
         clear_debug_lines();
       }
 
-      igCheckbox("Show player move speed", &preferences->show_player_move_speed);
+      igCheckbox("Show player information", &preferences->show_player_info);
       igCheckbox("Infinite ammo", &preferences->infinite_ammo);
       igCheckbox("No clip", &preferences->no_clip);
     }

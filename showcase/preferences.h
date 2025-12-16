@@ -21,7 +21,7 @@ struct Preferences
 {
   // Debug
   bool debug_render;
-  bool show_player_move_speed;
+  bool show_player_info;
   bool infinite_ammo;
   bool no_clip;
   
