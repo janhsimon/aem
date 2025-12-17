@@ -1,51 +1,92 @@
 #include "camera.h"
 
 #include <cglm/cam.h>
-#include <cglm/quat.h>
+#include <cglm/vec2.h>
 
 #define PITCH_CLAMP 1.5533f // 89 deg in rad
 
 static vec3 position = GLM_VEC3_ZERO_INIT;
-static mat3 orientation = GLM_MAT3_IDENTITY_INIT;
-static float yaw, pitch = 0.0f; // Only used in camera_add_yaw_pitch()
-
-void cam_set_position(vec3 position_)
-{
-  glm_vec3_copy(position_, position);
-}
+static vec3 angles = GLM_VEC3_ZERO_INIT; // pitch, yaw, roll
+static vec2 recoil = GLM_VEC2_ZERO_INIT;
 
 void cam_get_position(vec3 position_)
 {
   glm_vec3_copy(position, position_);
 }
 
-void cam_get_orientation(mat3 orientation_)
+void cam_set_position(vec3 position_)
 {
-  glm_mat3_copy(orientation, orientation_);
+  glm_vec3_copy(position_, position);
 }
 
-void camera_add_yaw_pitch(float yaw_, float pitch_)
+void cam_get_rotation(mat3 rotation, enum CameraRotationMode mode)
 {
-  yaw += yaw_;
-  pitch += pitch_;
+  vec3 final;
 
-  pitch = glm_clamp(pitch, -PITCH_CLAMP, PITCH_CLAMP);
+  if (mode == CameraRotationMode_WithoutRecoil)
+  {
+    glm_vec3_copy(angles, final);
+  }
+  else
+  {
+    final[0] = angles[0] + recoil[0];
+    final[1] = angles[1] + recoil[1];
+    final[2] = angles[2];
+  }
 
-  // Yaw is applied first, rotating around world Y
-  mat4 rot_yaw = GLM_MAT4_IDENTITY_INIT;
-  glm_rotate_y(rot_yaw, -yaw, rot_yaw); // Negative because OpenGL uses right-handed system
+  vec3 forward = { cosf(final[1]) * cosf(final[0]), sinf(final[0]), sinf(final[1]) * cosf(final[0]) };
+  glm_vec3_normalize(forward);
 
-  // Then pitch around local X
-  mat4 rot_pitch = GLM_MAT4_IDENTITY_INIT;
-  glm_rotate_x(rot_pitch, pitch, rot_pitch);
+  vec3 right;
+  glm_vec3_cross(GLM_YUP, forward, right);
+  glm_vec3_normalize(right);
 
-  // Combined rotation: orientation = rot_yaw * rot_pitch
-  // (pitch is local, so post-multiplied)
-  mat4 rot_combined;
-  glm_mat4_mul(rot_yaw, rot_pitch, rot_combined);
+  vec3 up;
+  glm_vec3_cross(forward, right, up);
 
-  // Extract upper-left 3x3 part as the orientation basis
-  glm_mat4_pick3(rot_combined, orientation);
+  glm_vec3_copy(right, rotation[0]);
+  glm_vec3_copy(up, rotation[1]);
+  glm_vec3_copy(forward, rotation[2]);
+}
+
+void camera_get_yaw_pitch(float* yaw, float* pitch, float* roll)
+{
+  *yaw = angles[1];
+  *pitch = angles[0];
+  *roll = angles[2];
+}
+
+void camera_set_yaw_pitch(float yaw, float pitch)
+{
+  angles[1] = yaw;
+  angles[0] = pitch;
+}
+
+void camera_add_yaw_pitch(float yaw, float pitch)
+{
+  angles[1] += yaw;
+  angles[0] -= pitch;
+
+  // Clamp the pitch
+  if (angles[0] < -PITCH_CLAMP)
+  {
+    angles[0] = -PITCH_CLAMP;
+  }
+  else if (angles[0] > PITCH_CLAMP)
+  {
+    angles[0] = PITCH_CLAMP;
+  }
+}
+
+void camera_add_recoil_yaw_pitch(float yaw, float pitch)
+{
+  recoil[1] += yaw;
+  recoil[0] -= pitch;
+}
+
+void camera_mul_recoil_yaw_pitch(float s)
+{
+  glm_vec2_scale(recoil, s, recoil);
 }
 
 void camera_add_move(vec3 move)
@@ -55,9 +96,20 @@ void camera_add_move(vec3 move)
 
 void calc_view_matrix(mat4 view_matrix)
 {
-  // Find a point that is in front of the camera given its position and current orientation
+  vec3 final;
+  final[0] = angles[0] + recoil[0];
+  final[1] = angles[1] + recoil[1];
+  final[2] = angles[2];
+
+  vec3 forward = { cosf(final[1]) * cosf(final[0]), sinf(final[0]), sinf(final[1]) * cosf(final[0]) };
+  glm_vec3_normalize(forward);
+
+  vec3 right;
+  glm_vec3_cross(GLM_YUP, forward, right);
+  glm_vec3_normalize(right);
+
   vec3 target;
-  glm_vec3_add(position, orientation[2], target);
+  glm_vec3_add(position, forward, target);
 
   glm_lookat(position, target, GLM_YUP, view_matrix);
 }

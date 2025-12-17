@@ -107,41 +107,43 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
 {
   glm_normalize(light_dir);
 
-  vec3 outCorners[8];
+  vec3 out_corners[8];
 
   mat4 light_view;
   {
-    vec3 camPos, camDir;
-    cam_get_position(camPos);
+    vec3 cam_pos, cam_dir;
+    cam_get_position(cam_pos);
 
-    mat3 orientation;
-    cam_get_orientation(orientation);
-    glm_mat3_mulv(orientation, GLM_ZUP, camDir);
-    glm_normalize(camDir);
+    {
+      mat3 cam_rot;
+      cam_get_rotation(cam_rot, CameraRotationMode_WithRecoil);
+      glm_mat3_mulv(cam_rot, GLM_ZUP, cam_dir);
+      glm_normalize(cam_dir);
+    }
 
     vec3 right;
-    glm_cross(camDir, GLM_YUP, right);
+    glm_cross(cam_dir, GLM_YUP, right);
     glm_normalize(right);
 
     vec3 up;
-    glm_cross(right, camDir, up);
+    glm_cross(right, cam_dir, up);
     glm_normalize(up);
 
     vec3 nc, fc;
     {
-      vec3 camDirN, camDirF;
-      glm_vec3_scale(camDir, near, camDirN);
-      glm_vec3_scale(camDir, far, camDirF);
+      vec3 cam_dir_n, cam_dir_f;
+      glm_vec3_scale(cam_dir, near, cam_dir_n);
+      glm_vec3_scale(cam_dir, far, cam_dir_f);
 
-      glm_vec3_add(camPos, camDirN, nc);
-      glm_vec3_add(camPos, camDirF, fc);
+      glm_vec3_add(cam_pos, cam_dir_n, nc);
+      glm_vec3_add(cam_pos, cam_dir_f, fc);
     }
 
-    const float tanFov = tanf(glm_rad(fov * 0.5f));
+    const float tan_fov = tanf(glm_rad(fov * 0.5f));
 
     // near plane
     {
-      const float nh = near * tanFov;
+      const float nh = near * tan_fov;
       const float nw = nh * aspect;
 
       vec3 up_nh;
@@ -150,22 +152,22 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
       vec3 right_nw;
       glm_vec3_scale(right, nw, right_nw);
 
-      glm_vec3_add(nc, up_nh, outCorners[0]);
-      glm_vec3_sub(outCorners[0], right_nw, outCorners[0]);
+      glm_vec3_add(nc, up_nh, out_corners[0]);
+      glm_vec3_sub(out_corners[0], right_nw, out_corners[0]);
 
-      glm_vec3_add(nc, up_nh, outCorners[1]);
-      glm_vec3_add(outCorners[1], right_nw, outCorners[1]);
+      glm_vec3_add(nc, up_nh, out_corners[1]);
+      glm_vec3_add(out_corners[1], right_nw, out_corners[1]);
 
-      glm_vec3_sub(nc, up_nh, outCorners[2]);
-      glm_vec3_sub(outCorners[2], right_nw, outCorners[2]);
+      glm_vec3_sub(nc, up_nh, out_corners[2]);
+      glm_vec3_sub(out_corners[2], right_nw, out_corners[2]);
 
-      glm_vec3_sub(nc, up_nh, outCorners[3]);
-      glm_vec3_sub(outCorners[3], right_nw, outCorners[3]);
+      glm_vec3_sub(nc, up_nh, out_corners[3]);
+      glm_vec3_sub(out_corners[3], right_nw, out_corners[3]);
     }
 
     // far plane
     {
-      const float fh = far * tanFov;
+      const float fh = far * tan_fov;
       const float fw = fh * aspect;
 
       vec3 up_fh;
@@ -174,73 +176,75 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
       vec3 right_fw;
       glm_vec3_scale(right, fw, right_fw);
 
-      glm_vec3_add(fc, up_fh, outCorners[4]);
-      glm_vec3_sub(outCorners[4], right_fw, outCorners[4]);
+      glm_vec3_add(fc, up_fh, out_corners[4]);
+      glm_vec3_sub(out_corners[4], right_fw, out_corners[4]);
 
-      glm_vec3_add(fc, up_fh, outCorners[5]);
-      glm_vec3_add(outCorners[5], right_fw, outCorners[5]);
+      glm_vec3_add(fc, up_fh, out_corners[5]);
+      glm_vec3_add(out_corners[5], right_fw, out_corners[5]);
 
-      glm_vec3_sub(fc, up_fh, outCorners[6]);
-      glm_vec3_sub(outCorners[6], right_fw, outCorners[6]);
+      glm_vec3_sub(fc, up_fh, out_corners[6]);
+      glm_vec3_sub(out_corners[6], right_fw, out_corners[6]);
 
-      glm_vec3_sub(fc, up_fh, outCorners[7]);
-      glm_vec3_add(outCorners[7], right_fw, outCorners[7]);
+      glm_vec3_sub(fc, up_fh, out_corners[7]);
+      glm_vec3_add(out_corners[7], right_fw, out_corners[7]);
     }
 
     // Compute center
     vec3 center = GLM_VEC3_ZERO_INIT;
     for (int i = 0; i < 8; ++i)
     {
-      glm_vec3_add(center, outCorners[i], center);
+      glm_vec3_add(center, out_corners[i], center);
     }
     glm_vec3_divs(center, 8.0f, center);
 
     // 1) compute radius (max distance from center to frustum corners)
-    float maxDist = 0.0f;
+    float max_dist = 0.0f;
     for (int i = 0; i < 8; ++i)
     {
       vec3 d;
-      glm_vec3_sub(outCorners[i], center, d);
+      glm_vec3_sub(out_corners[i], center, d);
       float dist = glm_vec3_norm(d);
-      if (dist > maxDist)
-        maxDist = dist;
+      if (dist > max_dist)
+      {
+        max_dist = dist;
+      }
     }
 
     // 2) pick a multiplier so the light is safely back from the frustum
     const float LIGHT_DISTANCE_MULT = 1.5f; // 1.5..3.0 works, tweak as needed
 
-    vec3 lightPos;
+    vec3 light_pos;
     vec3 tmp;
-    glm_vec3_scale(light_dir, maxDist * LIGHT_DISTANCE_MULT, tmp);
-    glm_vec3_sub(center, tmp, lightPos);
+    glm_vec3_scale(light_dir, max_dist * LIGHT_DISTANCE_MULT, tmp);
+    glm_vec3_sub(center, tmp, light_pos);
 
     // 3) pick a stable up vector for the light (avoid degenerate cases)
-    glm_lookat(lightPos, center, GLM_YUP, light_view);
+    glm_lookat(light_pos, center, GLM_YUP, light_view);
   }
 
   // Build light proj matrix
   mat4 light_proj;
   {
-    vec3 minLS, maxLS;
+    vec3 min_ls, max_ls;
     for (int i = 0; i < 3; ++i)
     {
-      minLS[i] = FLT_MAX;
-      maxLS[i] = -FLT_MAX;
+      min_ls[i] = FLT_MAX;
+      max_ls[i] = -FLT_MAX;
     }
 
     for (int i = 0; i < 8; i++)
     {
-      vec4 cornerLS;
-      glm_mat4_mulv3(light_view, outCorners[i], 1.0f, cornerLS);
+      vec4 corner_ls;
+      glm_mat4_mulv3(light_view, out_corners[i], 1.0f, corner_ls);
 
       for (int j = 0; j < 3; ++j)
       {
-        minLS[j] = glm_min(minLS[j], cornerLS[j]);
-        maxLS[j] = glm_max(maxLS[j], cornerLS[j]);
+        min_ls[j] = glm_min(min_ls[j], corner_ls[j]);
+        max_ls[j] = glm_max(max_ls[j], corner_ls[j]);
       }
     }
 
-    glm_ortho(minLS[0], maxLS[0], minLS[1], maxLS[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 500.0f, light_proj);
+    glm_ortho(min_ls[0], max_ls[0], min_ls[1], max_ls[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 500.0f, light_proj);
   }
 
   glm_mat4_mul(light_proj, light_view, light_viewproj);

@@ -30,6 +30,8 @@
 
 #define BULLET_COUNT 30
 
+#define RECOIL_RECOVER 5.0f // How fast the gun recovers from recoil
+
 static const struct AEMModel* model = NULL;
 
 static GLuint joint_transform_buffer, joint_transform_texture;
@@ -147,7 +149,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
       aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
     }
   }
-  // else
+  else
   {
     if (get_shoot_button_down() && !is_reloading && shot_cooldown <= 0.0f)
     {
@@ -169,11 +171,11 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         vec3 from;
         cam_get_position(from);
 
-        mat3 cam_dir;
-        cam_get_orientation(cam_dir);
+        mat3 cam_rot;
+        cam_get_rotation(cam_rot, CameraRotationMode_WithRecoil);
 
         vec3 ray = { 0.0f, 0.0f, 1.0f };
-        glm_mat3_mulv(cam_dir, ray, ray);
+        glm_mat3_mulv(cam_rot, ray, ray);
 
         glm_vec3_scale_as(ray, 10000.0f, ray);
 
@@ -209,6 +211,9 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         }
 
         shot_cooldown = SHOT_COOLDOWN;
+
+        camera_add_recoil_yaw_pitch(((rand() % 100) / 100.0f) * 0.04f - 0.02f,
+                                    -0.04f - ((rand() % 100) / 100.0f) * 0.02f);
       }
     }
     else
@@ -289,6 +294,11 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
     }
   }
 
+  // Camera spread
+  {
+    camera_mul_recoil_yaw_pitch(1.0f - (RECOIL_RECOVER * delta_time));
+  }
+
   prev_moving = moving;
 }
 
@@ -300,9 +310,9 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
   glm_translate_make((vec4*)world_matrix, camera_position);
 
   // And insert the camera orientation
-  mat3 camera_orientation;
-  cam_get_orientation(camera_orientation);
-  glm_mat4_ins3(camera_orientation, world_matrix);
+  mat3 cam_rot;
+  cam_get_rotation(cam_rot, CameraRotationMode_WithoutRecoil); // Could also be with
+  glm_mat4_ins3(cam_rot, world_matrix);
 
   glm_translate(world_matrix, preferences->view_model_position);
   glm_scale_uni(world_matrix, preferences->view_model_scale);

@@ -142,10 +142,10 @@ int main(int argc, char* argv[])
   // Set the player spawn position and angle
   {
     vec3 player_spawn_position;
-    get_current_map_player_spawn_position(player_spawn_position);
+    float player_spawn_yaw;
+    get_current_map_player_spawn(player_spawn_position, &player_spawn_yaw);
     cam_set_position(player_spawn_position);
-
-    camera_add_yaw_pitch(glm_rad(90.0f), 0.0f);
+    camera_set_yaw_pitch(glm_rad(player_spawn_yaw), 0.0f);
   }
 
   // Set up initial OpenGL state

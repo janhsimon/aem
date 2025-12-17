@@ -1,5 +1,6 @@
 #include "hud.h"
 
+#include "camera.h"
 #include "debug_renderer.h"
 #include "player.h"
 #include "preferences.h"
@@ -203,6 +204,15 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
     {
       ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 140.0f }, color,
                               get_player_grounded() ? "Grounded" : "In air", NULL);
+    }
+
+    {
+      float yaw, pitch, roll;
+      camera_get_yaw_pitch(&yaw, &pitch, &roll);
+
+      char s[128];
+      sprintf(s, "Player angle: %.2f deg (yaw), %.2f deg (pitch), %.2f deg (roll)", glm_deg(yaw), glm_deg(pitch), glm_deg(roll));
+      ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 160.0f }, color, s, NULL);
     }
   }
 

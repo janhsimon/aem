@@ -133,14 +133,16 @@ void get_map_collision_triangle(uint32_t first_index, vec3 v0, vec3 v1, vec3 v2)
   glm_vec3_copy(&collision_vertices[i2 * 22], v2);
 }
 
-void get_current_map_player_spawn_position(vec3 spawn_position)
+void get_current_map_player_spawn(vec3 position, float *yaw)
 {
   if (current_map == Map_TestLevel)
   {
-    glm_vec3_copy((vec3){ -10.0f, 3.0f, 0.0f }, spawn_position);
+    glm_vec3_copy((vec3){ -10.0f, 3.0f, 0.0f }, position);
+    *yaw = -90.0f;
   }
   else if (current_map == Map_Sponza)
   {
-    glm_vec3_copy((vec3){ 5.0f, 3.0f, 0.0f }, spawn_position);
+    glm_vec3_copy((vec3){ 5.0f, 3.0f, 0.0f }, position);
+    *yaw = 180.0f;
   }
 }
