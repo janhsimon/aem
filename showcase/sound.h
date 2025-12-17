@@ -17,5 +17,6 @@ void play_headshot_sound();
 void play_impact_sound(vec3 position);
 void play_player_footstep_sound(int index);
 void play_enemy_footstep_sound(int index, vec3 position);
+void play_respawn_sound(vec3 position);
 
 void free_sound();

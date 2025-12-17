@@ -2,6 +2,7 @@
 
 #include "collision.h"
 #include "debug_renderer.h"
+#include "map.h"
 #include "preferences.h"
 #include "sound.h"
 
@@ -30,6 +31,9 @@
 #define ENEMY_HITBOX_HEAD_TOP_Y 0.7f
 #define ENEMY_HITBOX_HEAD_Z 0.2f
 
+#define ENEMY_WALK_ANIMATION_INDEX 1
+#define ENEMY_DIE_ANIMATION_INDEX 15
+
 static const struct AEMModel* model = NULL;
 
 static GLuint joint_transform_buffer, joint_transform_texture;
@@ -51,12 +55,27 @@ static vec3 hitbox_head_bottom, hitbox_head_top;
 
 static bool alive = true;
 
+static void respawn_enemy(bool play_sound)
+{
+  vec3 spawn_position;
+  float spawn_yaw;
+  get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
+  glm_translate_make(transform, spawn_position);
+  glm_rotate_y(transform, glm_rad(spawn_yaw + 90.0f),
+               transform); // TODO: This is a hack because the enemy doesn't yet use angles
+  glm_scale(transform, (vec3){ 19.25f, 19.25f, 19.25f });
+
+  if (play_sound)
+  {
+    play_respawn_sound(spawn_position);
+  }
+}
+
 bool load_enemy(const struct AEMModel* model_)
 {
   model = model_;
 
-  glm_scale_make(transform, (vec3){ 19.25f, 19.25f, 19.25f });
-  glm_translate(transform, (vec3){ -0.1f, 0.0f, -0.22f });
+  respawn_enemy(false);
 
   glGenBuffers(1, &joint_transform_buffer);
   glGenTextures(1, &joint_transform_texture);
@@ -73,7 +92,7 @@ bool load_enemy(const struct AEMModel* model_)
   // Walking
   {
     channel = aem_get_animation_mixer_channel(mixer, 0);
-    channel->animation_index = 1;
+    channel->animation_index = ENEMY_WALK_ANIMATION_INDEX;
     channel->playback_speed = 1.75f;
     channel->is_playing = true;
   }
@@ -101,22 +120,15 @@ void update_enemy(const struct Preferences* preferences, float delta_time)
   {
     aem_update_animation(model, mixer, delta_time, **joint_transforms);
 
-    if (channel->animation_index == 15)
+    if (channel->animation_index == ENEMY_DIE_ANIMATION_INDEX)
     {
-      const float duration = aem_get_model_animation_duration(model, 15);
+      const float duration = aem_get_model_animation_duration(model, ENEMY_DIE_ANIMATION_INDEX);
       if (channel->time >= duration)
       {
-        channel->animation_index = 16;
+        respawn_enemy(true);
+
         channel->time = 0.0f;
-      }
-    }
-    else if (channel->animation_index == 16)
-    {
-      const float duration = aem_get_model_animation_duration(model, 16);
-      if (channel->time >= duration)
-      {
-        channel->time = 0.0f;
-        channel->animation_index = 1;
+        channel->animation_index = ENEMY_WALK_ANIMATION_INDEX;
         channel->playback_speed = 1.75f;
         channel->is_looping = true;
         alive = true;
@@ -153,7 +165,7 @@ void update_enemy(const struct Preferences* preferences, float delta_time)
     vec3 velocity;
     glm_vec3_sub(transform[3], old_pos, velocity);
 
-    // New-style collision
+    // Simple collision
     {
       const float magnitude = glm_vec3_norm(velocity);
       const int step_count = (magnitude / ENEMY_COLLIDER_RADIUS) + 1;

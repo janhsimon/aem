@@ -133,7 +133,7 @@ void get_map_collision_triangle(uint32_t first_index, vec3 v0, vec3 v1, vec3 v2)
   glm_vec3_copy(&collision_vertices[i2 * 22], v2);
 }
 
-void get_current_map_player_spawn(vec3 position, float *yaw)
+void get_current_map_player_spawn(vec3 position, float* yaw)
 {
   if (current_map == Map_TestLevel)
   {
@@ -144,5 +144,38 @@ void get_current_map_player_spawn(vec3 position, float *yaw)
   {
     glm_vec3_copy((vec3){ 5.0f, 3.0f, 0.0f }, position);
     *yaw = 180.0f;
+  }
+}
+
+void get_current_map_random_enemy_spawn(vec3 position, float* yaw)
+{
+  // if (current_map == Map_Sponza)
+  {
+    const int rnd = rand() % 14;
+
+    // Left row
+    if (rnd >= 0 && rnd <= 5)
+    {
+      glm_vec3_copy((vec3){ -10.0f + rnd * 4.0f, 0.0f, -5.0f }, position);
+      *yaw = 270.0f;
+    }
+    // Right row
+    else if (rnd >= 6 && rnd <= 11)
+    {
+      glm_vec3_copy((vec3){ -10.0f + (rnd - 6) * 4.0f, 0.0f, 5.0f }, position);
+      *yaw = 90.0f;
+    }
+    // Low end
+    else if (rnd == 12)
+    {
+      glm_vec3_copy((vec3){ 17.0f, 0.0f, -1.0f }, position);
+      *yaw = 180.0f;
+    }
+    // Car end
+    else
+    {
+      glm_vec3_copy((vec3){ -13.4f, 0.0f, 0.0f }, position);
+      *yaw = 0.0f;
+    }
   }
 }
