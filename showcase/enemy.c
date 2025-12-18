@@ -25,11 +25,26 @@
 #define ENEMY_MOVE_SPEED 0.1f
 #define ENEMY_TURN_ANGLE 2.5f
 
+#define ENEMY_HITBOX_HEAD_JOINT_INDEX 16
 #define ENEMY_HITBOX_HEAD_RADIUS 0.11f
 #define ENEMY_HITBOX_HEAD_X 0.0f
 #define ENEMY_HITBOX_HEAD_BOTTOM_Y 0.3f
 #define ENEMY_HITBOX_HEAD_TOP_Y 0.7f
 #define ENEMY_HITBOX_HEAD_Z 0.2f
+
+#define ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX 14
+#define ENEMY_HITBOX_UPPER_TORSO_RADIUS 0.25f
+#define ENEMY_HITBOX_UPPER_TORSO_X 0.0f
+#define ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y 0.2f
+#define ENEMY_HITBOX_UPPER_TORSO_TOP_Y 0.35f
+#define ENEMY_HITBOX_UPPER_TORSO_Z 0.0f
+
+#define ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX 2
+#define ENEMY_HITBOX_LOWER_TORSO_RADIUS 0.2f
+#define ENEMY_HITBOX_LOWER_TORSO_X 0.0f
+#define ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y -0.15f
+#define ENEMY_HITBOX_LOWER_TORSO_TOP_Y 0.7f
+#define ENEMY_HITBOX_LOWER_TORSO_Z 0.0f
 
 #define ENEMY_WALK_ANIMATION_INDEX 1
 #define ENEMY_DIE_ANIMATION_INDEX 15
@@ -46,6 +61,10 @@ static mat4 transform;
 static float rot = 0.0f;
 
 static vec3 hitbox_head_bottom, hitbox_head_top;
+static vec3 hitbox_upper_torso_bottom, hitbox_upper_torso_top;
+static vec3 hitbox_lower_torso_bottom, hitbox_lower_torso_top;
+
+static float health;
 
 // enum
 //{
@@ -53,10 +72,10 @@ static vec3 hitbox_head_bottom, hitbox_head_top;
 //   EnemyState_WalkingRight
 // } state = EnemyState_WalkingLeft;
 
-static bool alive = true;
-
 static void respawn_enemy(bool play_sound)
 {
+  health = 100.0f;
+
   vec3 spawn_position;
   float spawn_yaw;
   get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
@@ -116,7 +135,7 @@ bool load_enemy(const struct AEMModel* model_)
 
 void update_enemy(const struct Preferences* preferences, float delta_time)
 {
-  if (!alive)
+  if (health <= 0.0f)
   {
     aem_update_animation(model, mixer, delta_time, **joint_transforms);
 
@@ -131,7 +150,6 @@ void update_enemy(const struct Preferences* preferences, float delta_time)
         channel->animation_index = ENEMY_WALK_ANIMATION_INDEX;
         channel->playback_speed = 1.75f;
         channel->is_looping = true;
-        alive = true;
       }
     }
   }
@@ -232,15 +250,51 @@ void update_enemy(const struct Preferences* preferences, float delta_time)
 
   // Update hitboxes
   {
-    mat4 hitbox_head_transform;
-    aem_get_animation_mixer_joint_transform(model, mixer, 16, (float*)hitbox_head_transform);
-    glm_mat4_mul(transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
+    // Head
+    {
+      mat4 hitbox_head_transform;
+      aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX,
+                                              (float*)hitbox_head_transform);
+      glm_mat4_mul(transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
 
-    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_bottom);
-    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_TOP_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_top);
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_bottom);
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_TOP_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_top);
 
-    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_bottom, 1.0f, hitbox_head_bottom);
-    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_top, 1.0f, hitbox_head_top);
+      glm_mat4_mulv3(hitbox_head_transform, hitbox_head_bottom, 1.0f, hitbox_head_bottom);
+      glm_mat4_mulv3(hitbox_head_transform, hitbox_head_top, 1.0f, hitbox_head_top);
+    }
+
+    // Upper torso
+    {
+      mat4 hitbox_upper_torso_transform;
+      aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
+                                              (float*)hitbox_upper_torso_transform);
+      glm_mat4_mul(transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
+
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
+                    hitbox_upper_torso_bottom);
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_TOP_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
+                    hitbox_upper_torso_top);
+
+      glm_mat4_mulv3(hitbox_upper_torso_transform, hitbox_upper_torso_bottom, 1.0f, hitbox_upper_torso_bottom);
+      glm_mat4_mulv3(hitbox_upper_torso_transform, hitbox_upper_torso_top, 1.0f, hitbox_upper_torso_top);
+    }
+
+    // Lower torso
+    {
+      mat4 hitbox_lower_torso_transform;
+      aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
+                                              (float*)hitbox_lower_torso_transform);
+      glm_mat4_mul(transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
+
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y, ENEMY_HITBOX_LOWER_TORSO_Z },
+                    hitbox_lower_torso_bottom);
+      glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_TOP_Y, ENEMY_HITBOX_LOWER_TORSO_Z },
+                    hitbox_lower_torso_top);
+
+      glm_mat4_mulv3(hitbox_lower_torso_transform, hitbox_lower_torso_bottom, 1.0f, hitbox_lower_torso_bottom);
+      glm_mat4_mulv3(hitbox_lower_torso_transform, hitbox_lower_torso_top, 1.0f, hitbox_lower_torso_top);
+    }
   }
 }
 
@@ -273,16 +327,18 @@ void debug_draw_enemy()
   }
 
   debug_render_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
+  debug_render_capsule(hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS, GLM_XUP);
+  debug_render_capsule(hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS, GLM_XUP);
 }
 
-bool is_enemy_hit(vec3 from, vec3 to)
+static bool check_hitbox(vec3 from, vec3 to, vec3 hitbox_bottom, vec3 hitbox_top, float hitbox_radius)
 {
   vec3 a, b;
-  closest_segment_segment(from, to, hitbox_head_bottom, hitbox_head_top, a, b);
+  closest_segment_segment(from, to, hitbox_bottom, hitbox_top, a, b);
   glm_vec3_sub(a, b, a);
 
   const float dist = glm_vec3_norm(a);
-  const bool hit = dist < ENEMY_HITBOX_HEAD_RADIUS;
+  const bool hit = dist < hitbox_radius;
 
   if (hit)
   {
@@ -292,30 +348,60 @@ bool is_enemy_hit(vec3 from, vec3 to)
   return hit;
 }
 
-void enemy_die(const struct Preferences* preferences, vec3 dir)
+enum EnemyHitArea is_enemy_hit(vec3 from, vec3 to)
 {
-  if (!alive || !preferences->ai_death)
+  if (check_hitbox(from, to, hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS))
   {
-    return;
+    return EnemyHitArea_Head;
   }
 
-  channel->animation_index = 15;
-  channel->playback_speed = 1.0f;
-  channel->is_looping = false;
-  channel->time = 0.0f;
+  if (check_hitbox(from, to, hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS))
+  {
+    return EnemyHitArea_UpperTorso;
+  }
 
-  dir[1] = 0.0f; // Flatten
-  glm_normalize(dir);
+  if (check_hitbox(from, to, hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS))
+  {
+    return EnemyHitArea_LowerTorso;
+  }
 
-  vec3 x;
-  glm_vec3_cross(dir, GLM_YUP, x);
-  glm_vec3_copy(x, transform[0]);
-  glm_vec3_copy(GLM_YUP, transform[1]);
-  glm_vec3_copy(dir, transform[2]);
+  return EnemyHitArea_None;
+}
 
-  glm_scale(transform, (vec3){ 19.25f, 19.25f, 19.25f });
+void enemy_hurt(const struct Preferences* preferences, float damage, vec3 dir)
+{
+  health -= damage;
 
-  alive = false;
+  if (health <= 0.0f)
+  {
+    if (channel->animation_index == ENEMY_DIE_ANIMATION_INDEX || !preferences->ai_death)
+    {
+      return;
+    }
+
+    channel->animation_index = ENEMY_DIE_ANIMATION_INDEX;
+    channel->playback_speed = 1.0f;
+    channel->is_looping = false;
+    channel->time = 0.0f;
+
+    dir[1] = 0.0f; // Flatten
+    glm_normalize(dir);
+
+    // Face the direction the bullet came from
+    {
+      vec3 x;
+      glm_vec3_cross(dir, GLM_YUP, x);
+      glm_vec3_copy(x, transform[0]);
+      glm_vec3_copy(GLM_YUP, transform[1]);
+      glm_vec3_copy(dir, transform[2]);
+
+      glm_scale(transform, (vec3){ 19.25f, 19.25f, 19.25f });
+    }
+  }
+  else
+  {
+  
+  }
 }
 
 void free_enemy()

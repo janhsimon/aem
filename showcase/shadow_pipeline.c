@@ -116,7 +116,7 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
 
     {
       mat3 cam_rot;
-      cam_get_rotation(cam_rot, CameraRotationMode_WithRecoil);
+      cam_calc_rotation(cam_rot, CameraRotationMode_WithRecoil);
       glm_mat3_mulv(cam_rot, GLM_ZUP, cam_dir);
       glm_normalize(cam_dir);
     }

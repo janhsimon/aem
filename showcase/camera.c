@@ -19,7 +19,7 @@ void cam_set_position(vec3 position_)
   glm_vec3_copy(position_, position);
 }
 
-void cam_get_rotation(mat3 rotation, enum CameraRotationMode mode)
+void cam_calc_rotation(mat3 rotation, enum CameraRotationMode mode)
 {
   vec3 final;
 

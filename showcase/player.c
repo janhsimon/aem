@@ -35,7 +35,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     if (*moving)
     {
       mat3 cam_rotation;
-      cam_get_rotation(cam_rotation, CameraRotationMode_WithoutRecoil);
+      cam_calc_rotation(cam_rotation, CameraRotationMode_WithoutRecoil);
       glm_mat3_mulv(cam_rotation, move, move); // Transform move from local to camera space
 
       if (!preferences->no_clip)

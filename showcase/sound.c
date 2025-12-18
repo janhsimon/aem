@@ -10,7 +10,7 @@
 
 static ma_engine* engine;
 static ma_sound *ambient, *ak47_fire1, *ak47_reload, *ak47_dry1, *headshot, *impact, *player_footsteps[4],
-  *enemy_footsteps[4], *respawn;
+  *enemy_footsteps[4], *respawn, *enemy_hurt[4];
 
 static mat4 view_matrix;
 
@@ -37,6 +37,7 @@ bool load_sound()
   {
     return false;
   }
+  ma_sound_set_volume(ak47_fire1, 0.6f);
 
   ak47_reload = malloc(sizeof(*ak47_reload));
   result = ma_sound_init_from_file(engine, "sounds/ak47_reload.wav", 0, NULL, NULL, ak47_reload);
@@ -135,6 +136,42 @@ bool load_sound()
     return false;
   }
 
+  // Enemy hurt
+  {
+    enemy_hurt[0] = malloc(sizeof(*enemy_hurt[0]));
+    result = ma_sound_init_from_file(engine, "sounds/hurt1.wav", 0, NULL, NULL, enemy_hurt[0]);
+    if (result != MA_SUCCESS)
+    {
+      return false;
+    }
+
+    enemy_hurt[1] = malloc(sizeof(*enemy_hurt[1]));
+    result = ma_sound_init_from_file(engine, "sounds/hurt2.wav", 0, NULL, NULL, enemy_hurt[1]);
+    if (result != MA_SUCCESS)
+    {
+      return false;
+    }
+
+    enemy_hurt[2] = malloc(sizeof(*enemy_hurt[2]));
+    result = ma_sound_init_from_file(engine, "sounds/hurt3.wav", 0, NULL, NULL, enemy_hurt[2]);
+    if (result != MA_SUCCESS)
+    {
+      return false;
+    }
+
+    enemy_hurt[3] = malloc(sizeof(*enemy_hurt[3]));
+    result = ma_sound_init_from_file(engine, "sounds/hurt4.wav", 0, NULL, NULL, enemy_hurt[3]);
+    if (result != MA_SUCCESS)
+    {
+      return false;
+    }
+
+    for (int i = 0; i < 4; ++i)
+    {
+      ma_sound_set_volume(enemy_hurt[i], 2.0f);
+    }
+  }
+
   // Start ambient sound
   ma_sound_set_looping(ambient, MA_TRUE);
   ma_sound_set_volume(ak47_reload, 0.5f);
@@ -210,6 +247,14 @@ void play_respawn_sound(vec3 position)
   ma_sound_start(respawn);
 }
 
+void play_enemy_hurt_sound(int index, vec3 position)
+{
+  glm_mat4_mulv3(view_matrix, position, 1.0f, position);
+  ma_sound_set_position(enemy_hurt[index], position[0], position[1], position[2]);
+  ma_sound_seek_to_pcm_frame(enemy_hurt[index], 0);
+  ma_sound_start(enemy_hurt[index]);
+}
+
 void free_sound()
 {
   ma_sound_uninit(respawn);
@@ -223,6 +268,7 @@ void free_sound()
   {
     ma_sound_uninit(player_footsteps[i]);
     ma_sound_uninit(enemy_footsteps[i]);
+    ma_sound_uninit(enemy_hurt[i]);
   }
 
   ma_engine_uninit(engine);

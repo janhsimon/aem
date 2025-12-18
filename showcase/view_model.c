@@ -172,7 +172,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         cam_get_position(from);
 
         mat3 cam_rot;
-        cam_get_rotation(cam_rot, CameraRotationMode_WithRecoil);
+        cam_calc_rotation(cam_rot, CameraRotationMode_WithRecoil);
 
         vec3 ray = { 0.0f, 0.0f, 1.0f };
         glm_mat3_mulv(cam_rot, ray, ray);
@@ -188,15 +188,35 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
 
         spawn_muzzleflash(GLM_VEC3_ZERO);
 
-        if (is_enemy_hit(from, to))
+        const enum EnemyHitArea hit_area = is_enemy_hit(from, to);
+        if (hit_area != EnemyHitArea_None)
         {
           glm_vec3_negate(ray);
-          enemy_die(preferences, ray);
+
+          float damage;
+          if (hit_area == EnemyHitArea_Head)
+          {
+            damage = 100.0f;
+            play_headshot_sound();
+            spawn_shrapnel(to, n);
+          }
+          if (hit_area == EnemyHitArea_UpperTorso)
+          {
+            damage = 20.0f;
+          }
+          else if (hit_area == EnemyHitArea_LowerTorso)
+          {
+            damage = 15.0f;
+          }
+          enemy_hurt(preferences, damage, ray);
+
+          vec3 sound_pos;
+          glm_vec3_copy(to, sound_pos);
+          play_enemy_hurt_sound(rand() % 4, sound_pos);
 
           glm_vec3_sub(to, from, n);
           glm_vec3_normalize(n);
           spawn_blood(to, n);
-          play_headshot_sound();
         }
         else if (level_hit)
         {
@@ -311,7 +331,7 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 
   // And insert the camera orientation
   mat3 cam_rot;
-  cam_get_rotation(cam_rot, CameraRotationMode_WithoutRecoil); // Could also be with
+  cam_calc_rotation(cam_rot, CameraRotationMode_WithoutRecoil); // Could also be with recoil
   glm_mat4_ins3(cam_rot, world_matrix);
 
   glm_translate(world_matrix, preferences->view_model_position);
