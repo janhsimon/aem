@@ -36,11 +36,13 @@ void load_default_preferences(struct Preferences* preferences)
   // glm_vec3_copy((vec3){ 0.0f, -0.02f, 0.1f }, preferences->view_model_position);
   // preferences->view_model_scale = 0.02f;
   // preferences->view_model_fov = 50.0f;
+  // preferences->view_model_tilt = 0.0f;
 
   // CZ
-  glm_vec3_copy((vec3) { -0.07f, -1.62f, 0.1f }, preferences->view_model_position);
+  glm_vec3_copy((vec3){ -0.07f, -1.62f, 0.1f }, preferences->view_model_position);
   preferences->view_model_scale = 1.0f;
   preferences->view_model_fov = 40.0f;
+  preferences->view_model_tilt = 0.0f;
 
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);

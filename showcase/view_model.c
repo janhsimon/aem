@@ -335,6 +335,7 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
   glm_mat4_ins3(cam_rot, world_matrix);
 
   glm_translate(world_matrix, preferences->view_model_position);
+  glm_rotate_z(world_matrix, glm_rad(preferences->view_model_tilt), world_matrix);
   glm_scale_uni(world_matrix, preferences->view_model_scale);
 }
 

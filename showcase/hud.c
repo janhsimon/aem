@@ -293,6 +293,7 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
       igSliderFloat("Scale", &preferences->view_model_scale, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
       igSliderFloat("Field of view##ViewModel", &preferences->view_model_fov, 0.0f, 180.0f, "%f",
                     ImGuiSliderFlags_None);
+      igSliderFloat("Tilt", &preferences->view_model_tilt, -90.0f, 90.0f, "%f", ImGuiSliderFlags_None);
     }
 
     if (igCollapsingHeader_TreeNodeFlags("HUD", ImGuiTreeNodeFlags_None))

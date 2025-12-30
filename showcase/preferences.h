@@ -24,7 +24,7 @@ struct Preferences
   bool show_player_info;
   bool infinite_ammo;
   bool no_clip;
-  
+
   // AI
   bool ai_walking;
   bool ai_turning;
@@ -51,6 +51,7 @@ struct Preferences
   vec3 view_model_position;
   float view_model_scale;
   float view_model_fov;
+  float view_model_tilt;
 
   // HUD
   vec4 hud_background_color;
