@@ -9,8 +9,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-#include <stdlib.h>
-
 static GLuint vao, vbo;
 static GLuint instance_positions, instance_scales, instance_opacities;
 
@@ -123,7 +121,6 @@ void free_particle_renderer()
 void start_particle_rendering()
 {
   glBindVertexArray(vao);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
 }
 
 void render_particles(vec3* positions,

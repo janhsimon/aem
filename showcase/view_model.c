@@ -8,6 +8,7 @@
 #include "particle_manager.h"
 #include "preferences.h"
 #include "sound.h"
+#include "tracer_manager.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
@@ -187,6 +188,19 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         add_debug_line(from, to);
 
         spawn_muzzleflash(GLM_VEC3_ZERO);
+
+        // Spawn tracer
+        {
+          mat4 muzzleflash_m;
+          view_model_get_muzzleflash_world_matrix(preferences, muzzleflash_m);
+
+          vec3 muzzleflash_p = GLM_VEC3_ZERO_INIT;
+          glm_mat4_mulv3(muzzleflash_m, muzzleflash_p, 1.0f, muzzleflash_p);
+
+          vec3 dir;
+          glm_vec3_sub(to, muzzleflash_p, dir);
+          spawn_tracer(preferences, muzzleflash_p, dir);
+        }
 
         const enum EnemyHitArea hit_area = is_enemy_hit(from, to);
         if (hit_area != EnemyHitArea_None)

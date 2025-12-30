@@ -57,20 +57,31 @@ set(SOURCE
   sound.c
   sound.h
 
+  tracer_manager.c
+  tracer_manager.h
+
+  tracer_pipeline.c
+  tracer_pipeline.h
+
+  tracer_renderer.c
+  tracer_renderer.h
+
   view_model.c
   view_model.h
 
   window.c
   window.h
 
+  shaders/particle.vert.glsl
+  shaders/simple.vert.glsl
+  shaders/skinned.vert.glsl
+  shaders/tracer.vert.glsl
+
   shaders/debug.frag.glsl
   shaders/forward.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
-
-  shaders/particle.vert.glsl
-  shaders/simple.vert.glsl
-  shaders/skinned.vert.glsl
+  shaders/tracer.frag.glsl
 )
 
 set(DEPENDENCIES

@@ -103,4 +103,10 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->blood_particle_system.scale = 0.56f;
   preferences->blood_particle_system.scale_spread = 0.76f;
   preferences->blood_particle_system.scale_falloff = 0.03f;
+
+  // Tracer
+  glm_vec4_copy((vec4){ 1.0f, 0.79f, 0.64f, 0.27f }, preferences->tracer_color);
+  preferences->tracer_thickness = 1.0f;
+  preferences->tracer_length = 5.5f;
+  preferences->tracer_speed = 500.0f;
 }

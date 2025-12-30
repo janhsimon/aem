@@ -211,7 +211,8 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
       camera_get_yaw_pitch(&yaw, &pitch, &roll);
 
       char s[128];
-      sprintf(s, "Player angle: %.2f deg (yaw), %.2f deg (pitch), %.2f deg (roll)", glm_deg(yaw), glm_deg(pitch), glm_deg(roll));
+      sprintf(s, "Player angle: %.2f deg (yaw), %.2f deg (pitch), %.2f deg (roll)", glm_deg(yaw), glm_deg(pitch),
+              glm_deg(roll));
       ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 160.0f }, color, s, NULL);
     }
   }
@@ -327,6 +328,14 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
         update_particle_system(&preferences->blood_particle_system);
         igTreePop();
       }
+    }
+
+    if (igCollapsingHeader_TreeNodeFlags("Tracer", ImGuiTreeNodeFlags_None))
+    {
+      igColorEdit4("Color##Tracer", preferences->tracer_color, ImGuiColorEditFlags_None);
+      igSliderFloat("Thickness##Tracer", &preferences->tracer_thickness, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Length##Tracer", &preferences->tracer_length, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Speed##Tracer", &preferences->tracer_speed, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
     }
 
     debug_window_focus =

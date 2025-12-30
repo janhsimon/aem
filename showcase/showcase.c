@@ -15,6 +15,9 @@
 #include "preferences.h"
 #include "shadow_pipeline.h"
 #include "sound.h"
+#include "tracer_manager.h"
+#include "tracer_pipeline.h"
+#include "tracer_renderer.h"
 #include "view_model.h"
 #include "window.h"
 
@@ -85,10 +88,19 @@ int main(int argc, char* argv[])
   if (!load_particle_renderer())
   {
     printf("Failed to load particle renderer\n");
+    return EXIT_FAILURE;
   }
 
   load_particle_manager();
   sync_particle_manager(&preferences);
+
+  if (!load_tracer_renderer())
+  {
+    printf("Failed to load tracer renderer\n");
+    return EXIT_FAILURE;
+  }
+
+  load_tracer_manager();
 
   if (!load_forward_pipeline())
   {
@@ -111,6 +123,12 @@ int main(int argc, char* argv[])
   if (!load_particle_pipeline())
   {
     printf("Failed to load particle pipeline\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!load_tracer_pipeline())
+  {
+    printf("Failed to load tracer pipeline\n");
     return EXIT_FAILURE;
   }
 
@@ -205,6 +223,7 @@ int main(int argc, char* argv[])
 
       update_enemy(&preferences, delta_time);
       update_particle_manager(delta_time);
+      update_tracer_manager(&preferences, delta_time);
       update_hud(window_width, window_height, debug_mode_enabled, &preferences);
       update_sound();
     }
@@ -308,6 +327,26 @@ int main(int argc, char* argv[])
           render_model(soldier, ModelRenderMode_AllMeshes);
         }
 
+        // Tracers
+        {
+          start_tracer_rendering();
+          tracer_pipeline_start_rendering();
+
+          tracer_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
+          tracer_pipeline_use_color(preferences.tracer_color);
+          tracer_pipeline_use_thickness(preferences.tracer_thickness);
+
+          // Don't write depth (but do still test it) and enable blending
+          glDepthMask(GL_FALSE);
+          glEnable(GL_BLEND);
+
+          render_tracer_manager();
+
+          // Reset OpenGL state
+          glDepthMask(GL_TRUE);
+          glDisable(GL_BLEND);
+        }
+
         // Particles
         {
           start_particle_rendering();
@@ -384,12 +423,14 @@ int main(int argc, char* argv[])
     free_hud();
     free_enemy();
     free_view_model();
+    free_tracer_pipeline();
     free_particle_pipeline();
     free_shadow_pipeline();
     free_debug_pipeline();
     free_forward_pipeline();
     free_map();
     free_models();
+    free_tracer_renderer();
     free_particle_renderer();
     free_debug_renderer();
     free_model_renderer();

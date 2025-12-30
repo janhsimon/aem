@@ -60,6 +60,12 @@ struct Preferences
   // Particle systems
   struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,
     blood_particle_system;
+
+  // Tracer
+  vec4 tracer_color;
+  float tracer_thickness;
+  float tracer_length;
+  float tracer_speed;
 };
 
 void load_default_preferences(struct Preferences* preferences);
