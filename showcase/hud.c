@@ -243,7 +243,8 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
     {
       igCheckbox("Walking", &preferences->ai_walking);
       igCheckbox("Turning", &preferences->ai_turning);
-      igCheckbox("Death", &preferences->ai_death);
+      igCheckbox("Dying", &preferences->ai_dying);
+      igCheckbox("Shooting", &preferences->ai_shooting);
     }
 
     if (igCollapsingHeader_TreeNodeFlags("Audio", ImGuiTreeNodeFlags_None))

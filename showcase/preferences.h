@@ -28,7 +28,8 @@ struct Preferences
   // AI
   bool ai_walking;
   bool ai_turning;
-  bool ai_death;
+  bool ai_dying;
+  bool ai_shooting;
 
   // Audio
   float master_volume;

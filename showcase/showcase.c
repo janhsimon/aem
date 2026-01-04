@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  if (!load_enemy(soldier->model))
+  if (!load_enemy(&preferences, soldier->model))
   {
     printf("Failed to load enemy\n");
     return EXIT_FAILURE;
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
         update_view_model(&preferences, player_moving, delta_time);
       }
 
-      update_enemy(&preferences, delta_time);
+      update_enemy(delta_time);
       update_particle_manager(delta_time);
       update_tracer_manager(&preferences, delta_time);
       update_hud(window_width, window_height, debug_mode_enabled, &preferences);

@@ -10,7 +10,7 @@ void set_master_volume(float volume);
 
 void update_sound();
 
-void play_ak47_fire_sound();
+void play_ak47_fire_sound(vec3 position);
 void play_ak47_reload_sound();
 void play_ak47_dry_sound();
 void play_headshot_sound();

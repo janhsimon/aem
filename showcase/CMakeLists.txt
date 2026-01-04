@@ -16,6 +16,23 @@ set(SOURCE
   enemy.c
   enemy.h
 
+  enemy_state.h
+
+  enemy_state_aim.c
+  enemy_state_aim.h
+
+  enemy_state_die.c
+  enemy_state_die.h
+
+  enemy_state_fire.c
+  enemy_state_fire.h
+
+  enemy_state_flinch.c
+  enemy_state_flinch.h
+
+  enemy_state_walk.c
+  enemy_state_walk.h
+
   forward_pipeline.c
   forward_pipeline.h
 

@@ -152,11 +152,14 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
   }
   else
   {
+    vec3 cam_pos;
+    cam_get_position(cam_pos);
+
     if (get_shoot_button_down() && !is_reloading && shot_cooldown <= 0.0f)
     {
       if (ammo <= 0)
       {
-        play_ak47_dry_sound();
+        play_ak47_dry_sound(cam_pos);
         shot_cooldown = SHOT_COOLDOWN * 4.0f;
       }
       else
@@ -167,7 +170,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
         aem_set_animation_mixer_blend_speed(mixer, 10.0f);
         aem_blend_to_animation_mixer_channel(mixer, 3); // To shoot
 
-        play_ak47_fire_sound();
+        play_ak47_fire_sound(cam_pos);
 
         vec3 from;
         cam_get_position(from);
@@ -222,7 +225,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
           {
             damage = 15.0f;
           }
-          enemy_hurt(preferences, damage, ray);
+          enemy_hurt(damage, ray);
 
           vec3 sound_pos;
           glm_vec3_copy(to, sound_pos);

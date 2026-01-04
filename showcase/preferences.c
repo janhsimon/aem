@@ -13,7 +13,8 @@ void load_default_preferences(struct Preferences* preferences)
   // AI
   preferences->ai_walking = true;
   preferences->ai_turning = true;
-  preferences->ai_death = true;
+  preferences->ai_dying = true;
+  preferences->ai_shooting = true;
 
   // Audio
   preferences->master_volume = 1.0f;

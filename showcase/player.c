@@ -180,6 +180,43 @@ void get_player_velocity(vec3 velocity)
   glm_vec3_copy(player_velocity, velocity);
 }
 
+float calc_angle_delta_towards_player(vec3 from_position, vec3 from_forward)
+{
+  const float current_yaw = atan2f(from_forward[0], from_forward[2]);
+
+  float target_yaw = 0.0f;
+  {
+    vec3 player_position;
+    cam_get_position(player_position);
+
+    vec3 dir;
+    glm_vec3_sub(player_position, from_position, dir);
+
+    // Ignore vertical difference
+    dir[1] = 0.0f;
+
+    // Prevent division by zero
+    if (glm_vec3_norm2(dir) > 0.0001f)
+    {
+      glm_vec3_normalize(dir);
+      target_yaw = atan2f(dir[0], dir[2]);
+    }
+  }
+
+  float delta = target_yaw - current_yaw;
+  while (delta > GLM_PI)
+  {
+    delta -= GLM_PI * 2.0f;
+  }
+
+  while (delta < -GLM_PI)
+  {
+    delta += GLM_PI * 2.0f;
+  }
+
+  return glm_deg(delta);
+}
+
 bool get_player_grounded()
 {
   return player_grounded;

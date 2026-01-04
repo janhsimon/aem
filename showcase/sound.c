@@ -190,8 +190,10 @@ void update_sound()
   calc_view_matrix(view_matrix);
 }
 
-void play_ak47_fire_sound()
+void play_ak47_fire_sound(vec3 position)
 {
+  glm_mat4_mulv3(view_matrix, position, 1.0f, position);
+  ma_sound_set_position(ak47_fire1, position[0], position[1], position[2]);
   ma_sound_seek_to_pcm_frame(ak47_fire1, 0);
   ma_sound_start(ak47_fire1);
 }
