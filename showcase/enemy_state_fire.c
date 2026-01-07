@@ -1,5 +1,6 @@
 #include "enemy_state_fire.h"
 
+#include "camera.h"
 #include "collision.h"
 #include "debug_renderer.h"
 #include "enemy_state.h"
@@ -17,7 +18,7 @@
 #include <cglm/vec3.h>
 
 #define ENEMY_AIM_DELAY 1.0f // In seconds
-#define ENEMY_TURN_RATE 25.0
+#define ENEMY_TURN_RATE 25.0f
 
 #define ENEMY_FIRE_ANIMATION_CHANNEL_INDEX 2
 
@@ -27,6 +28,9 @@
 
 #define ENEMY_FIRE_MIN_BULLETS 2
 #define ENEMY_FIRE_MAX_BULLETS 10
+
+#define ENEMY_ACCURACY_HORIZONTAL 0.5f
+#define ENEMY_ACCURACY_VERTICAL 0.2f
 
 static const struct Preferences* preferences = NULL;
 static enum EnemyState* state = NULL;
@@ -52,7 +56,14 @@ static void fire(mat4 enemy_transform)
   glm_mat4_mulv3(tracer_start, start, 1.0f, start);
 
   vec3 end;
-  glm_vec3_copy(enemy_transform[2], end);
+  {
+    cam_get_position(end);
+    end[0] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_HORIZONTAL - (ENEMY_ACCURACY_HORIZONTAL * 0.5f);
+    end[1] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_VERTICAL - (ENEMY_ACCURACY_VERTICAL * 0.5f);
+    end[2] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_HORIZONTAL - (ENEMY_ACCURACY_HORIZONTAL * 0.5f);
+    glm_vec3_sub(end, start, end);
+  }
+
   glm_vec3_scale_as(end, 10000.0f, end);
   glm_vec3_add(start, end, end);
 
