@@ -2,6 +2,7 @@
 
 #include "enemy_state.h"
 #include "enemy_state_fire.h"
+#include "enemy_state_walk.h"
 #include "player.h"
 #include "preferences.h"
 
@@ -48,6 +49,7 @@ void enter_enemy_state_aim()
 
 void update_enemy_state_aim(vec3 enemy_position,
                             vec3 enemy_forward,
+                            bool player_visible,
                             float delta_time,
                             vec2 out_velocity,
                             float* out_angle_delta)
@@ -58,6 +60,12 @@ void update_enemy_state_aim(vec3 enemy_position,
     *out_angle_delta = calc_angle_delta_towards_player(enemy_position, enemy_forward) * delta_time * ENEMY_TURN_RATE;
   }
 
+  // Transition to walking state
+  if (!player_visible)
+  {
+    enter_enemy_state_walk(false);
+  }
+
   // Transition to firing state
   if (aim_delay > 0.0f)
   {
@@ -65,6 +73,6 @@ void update_enemy_state_aim(vec3 enemy_position,
   }
   else
   {
-    enter_enemy_state_fire(state, mixer);
+    enter_enemy_state_fire();
   }
 }

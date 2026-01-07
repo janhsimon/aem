@@ -113,7 +113,11 @@ void enter_enemy_state_fire()
   shots_to_fire = rand() % ((ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS) + ENEMY_FIRE_MIN_BULLETS);
 }
 
-void update_enemy_state_fire(mat4 enemy_transform, float delta_time, vec2 out_velocity, float* out_angle_delta)
+void update_enemy_state_fire(mat4 enemy_transform,
+                             bool player_visible,
+                             float delta_time,
+                             vec2 out_velocity,
+                             float* out_angle_delta)
 {
   if (!has_fired_first_shot)
   {
@@ -127,6 +131,13 @@ void update_enemy_state_fire(mat4 enemy_transform, float delta_time, vec2 out_ve
   {
     *out_angle_delta =
       calc_angle_delta_towards_player(enemy_transform[3], enemy_transform[2]) * delta_time * ENEMY_TURN_RATE;
+  }
+
+  // Transition to walking state if the player went out of sight
+  if (!player_visible)
+  {
+    // Go back to walking around
+    enter_enemy_state_walk(false);
   }
 
   // Repeat firing or transition to walking state

@@ -1,5 +1,6 @@
 #include "enemy.h"
 
+#include "camera.h"
 #include "collision.h"
 #include "debug_renderer.h"
 #include "enemy_state.h"
@@ -183,23 +184,80 @@ static void update_hitboxes()
   }
 }
 
+static bool calc_player_visible()
+{
+  // First test if the player is somewhat in front of the enemy
+  {
+    vec3 enemy_dir;
+    glm_vec3_normalize_to(transform[2], enemy_dir);
+
+    vec3 enemy_to_player;
+    {
+      vec3 player_pos;
+      cam_get_position(player_pos);
+
+      glm_vec3_sub(player_pos, transform[3], enemy_to_player);
+      enemy_to_player[1] = 0.0f; // Flatten
+
+      glm_vec3_normalize(enemy_to_player);
+    }
+
+    if (glm_vec3_dot(enemy_dir, enemy_to_player) <= 0.65f)
+    {
+      return false;
+    }
+  }
+
+  // Then test if the enemy can see the player directly
+  {
+    vec3 ray_from, ray_to;
+    glm_vec3_copy(transform[3], ray_from);
+    ray_from[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to head
+    cam_get_position(ray_to);
+
+    vec3 ray;
+    glm_vec3_sub(ray_to, ray_from, ray);
+
+    const float old_dist = glm_vec3_norm(ray);
+
+    vec3 n;
+    collide_ray(ray_from, ray_to, ray_to, n);
+
+    glm_vec3_sub(ray_to, ray_from, ray);
+
+    const float new_dist = glm_vec3_norm(ray);
+
+    if (new_dist < old_dist)
+    {
+      return false;
+    }
+  }
+
+  // All checks passed
+  return true;
+}
+
 void update_enemy(float delta_time)
 {
   vec2 desired_velocity = GLM_VEC2_ZERO_INIT;
   float desired_angle_delta = 0.0f;
   bool should_respawn = false;
 
+  // Determine if the player is visible from the perspective of the enemy
+  const bool player_visible = calc_player_visible();
+
   switch (state)
   {
   case EnemyState_Walk:
-    update_enemy_state_walk(transform[3], transform[2], ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS, delta_time,
-                            desired_velocity, &desired_angle_delta);
+    update_enemy_state_walk(transform[3], transform[2], player_visible, delta_time, desired_velocity,
+                            &desired_angle_delta);
     break;
   case EnemyState_Aim:
-    update_enemy_state_aim(transform[3], transform[2], delta_time, desired_velocity, &desired_angle_delta);
+    update_enemy_state_aim(transform[3], transform[2], player_visible, delta_time, desired_velocity,
+                           &desired_angle_delta);
     break;
   case EnemyState_Fire:
-    update_enemy_state_fire(transform, delta_time, desired_velocity, &desired_angle_delta);
+    update_enemy_state_fire(transform, player_visible, delta_time, desired_velocity, &desired_angle_delta);
     break;
   case EnemyState_Flinch:
     update_enemy_state_flinch();

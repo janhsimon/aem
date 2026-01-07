@@ -1,6 +1,5 @@
 #include "enemy_state_walk.h"
 
-#include "camera.h"
 #include "collision.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
@@ -66,7 +65,7 @@ void enter_enemy_state_walk(bool instant)
 
 void update_enemy_state_walk(vec3 enemy_position,
                              vec3 enemy_forward,
-                             float enemy_height,
+                             bool player_visible,
                              float delta_time,
                              vec2 out_velocity,
                              float* out_angle_delta)
@@ -108,55 +107,6 @@ void update_enemy_state_walk(vec3 enemy_position,
         footstep_counter = (footstep_counter + 1) % 2;
         break;
       }
-    }
-  }
-
-  bool player_visible = false;
-  // First test if the player is somewhat in front of the enemy
-  {
-    vec3 enemy_dir;
-    glm_vec3_normalize_to(enemy_forward, enemy_dir);
-
-    vec3 enemy_to_player;
-    {
-      vec3 player_pos;
-      cam_get_position(player_pos);
-
-      glm_vec3_sub(player_pos, enemy_position, enemy_to_player);
-      enemy_to_player[1] = 0.0f; // Flatten
-
-      glm_vec3_normalize(enemy_to_player);
-    }
-
-    if (glm_vec3_dot(enemy_dir, enemy_to_player) > 0.65f)
-    {
-      player_visible = true;
-    }
-  }
-
-  // Then test if the enemy can see the player directly
-  if (player_visible)
-  {
-    vec3 ray_from, ray_to;
-    glm_vec3_copy(enemy_position, ray_from);
-    ray_from[1] += enemy_height;
-    cam_get_position(ray_to);
-
-    vec3 ray;
-    glm_vec3_sub(ray_to, ray_from, ray);
-
-    const float old_dist = glm_vec3_norm(ray);
-
-    vec3 n;
-    collide_ray(ray_from, ray_to, ray_to, n);
-
-    glm_vec3_sub(ray_to, ray_from, ray);
-
-    const float new_dist = glm_vec3_norm(ray);
-
-    if (new_dist < old_dist)
-    {
-      player_visible = false;
     }
   }
 
