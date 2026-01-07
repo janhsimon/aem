@@ -18,31 +18,46 @@
 #  define glmm_store(p, a)  _mm_store_ps(p, a)
 #endif
 
-#define glmm_set1(x) _mm_set1_ps(x)
 #define glmm_128     __m128
 
-#ifdef CGLM_USE_INT_DOMAIN
+#ifdef __AVX__
 #  define glmm_shuff1(xmm, z, y, x, w)                                        \
-     _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(xmm),                \
-                                        _MM_SHUFFLE(z, y, x, w)))
+     _mm_permute_ps((xmm), _MM_SHUFFLE(z, y, x, w))
 #else
-#  define glmm_shuff1(xmm, z, y, x, w)                                        \
+#  if !defined(CGLM_NO_INT_DOMAIN) && defined(__SSE2__)
+#    define glmm_shuff1(xmm, z, y, x, w)                                      \
+       _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(xmm),              \
+                                          _MM_SHUFFLE(z, y, x, w)))
+#  else
+#    define glmm_shuff1(xmm, z, y, x, w)                                      \
        _mm_shuffle_ps(xmm, xmm, _MM_SHUFFLE(z, y, x, w))
+#  endif
 #endif
 
 #define glmm_splat(x, lane) glmm_shuff1(x, lane, lane, lane, lane)
 
-#define glmm_splat_x(x) glmm_splat(x, 0)
-#define glmm_splat_y(x) glmm_splat(x, 1)
-#define glmm_splat_z(x) glmm_splat(x, 2)
-#define glmm_splat_w(x) glmm_splat(x, 3)
+#ifdef __AVX__
+#  define glmm_set1(x)      _mm_broadcast_ss(&x)
+#  define glmm_set1_ptr(x)  _mm_broadcast_ss(x)
+#  define glmm_set1_rval(x) _mm_set1_ps(x)
+#  ifdef __AVX2__
+#    define glmm_splat_x(x) _mm_broadcastss_ps(x)
+#  else
+#    define glmm_splat_x(x) _mm_permute_ps(x, _MM_SHUFFLE(0, 0, 0, 0))
+#  endif
+#  define glmm_splat_y(x)   _mm_permute_ps(x, _MM_SHUFFLE(1, 1, 1, 1))
+#  define glmm_splat_z(x)   _mm_permute_ps(x, _MM_SHUFFLE(2, 2, 2, 2))
+#  define glmm_splat_w(x)   _mm_permute_ps(x, _MM_SHUFFLE(3, 3, 3, 3))
+#else
+#  define glmm_set1(x)      _mm_set1_ps(x)
+#  define glmm_set1_ptr(x)  _mm_set1_ps(*x)
+#  define glmm_set1_rval(x) _mm_set1_ps(x)
 
-/* glmm_shuff1x() is DEPRECATED!, use glmm_splat() */
-#define glmm_shuff1x(xmm, x) glmm_shuff1(xmm, x, x, x, x)
-
-#define glmm_shuff2(a, b, z0, y0, x0, w0, z1, y1, x1, w1)                     \
-     glmm_shuff1(_mm_shuffle_ps(a, b, _MM_SHUFFLE(z0, y0, x0, w0)),           \
-                 z1, y1, x1, w1)
+#  define glmm_splat_x(x)   glmm_splat(x, 0)
+#  define glmm_splat_y(x)   glmm_splat(x, 1)
+#  define glmm_splat_z(x)   glmm_splat(x, 2)
+#  define glmm_splat_w(x)   glmm_splat(x, 3)
+#endif
 
 #ifdef __AVX__
 #  ifdef CGLM_ALL_UNALIGNED
@@ -55,17 +70,40 @@
 #endif
 
 /* Note that `0x80000000` corresponds to `INT_MIN` for a 32-bit int. */
-#define GLMM_NEGZEROf ((int)0x80000000) /*  0x80000000 ---> -0.0f  */
 
-#define GLMM__SIGNMASKf(X, Y, Z, W)                                           \
+#if defined(__SSE2__)
+#  define GLMM_NEGZEROf ((int)0x80000000) /*  0x80000000 ---> -0.0f  */
+#  define GLMM_POSZEROf ((int)0x00000000) /*  0x00000000 ---> +0.0f  */
+#else
+#  ifdef CGLM_FAST_MATH
+     union { int i; float f; } static GLMM_NEGZEROf_TU = { .i = (int)0x80000000 };
+#    define GLMM_NEGZEROf GLMM_NEGZEROf_TU.f
+#    define GLMM_POSZEROf 0.0f
+#  else
+#    define GLMM_NEGZEROf -0.0f
+#    define GLMM_POSZEROf  0.0f
+#  endif
+#endif
+
+#if defined(__SSE2__)
+#  define GLMM__SIGNMASKf(X, Y, Z, W)                                         \
    _mm_castsi128_ps(_mm_set_epi32(X, Y, Z, W))
   /* _mm_set_ps(X, Y, Z, W); */
+#else
+#  define GLMM__SIGNMASKf(X, Y, Z, W)  _mm_set_ps(X, Y, Z, W)
+#endif
 
-#define glmm_float32x4_SIGNMASK_PNPN GLMM__SIGNMASKf(0, GLMM_NEGZEROf, 0, GLMM_NEGZEROf)
-#define glmm_float32x4_SIGNMASK_NPNP GLMM__SIGNMASKf(GLMM_NEGZEROf, 0, GLMM_NEGZEROf, 0)
-#define glmm_float32x4_SIGNMASK_NPPN GLMM__SIGNMASKf(GLMM_NEGZEROf, 0, 0, GLMM_NEGZEROf)
+#define glmm_float32x4_SIGNMASK_PNPN GLMM__SIGNMASKf(GLMM_POSZEROf, GLMM_NEGZEROf, GLMM_POSZEROf, GLMM_NEGZEROf)
+#define glmm_float32x4_SIGNMASK_NPNP GLMM__SIGNMASKf(GLMM_NEGZEROf, GLMM_POSZEROf, GLMM_NEGZEROf, GLMM_POSZEROf)
+#define glmm_float32x4_SIGNMASK_NPPN GLMM__SIGNMASKf(GLMM_NEGZEROf, GLMM_POSZEROf, GLMM_POSZEROf, GLMM_NEGZEROf)
 
-#define glmm_float32x4_SIGNMASK_NEG _mm_castsi128_ps(_mm_set1_epi32(GLMM_NEGZEROf)) /* _mm_set1_ps(-0.0f) */
+/* fasth math prevents -0.0f to work */
+#if defined(__SSE2__)
+#  define glmm_float32x4_SIGNMASK_NEG _mm_castsi128_ps(_mm_set1_epi32(GLMM_NEGZEROf)) /* _mm_set1_ps(-0.0f) */
+#else
+#  define glmm_float32x4_SIGNMASK_NEG glmm_set1(GLMM_NEGZEROf)
+#endif
+
 #define glmm_float32x8_SIGNMASK_NEG _mm256_castsi256_ps(_mm256_set1_epi32(GLMM_NEGZEROf))
 
 static inline
@@ -73,6 +111,9 @@ __m128
 glmm_abs(__m128 x) {
   return _mm_andnot_ps(glmm_float32x4_SIGNMASK_NEG, x);
 }
+
+static inline __m128 glmm_min(__m128 a, __m128 b) { return _mm_min_ps(a, b); }
+static inline __m128 glmm_max(__m128 a, __m128 b) { return _mm_max_ps(a, b); }
 
 static inline
 __m128
@@ -204,6 +245,7 @@ glmm_norm_inf(__m128 a) {
   return _mm_cvtss_f32(glmm_vhmax(glmm_abs(a)));
 }
 
+#if defined(__SSE2__)
 static inline
 __m128
 glmm_load3(float v[3]) {
@@ -222,6 +264,7 @@ glmm_store3(float v[3], __m128 vx) {
   _mm_storel_pi(CGLM_CASTPTR_ASSUME_ALIGNED(v, __m64), vx);
   _mm_store_ss(&v[2], glmm_shuff1(vx, 2, 2, 2, 2));
 }
+#endif
 
 static inline
 __m128

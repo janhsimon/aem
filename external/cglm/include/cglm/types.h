@@ -8,9 +8,14 @@
 #ifndef cglm_types_h
 #define cglm_types_h
 
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+# include <stdalign.h>
+#endif
+
 #if defined(_MSC_VER)
 /* do not use alignment for older visual studio versions */
-#  if _MSC_VER < 1913 /*  Visual Studio 2017 version 15.6  */
+/* also ARM32 also causes similar error, disable it for now on ARM32 too */
+#  if _MSC_VER < 1913 || _M_ARM /*  Visual Studio 2017 version 15.6  */
 #    define CGLM_ALL_UNALIGNED
 #    define CGLM_ALIGN(X) /* no alignment */
 #  else
@@ -57,8 +62,16 @@
 #  define CGLM_ASSUME_ALIGNED(expr, alignment) (expr)
 #endif
 
-#define CGLM_CASTPTR_ASSUME_ALIGNED(expr, type) \
-  ((type*)CGLM_ASSUME_ALIGNED((expr), __alignof__(type)))
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+# define CGLM_CASTPTR_ASSUME_ALIGNED(expr, type) \
+   ((type*)CGLM_ASSUME_ALIGNED((expr), alignof(type)))
+#elif defined(_MSC_VER)
+# define CGLM_CASTPTR_ASSUME_ALIGNED(expr, type) \
+   ((type*)CGLM_ASSUME_ALIGNED((expr), __alignof(type)))
+#else
+# define CGLM_CASTPTR_ASSUME_ALIGNED(expr, type) \
+   ((type*)CGLM_ASSUME_ALIGNED((expr), __alignof__(type)))
+#endif
 
 typedef int                     ivec2[2];
 typedef int                     ivec3[3];

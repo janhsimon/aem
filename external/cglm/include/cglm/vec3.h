@@ -40,6 +40,12 @@
    CGLM_INLINE void  glm_vec3_muladds(vec3 a, float s, vec3 dest);
    CGLM_INLINE void  glm_vec3_maxadd(vec3 a, vec3 b, vec3 dest);
    CGLM_INLINE void  glm_vec3_minadd(vec3 a, vec3 b, vec3 dest);
+   CGLM_INLINE void  glm_vec3_subsub(vec3 a, vec3 b, vec3 dest);
+   CGLM_INLINE void  glm_vec3_addsub(vec3 a, vec3 b, vec3 dest);
+   CGLM_INLINE void  glm_vec3_mulsub(vec3 a, vec3 b, vec3 dest);
+   CGLM_INLINE void  glm_vec3_mulsubs(vec3 a, float s, vec3 dest);
+   CGLM_INLINE void  glm_vec3_maxsub(vec3 a, vec3 b, vec3 dest);
+   CGLM_INLINE void  glm_vec3_minsub(vec3 a, vec3 b, vec3 dest);
    CGLM_INLINE void  glm_vec3_flipsign(vec3 v);
    CGLM_INLINE void  glm_vec3_flipsign_to(vec3 v, vec3 dest);
    CGLM_INLINE void  glm_vec3_negate_to(vec3 v, vec3 dest);
@@ -66,7 +72,6 @@
    CGLM_INLINE void  glm_vec3_lerpc(vec3 from, vec3 to, float t, vec3 dest);
    CGLM_INLINE void  glm_vec3_mix(vec3 from, vec3 to, float t, vec3 dest);
    CGLM_INLINE void  glm_vec3_mixc(vec3 from, vec3 to, float t, vec3 dest);
-   CGLM_INLINE void  glm_vec3_step_uni(float edge, vec3 x, vec3 dest);
    CGLM_INLINE void  glm_vec3_step(vec3 edge, vec3 x, vec3 dest);
    CGLM_INLINE void  glm_vec3_smoothstep_uni(float edge0, float edge1, vec3 x, vec3 dest);
    CGLM_INLINE void  glm_vec3_smoothstep(vec3 edge0, vec3 edge1, vec3 x, vec3 dest);
@@ -74,6 +79,9 @@
    CGLM_INLINE void  glm_vec3_smoothinterpc(vec3 from, vec3 to, float t, vec3 dest);
    CGLM_INLINE void  glm_vec3_swizzle(vec3 v, int mask, vec3 dest);
    CGLM_INLINE void  glm_vec3_make(float * restrict src, vec3 dest);
+   CGLM_INLINE void  glm_vec3_faceforward(vec3 n, vec3 v, vec3 nref, vec3 dest);
+   CGLM_INLINE void  glm_vec3_reflect(vec3 v, vec3 n, vec3 dest);
+   CGLM_INLINE void  glm_vec3_refract(vec3 v, vec3 n, float eta, vec3 dest);
 
  Convenient:
    CGLM_INLINE void  glm_cross(vec3 a, vec3 b, vec3 d);
@@ -88,6 +96,7 @@
    glm_vec3_inv
    glm_vec3_inv_to
    glm_vec3_mulv
+   glm_vec3_step_uni  -->  use glm_vec3_steps
  */
 
 #ifndef cglm_vec3_h
@@ -105,6 +114,7 @@
 #define glm_vec3_inv(v)               glm_vec3_negate(v)
 #define glm_vec3_inv_to(v, dest)      glm_vec3_negate_to(v, dest)
 #define glm_vec3_mulv(a, b, d)        glm_vec3_mul(a, b, d)
+#define glm_vec3_step_uni(edge, x, dest) glm_vec3_steps(edge, x, dest)
 
 #define GLM_VEC3_ONE_INIT   {1.0f, 1.0f, 1.0f}
 #define GLM_VEC3_ZERO_INIT  {0.0f, 0.0f, 0.0f}
@@ -190,7 +200,7 @@ glm_vec3_dot(vec3 a, vec3 b) {
  * @brief norm * norm (magnitude) of vec
  *
  * we can use this func instead of calling norm * norm, because it would call
- * sqrtf fuction twice but with this func we can avoid func call, maybe this is
+ * sqrtf function twice but with this func we can avoid func call, maybe this is
  * not good name for this func
  *
  * @param[in] v vector
@@ -363,7 +373,7 @@ glm_vec3_scale_as(vec3 v, float s, vec3 dest) {
   float norm;
   norm = glm_vec3_norm(v);
 
-  if (norm == 0.0f) {
+  if (CGLM_UNLIKELY(norm < FLT_EPSILON)) {
     glm_vec3_zero(dest);
     return;
   }
@@ -504,6 +514,108 @@ glm_vec3_minadd(vec3 a, vec3 b, vec3 dest) {
 }
 
 /*!
+ * @brief sub two vectors and sub result to dest
+ *
+ * it applies += operator so dest must be initialized
+ *
+ * @param[in]  a    vector 1
+ * @param[in]  b    vector 2
+ * @param[out] dest dest -= (a - b)
+ */
+CGLM_INLINE
+void
+glm_vec3_subsub(vec3 a, vec3 b, vec3 dest) {
+  dest[0] -= a[0] - b[0];
+  dest[1] -= a[1] - b[1];
+  dest[2] -= a[2] - b[2];
+}
+
+/*!
+ * @brief add two vectors and sub result to dest
+ *
+ * it applies += operator so dest must be initialized
+ *
+ * @param[in]  a    vector 1
+ * @param[in]  b    vector 2
+ * @param[out] dest dest -= (a + b)
+ */
+CGLM_INLINE
+void
+glm_vec3_addsub(vec3 a, vec3 b, vec3 dest) {
+  dest[0] -= a[0] + b[0];
+  dest[1] -= a[1] + b[1];
+  dest[2] -= a[2] + b[2];
+}
+
+/*!
+ * @brief mul two vectors and sub result to dest
+ *
+ * it applies -= operator so dest must be initialized
+ *
+ * @param[in]  a    vector 1
+ * @param[in]  b    vector 2
+ * @param[out] dest dest -= (a * b)
+ */
+CGLM_INLINE
+void
+glm_vec3_mulsub(vec3 a, vec3 b, vec3 dest) {
+  dest[0] -= a[0] * b[0];
+  dest[1] -= a[1] * b[1];
+  dest[2] -= a[2] * b[2];
+}
+
+/*!
+ * @brief mul vector with scalar and sub result to dest
+ *
+ * it applies -= operator so dest must be initialized
+ *
+ * @param[in]  a    vector
+ * @param[in]  s    scalar
+ * @param[out] dest dest -= (a * b)
+ */
+CGLM_INLINE
+void
+glm_vec3_mulsubs(vec3 a, float s, vec3 dest) {
+  dest[0] -= a[0] * s;
+  dest[1] -= a[1] * s;
+  dest[2] -= a[2] * s;
+}
+
+/*!
+ * @brief sub max of two vectors to result/dest
+ *
+ * it applies -= operator so dest must be initialized
+ *
+ * @param[in]  a    vector 1
+ * @param[in]  b    vector 2
+ * @param[out] dest dest -= max(a, b)
+ */
+CGLM_INLINE
+void
+glm_vec3_maxsub(vec3 a, vec3 b, vec3 dest) {
+  dest[0] -= glm_max(a[0], b[0]);
+  dest[1] -= glm_max(a[1], b[1]);
+  dest[2] -= glm_max(a[2], b[2]);
+}
+
+/*!
+ * @brief sub min of two vectors to result/dest
+ *
+ * it applies -= operator so dest must be initialized
+ *
+ * @param[in]  a    vector 1
+ * @param[in]  b    vector 2
+ * @param[out] dest dest -= min(a, b)
+ */
+CGLM_INLINE
+void
+glm_vec3_minsub(vec3 a, vec3 b, vec3 dest) {
+  dest[0] -= glm_min(a[0], b[0]);
+  dest[1] -= glm_min(a[1], b[1]);
+  dest[2] -= glm_min(a[2], b[2]);
+}
+
+/*!
  * @brief negate vector components and store result in dest
  *
  * @param[in]   v     vector
@@ -540,7 +652,7 @@ glm_vec3_normalize(vec3 v) {
 
   norm = glm_vec3_norm(v);
 
-  if (norm == 0.0f) {
+  if (CGLM_UNLIKELY(norm < FLT_EPSILON)) {
     v[0] = v[1] = v[2] = 0.0f;
     return;
   }
@@ -561,7 +673,7 @@ glm_vec3_normalize_to(vec3 v, vec3 dest) {
 
   norm = glm_vec3_norm(v);
 
-  if (norm == 0.0f) {
+  if (CGLM_UNLIKELY(norm < FLT_EPSILON)) {
     glm_vec3_zero(dest);
     return;
   }
@@ -602,7 +714,7 @@ glm_vec3_crossn(vec3 a, vec3 b, vec3 dest) {
 }
 
 /*!
- * @brief angle betwen two vector
+ * @brief angle between two vector
  *
  * @param[in] a  vector1
  * @param[in] b  vector2
@@ -902,21 +1014,6 @@ glm_vec3_mixc(vec3 from, vec3 to, float t, vec3 dest) {
 }
 
 /*!
- * @brief threshold function (unidimensional)
- *
- * @param[in]   edge    threshold
- * @param[in]   x       value to test against threshold
- * @param[out]  dest    destination
- */
-CGLM_INLINE
-void
-glm_vec3_step_uni(float edge, vec3 x, vec3 dest) {
-  dest[0] = glm_step(edge, x[0]);
-  dest[1] = glm_step(edge, x[1]);
-  dest[2] = glm_step(edge, x[2]);
-}
-
-/*!
  * @brief threshold function
  *
  * @param[in]   edge    threshold
@@ -1004,7 +1101,7 @@ glm_vec3_smoothinterpc(vec3 from, vec3 to, float t, vec3 dest) {
 /*!
  * @brief swizzle vector components
  *
- * you can use existin masks e.g. GLM_XXX, GLM_ZYX
+ * you can use existing masks e.g. GLM_XXX, GLM_ZYX
  *
  * @param[in]  v    source
  * @param[in]  mask mask
@@ -1088,10 +1185,80 @@ glm_normalize_to(vec3 v, vec3 dest) {
  */
 CGLM_INLINE
 void
-glm_vec3_make(float * __restrict src, vec3 dest) {
+glm_vec3_make(const float * __restrict src, vec3 dest) {
   dest[0] = src[0];
   dest[1] = src[1];
   dest[2] = src[2];
+}
+
+/*!
+ * @brief a vector pointing in the same direction as another
+ *
+ * orients a vector to point away from a surface as defined by its normal
+ *
+ * @param[in] n      vector to orient
+ * @param[in] v      incident vector
+ * @param[in] nref   reference vector
+ * @param[out] dest  oriented vector, pointing away from the surface
+ */
+CGLM_INLINE
+void
+glm_vec3_faceforward(vec3 n, vec3 v, vec3 nref, vec3 dest) {
+  if (glm_vec3_dot(v, nref) < 0.0f) {
+    /* N is facing away from I */
+    glm_vec3_copy(n, dest);
+  } else {
+    /* N is facing towards I, negate it */
+    glm_vec3_negate_to(n, dest);
+  }
+}
+
+/*!
+ * @brief reflection vector using an incident ray and a surface normal
+ *
+ * @param[in]  v    incident vector
+ * @param[in]  n    normalized normal vector
+ * @param[out] dest reflection result
+ */
+CGLM_INLINE
+void
+glm_vec3_reflect(vec3 v, vec3 n, vec3 dest) {
+  vec3 temp;
+  glm_vec3_scale(n, 2.0f * glm_vec3_dot(v, n), temp);
+  glm_vec3_sub(v, temp, dest);
+}
+
+/*!
+ * @brief computes refraction vector for an incident vector and a surface normal.
+ *
+ * calculates the refraction vector based on Snell's law. If total internal reflection
+ * occurs (angle too great given eta), dest is set to zero and returns false.
+ * Otherwise, computes refraction vector, stores it in dest, and returns true.
+ *
+ * @param[in]  v    normalized incident vector
+ * @param[in]  n    normalized normal vector
+ * @param[in]  eta  ratio of indices of refraction (incident/transmitted)
+ * @param[out] dest refraction vector if refraction occurs; zero vector otherwise
+ *
+ * @returns true if refraction occurs; false if total internal reflection occurs.
+ */
+CGLM_INLINE
+bool
+glm_vec3_refract(vec3 v, vec3 n, float eta, vec3 dest) {
+  float ndi, eni, k;
+
+  ndi = glm_vec3_dot(n, v);
+  eni = eta * ndi;
+  k   = 1.0f - eta * eta + eni * eni;
+
+  if (k < 0.0f) {
+    glm_vec3_zero(dest);
+    return false;
+  }
+
+  glm_vec3_scale(v, eta, dest);
+  glm_vec3_mulsubs(n, eni + sqrtf(k), dest);
+  return true;
 }
 
 #endif /* cglm_vec3_h */
