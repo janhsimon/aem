@@ -9,9 +9,9 @@
 
 #include <cglm/vec3.h>
 
-#define ENEMY_MIN_AIM_DELAY 0.1f // In seconds
-#define ENEMY_MAX_AIM_DELAY 0.5f // In seconds
-#define ENEMY_TURN_RATE 10.0
+#define ENEMY_MIN_AIM_DELAY 0.3f // In seconds
+#define ENEMY_MAX_AIM_DELAY 0.7f // In seconds
+#define ENEMY_TURN_RATE 25.0
 
 #define ENEMY_AIM_ANIMATION_CHANNEL_INDEX 1
 
@@ -52,15 +52,18 @@ void update_enemy_state_aim(vec3 enemy_position,
                             vec2 out_velocity,
                             float* out_angle_delta)
 {
-  aim_delay -= delta_time;
-
   // Keep turning towards the player
   if (preferences->ai_turning)
   {
     *out_angle_delta = calc_angle_delta_towards_player(enemy_position, enemy_forward) * delta_time * ENEMY_TURN_RATE;
   }
 
-  if (aim_delay <= 0.0f)
+  // Transition to firing state
+  if (aim_delay > 0.0f)
+  {
+    aim_delay -= delta_time;
+  }
+  else
   {
     enter_enemy_state_fire(state, mixer);
   }

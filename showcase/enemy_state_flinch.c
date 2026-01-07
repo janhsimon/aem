@@ -31,14 +31,16 @@ void enter_enemy_state_flinch()
   channel->time = 0.0f;
   channel->playback_speed = 1.5f;
   channel->is_playing = true;
-  aem_blend_to_animation_mixer_channel(mixer, ENEMY_FLINCH_ANIMATION_CHANNEL_INDEX);
 }
 
 void update_enemy_state_flinch()
 {
+  // Custom fade out
+  channel->weight = 0.8f - channel->time * (2.5f / flinch_animation_duration);
+
   // Transition to walking state
-  if (channel->time > flinch_animation_duration * 0.2f)
+  if (channel->weight <= 0.0f)
   {
-    enter_enemy_state_walk();
+    enter_enemy_state_walk(false);
   }
 }

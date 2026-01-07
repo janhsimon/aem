@@ -86,7 +86,7 @@ static void respawn_enemy(bool play_sound)
     play_respawn_sound(spawn_position);
   }
 
-  enter_enemy_state_walk(&state, mixer);
+  enter_enemy_state_walk(true);
 }
 
 bool load_enemy(const struct Preferences* preferences_, const struct AEMModel* model_)
@@ -105,7 +105,7 @@ bool load_enemy(const struct Preferences* preferences_, const struct AEMModel* m
   }
 
   aem_set_animation_mixer_enabled(mixer, true);
-  aem_set_animation_mixer_blend_speed(mixer, 1000.0f /*8.0f*/);
+  aem_set_animation_mixer_blend_speed(mixer, 4.0f);
 
   load_enemy_state_walk(preferences, &state, model, mixer);
   load_enemy_state_aim(preferences, &state, mixer);
@@ -192,7 +192,8 @@ void update_enemy(float delta_time)
   switch (state)
   {
   case EnemyState_Walk:
-    update_enemy_state_walk(transform[3], transform[2], delta_time, desired_velocity, &desired_angle_delta);
+    update_enemy_state_walk(transform[3], transform[2], ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS, delta_time,
+                            desired_velocity, &desired_angle_delta);
     break;
   case EnemyState_Aim:
     update_enemy_state_aim(transform[3], transform[2], delta_time, desired_velocity, &desired_angle_delta);

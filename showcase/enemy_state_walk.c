@@ -1,5 +1,7 @@
 #include "enemy_state_walk.h"
 
+#include "camera.h"
+#include "collision.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
 #include "player.h"
@@ -14,6 +16,9 @@
 #define ENEMY_MOVE_SPEED 0.1f
 #define ENEMY_TURN_RATE 5.0f
 
+#define ENEMY_MIN_AIM_DELAY 0.5f // In seconds
+#define ENEMY_MAX_AIM_DELAY 1.5f // In seconds
+
 #define ENEMY_WALK_ANIMATION_CHANNEL_INDEX 0
 
 #define ENEMY_WALK_ANIMATION_INDEX 1
@@ -23,6 +28,7 @@ static enum EnemyState* state = NULL;
 static struct AEMAnimationMixer* mixer = NULL;
 static struct AEMAnimationChannel* channel = NULL;
 static float walk_animation_duration = 0.0f;
+static float aim_delay = 0.0f;
 
 void load_enemy_state_walk(const struct Preferences* preferences_,
                            enum EnemyState* state_,
@@ -36,7 +42,7 @@ void load_enemy_state_walk(const struct Preferences* preferences_,
   walk_animation_duration = aem_get_model_animation_duration(model, ENEMY_WALK_ANIMATION_INDEX);
 }
 
-void enter_enemy_state_walk()
+void enter_enemy_state_walk(bool instant)
 {
   *state = EnemyState_Walk;
 
@@ -45,11 +51,22 @@ void enter_enemy_state_walk()
   channel->is_looping = true;
   channel->playback_speed = 1.75f;
   channel->is_playing = true;
-  aem_blend_to_animation_mixer_channel(mixer, ENEMY_WALK_ANIMATION_CHANNEL_INDEX);
+
+  if (instant)
+  {
+    aem_cut_to_animation_mixer_channel(mixer, ENEMY_WALK_ANIMATION_CHANNEL_INDEX);
+  }
+  else
+  {
+    aem_blend_to_animation_mixer_channel(mixer, ENEMY_WALK_ANIMATION_CHANNEL_INDEX);
+  }
+
+  aim_delay = ((rand() % 100) / 100.0f) * (ENEMY_MAX_AIM_DELAY - ENEMY_MIN_AIM_DELAY) + ENEMY_MIN_AIM_DELAY;
 }
 
 void update_enemy_state_walk(vec3 enemy_position,
                              vec3 enemy_forward,
+                             float enemy_height,
                              float delta_time,
                              vec2 out_velocity,
                              float* out_angle_delta)
@@ -57,8 +74,8 @@ void update_enemy_state_walk(vec3 enemy_position,
   // Simple forward motion
   if (preferences->ai_walking)
   {
-  out_velocity[0] = 0.0f;
-  out_velocity[1] = ENEMY_MOVE_SPEED * delta_time;
+    out_velocity[0] = 0.0f;
+    out_velocity[1] = ENEMY_MOVE_SPEED * delta_time;
   }
 
   // Turn to the player
@@ -94,9 +111,65 @@ void update_enemy_state_walk(vec3 enemy_position,
     }
   }
 
-  // Transition to aiming state
-  if (preferences->ai_shooting && *out_angle_delta < 25.0f && rand() % 150 == 85)
+  bool player_visible = false;
+  // First test if the player is somewhat in front of the enemy
   {
-    enter_enemy_state_aim(state, mixer);
+    vec3 enemy_dir;
+    glm_vec3_normalize_to(enemy_forward, enemy_dir);
+
+    vec3 enemy_to_player;
+    {
+      vec3 player_pos;
+      cam_get_position(player_pos);
+
+      glm_vec3_sub(player_pos, enemy_position, enemy_to_player);
+      enemy_to_player[1] = 0.0f; // Flatten
+
+      glm_vec3_normalize(enemy_to_player);
+    }
+
+    if (glm_vec3_dot(enemy_dir, enemy_to_player) > 0.65f)
+    {
+      player_visible = true;
+    }
+  }
+
+  // Then test if the enemy can see the player directly
+  if (player_visible)
+  {
+    vec3 ray_from, ray_to;
+    glm_vec3_copy(enemy_position, ray_from);
+    ray_from[1] += enemy_height;
+    cam_get_position(ray_to);
+
+    vec3 ray;
+    glm_vec3_sub(ray_to, ray_from, ray);
+
+    const float old_dist = glm_vec3_norm(ray);
+
+    vec3 n;
+    collide_ray(ray_from, ray_to, ray_to, n);
+
+    glm_vec3_sub(ray_to, ray_from, ray);
+
+    const float new_dist = glm_vec3_norm(ray);
+
+    if (new_dist < old_dist)
+    {
+      player_visible = false;
+    }
+  }
+
+  // Transition to aiming state
+  if (player_visible)
+  {
+    if (aim_delay > 0.0f)
+    {
+      aim_delay -= delta_time;
+    }
+    else if (preferences->ai_shooting)
+    {
+      enter_enemy_state_aim(state, mixer);
+    }
   }
 }

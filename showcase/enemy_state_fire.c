@@ -17,7 +17,7 @@
 #include <cglm/vec3.h>
 
 #define ENEMY_AIM_DELAY 1.0f // In seconds
-#define ENEMY_TURN_RATE 10.0
+#define ENEMY_TURN_RATE 25.0
 
 #define ENEMY_FIRE_ANIMATION_CHANNEL_INDEX 2
 
@@ -129,6 +129,6 @@ void update_enemy_state_fire(mat4 enemy_transform, float delta_time, vec2 out_ve
   else if (channel->time >= fire_animation_duration * 0.9f)
   {
     // Go back to walking around
-    enter_enemy_state_walk(state, mixer);
+    enter_enemy_state_walk(false);
   }
 }

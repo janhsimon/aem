@@ -34,7 +34,7 @@ void enter_enemy_state_die()
   channel->playback_speed = 1.0f;
   channel->is_playing = true;
   channel->is_looping = false;
-  aem_blend_to_animation_mixer_channel(mixer, ENEMY_DIE_ANIMATION_CHANNEL_INDEX);
+  aem_cut_to_animation_mixer_channel(mixer, ENEMY_DIE_ANIMATION_CHANNEL_INDEX);
 
   has_turned_death_dir = false;
   respawn_timer = 0.0f;
