@@ -199,10 +199,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
 
           vec3 muzzleflash_p = GLM_VEC3_ZERO_INIT;
           glm_mat4_mulv3(muzzleflash_m, muzzleflash_p, 1.0f, muzzleflash_p);
-
-          vec3 dir;
-          glm_vec3_sub(to, muzzleflash_p, dir);
-          spawn_tracer(preferences, muzzleflash_p, dir);
+          spawn_tracer(preferences, muzzleflash_p, to);
         }
 
         const enum EnemyHitArea hit_area = is_enemy_hit(from, to);

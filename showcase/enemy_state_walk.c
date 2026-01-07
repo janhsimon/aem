@@ -95,7 +95,7 @@ void update_enemy_state_walk(vec3 enemy_position,
   }
 
   // Transition to aiming state
-  if (preferences->ai_shooting && *out_angle_delta < 25.0f && rand() % 250 == 85)
+  if (preferences->ai_shooting && *out_angle_delta < 25.0f && rand() % 150 == 85)
   {
     enter_enemy_state_aim(state, mixer);
   }

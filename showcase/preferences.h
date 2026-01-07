@@ -66,7 +66,7 @@ struct Preferences
   vec4 tracer_color;
   float tracer_thickness;
   float tracer_length;
-  float tracer_speed;
+  float tracer_speed; // In units per second
 };
 
 void load_default_preferences(struct Preferences* preferences);

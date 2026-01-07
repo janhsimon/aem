@@ -1,7 +1,10 @@
 #include "enemy_state_fire.h"
 
+#include "collision.h"
+#include "debug_renderer.h"
 #include "enemy_state.h"
 #include "enemy_state_walk.h"
+#include "particle_manager.h"
 #include "player.h"
 #include "preferences.h"
 #include "sound.h"
@@ -48,9 +51,26 @@ static void fire(mat4 enemy_transform)
   vec3 start = GLM_VEC3_ZERO_INIT;
   glm_mat4_mulv3(tracer_start, start, 1.0f, start);
 
-  vec3 dir;
-  glm_vec3_copy(enemy_transform[2], dir);
-  spawn_tracer(preferences, start, dir);
+  vec3 end;
+  glm_vec3_copy(enemy_transform[2], end);
+  glm_vec3_scale_as(end, 10000.0f, end);
+  glm_vec3_add(start, end, end);
+
+  vec3 n;
+  collide_ray(start, end, end, n);
+
+  spawn_tracer(preferences, start, end);
+
+  add_debug_line(start, end);
+
+  {
+    vec3 to;
+    glm_vec3_copy(end, to);
+
+    spawn_smoke(to, n);
+    spawn_shrapnel(to, n);
+    play_impact_sound(to);
+  }
 }
 
 void load_enemy_state_fire(const struct Preferences* preferences_,
@@ -79,7 +99,7 @@ void enter_enemy_state_fire()
   aem_blend_to_animation_mixer_channel(mixer, ENEMY_FIRE_ANIMATION_CHANNEL_INDEX);
 
   has_fired_first_shot = false;
-  shots_to_fire = rand() % (ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS) + ENEMY_FIRE_MIN_BULLETS;
+  shots_to_fire = rand() % ((ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS) + ENEMY_FIRE_MIN_BULLETS);
 }
 
 void update_enemy_state_fire(mat4 enemy_transform, float delta_time, vec2 out_velocity, float* out_angle_delta)

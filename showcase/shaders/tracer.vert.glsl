@@ -13,6 +13,9 @@ vec3 transformUnitLine(vec3 pos, vec3 start, vec3 end)
 {
     vec3 dir = end - start;
     float len = length(dir);
+    if (len < 0.01) {
+        return vec3(0, 0, 0);
+    }
 
     // Fallback direction
     vec3 forward = (len > 0.0001)
