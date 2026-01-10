@@ -10,7 +10,7 @@
 
 static ma_engine* engine;
 static ma_sound *ambient, *ak47_fire1, *ak47_reload, *ak47_dry1, *headshot, *impact, *player_footsteps[4],
-  *enemy_footsteps[4], *respawn, *enemy_hurt[4];
+  *enemy_footsteps[4], *respawn, *enemy_hurt[4], *player_hurt;
 
 static mat4 view_matrix;
 
@@ -172,6 +172,13 @@ bool load_sound()
     }
   }
 
+  player_hurt = malloc(sizeof(*player_hurt));
+  result = ma_sound_init_from_file(engine, "sounds/player_hurt1.wav", 0, NULL, NULL, player_hurt);
+  if (result != MA_SUCCESS)
+  {
+    return false;
+  }
+
   // Start ambient sound
   ma_sound_set_looping(ambient, MA_TRUE);
   ma_sound_set_volume(ak47_reload, 0.5f);
@@ -257,6 +264,12 @@ void play_enemy_hurt_sound(int index, vec3 position)
   ma_sound_start(enemy_hurt[index]);
 }
 
+void play_player_hurt_sound()
+{
+  ma_sound_seek_to_pcm_frame(player_hurt, 0);
+  ma_sound_start(player_hurt);
+}
+
 void free_sound()
 {
   ma_sound_uninit(respawn);
@@ -272,6 +285,8 @@ void free_sound()
     ma_sound_uninit(enemy_footsteps[i]);
     ma_sound_uninit(enemy_hurt[i]);
   }
+
+  ma_sound_uninit(player_hurt);
 
   ma_engine_uninit(engine);
   free(engine);

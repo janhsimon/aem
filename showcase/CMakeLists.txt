@@ -39,6 +39,9 @@ set(SOURCE
   hud.c
   hud.h
 
+  hud_damage_indicator.c
+  hud_damage_indicator.h
+
   input.c
   input.h
 
@@ -73,6 +76,9 @@ set(SOURCE
 
   sound.c
   sound.h
+
+  texture.c
+  texture.h
 
   tracer_manager.c
   tracer_manager.h

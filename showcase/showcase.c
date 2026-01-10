@@ -163,7 +163,7 @@ int main(int argc, char* argv[])
     float player_spawn_yaw;
     get_current_map_player_spawn(player_spawn_position, &player_spawn_yaw);
     cam_set_position(player_spawn_position);
-    camera_set_yaw_pitch(glm_rad(player_spawn_yaw), 0.0f);
+    camera_set_yaw_pitch_roll(glm_rad(player_spawn_yaw), 0.0f, 0.0f);
   }
 
   // Set up initial OpenGL state
@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
         sync_particle_manager(&preferences);
       }
 
-      if (!debug_mode_enabled || !has_debug_window_focus())
+      if ((!debug_mode_enabled || !has_debug_window_focus()) && get_player_health() > 0.0f)
       {
         update_view_model(&preferences, player_moving, delta_time);
       }
@@ -224,7 +224,7 @@ int main(int argc, char* argv[])
       update_enemy(delta_time);
       update_particle_manager(delta_time);
       update_tracer_manager(&preferences, delta_time);
-      update_hud(window_width, window_height, debug_mode_enabled, &preferences);
+      update_hud(window_width, window_height, delta_time, debug_mode_enabled, &preferences);
       update_sound();
     }
 
@@ -366,6 +366,7 @@ int main(int argc, char* argv[])
         }
 
         // Draw view model
+        if (get_player_health() > 0.0f)
         {
           start_model_rendering();
           forward_pipeline_start_rendering(window_width, window_height);

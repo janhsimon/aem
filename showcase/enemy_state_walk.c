@@ -15,8 +15,8 @@
 #define ENEMY_MOVE_SPEED 0.1f
 #define ENEMY_TURN_RATE 5.0f
 
-#define ENEMY_MIN_AIM_DELAY 0.5f // In seconds
-#define ENEMY_MAX_AIM_DELAY 1.5f // In seconds
+#define ENEMY_MIN_AIM_DELAY 0.4f // In seconds
+#define ENEMY_MAX_AIM_DELAY 1.0f // In seconds
 
 #define ENEMY_WALK_ANIMATION_CHANNEL_INDEX 0
 

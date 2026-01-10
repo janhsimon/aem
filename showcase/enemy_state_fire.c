@@ -17,7 +17,6 @@
 #include <cglm/mat4.h>
 #include <cglm/vec3.h>
 
-#define ENEMY_AIM_DELAY 1.0f // In seconds
 #define ENEMY_TURN_RATE 25.0f
 
 #define ENEMY_FIRE_ANIMATION_CHANNEL_INDEX 2
@@ -26,10 +25,10 @@
 
 #define ENEMY_GUN_MUZZLE_JOINT_INDEX 23
 
-#define ENEMY_FIRE_MIN_BULLETS 2
+#define ENEMY_FIRE_MIN_BULLETS 4
 #define ENEMY_FIRE_MAX_BULLETS 10
 
-#define ENEMY_ACCURACY_HORIZONTAL 0.5f
+#define ENEMY_ACCURACY_HORIZONTAL 0.4f
 #define ENEMY_ACCURACY_VERTICAL 0.2f
 
 static const struct Preferences* preferences = NULL;
@@ -74,6 +73,13 @@ static void fire(mat4 enemy_transform)
 
   add_debug_line(start, end);
 
+  if (is_player_hit(start, end))
+  {
+    vec3 dir;
+    glm_vec3_sub(end, start, dir);
+    player_hurt(rand() % 32 + 9, dir);
+  }
+
   {
     vec3 to;
     glm_vec3_copy(end, to);
@@ -110,7 +116,7 @@ void enter_enemy_state_fire()
   aem_blend_to_animation_mixer_channel(mixer, ENEMY_FIRE_ANIMATION_CHANNEL_INDEX);
 
   has_fired_first_shot = false;
-  shots_to_fire = rand() % ((ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS) + ENEMY_FIRE_MIN_BULLETS);
+  shots_to_fire = (rand() % (ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS)) + ENEMY_FIRE_MIN_BULLETS;
 }
 
 void update_enemy_state_fire(mat4 enemy_transform,

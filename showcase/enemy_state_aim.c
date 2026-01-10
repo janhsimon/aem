@@ -10,8 +10,8 @@
 
 #include <cglm/vec3.h>
 
-#define ENEMY_MIN_AIM_DELAY 0.3f // In seconds
-#define ENEMY_MAX_AIM_DELAY 0.7f // In seconds
+#define ENEMY_MIN_AIM_DELAY 0.2f // In seconds
+#define ENEMY_MAX_AIM_DELAY 0.5f // In seconds
 #define ENEMY_TURN_RATE 25.0
 
 #define ENEMY_AIM_ANIMATION_CHANNEL_INDEX 1

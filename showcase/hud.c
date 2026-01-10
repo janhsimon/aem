@@ -2,12 +2,13 @@
 
 #include "camera.h"
 #include "debug_renderer.h"
+#include "hud_damage_indicator.h"
 #include "player.h"
 #include "preferences.h"
 #include "view_model.h"
 #include "window.h"
 
-#include <cglm/vec3.h>
+#include <cglm/util.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -56,6 +57,11 @@ bool load_hud()
     return false;
   }
 
+  if (!load_hud_damage_indicator())
+  {
+    return false;
+  }
+
   return true;
 }
 
@@ -84,7 +90,7 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
-void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, struct Preferences* preferences)
+void update_hud(uint32_t screen_width, uint32_t screen_height, float delta_time, bool debug_mode, struct Preferences* preferences)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -111,6 +117,7 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
   const float half_screen_height = (float)(screen_height / 2);
 
   // Crosshair
+  if (get_player_health() > 0.0f)
   {
     const float gap_size = 6.0f;
     const float half_gap_size = gap_size / 2.0f;
@@ -149,7 +156,7 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
                          (ImVec2){ 0.0f, 1.0f });
 
       char s[16];
-      sprintf(s, "+ 100   * 100");
+      sprintf(s, "+ %d   * 100", (int)get_player_health());
 
       bool open = true;
       igBegin("Health", &open, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
@@ -178,6 +185,8 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
 
     igPopFont();
   }
+
+  update_hud_damage_indicator(draw_list, half_screen_width, half_screen_height, delta_time);
 
   if (preferences->show_player_info)
   {
@@ -208,7 +217,7 @@ void update_hud(uint32_t screen_width, uint32_t screen_height, bool debug_mode, 
 
     {
       float yaw, pitch, roll;
-      camera_get_yaw_pitch(&yaw, &pitch, &roll);
+      camera_get_yaw_pitch_roll(&yaw, &pitch, &roll);
 
       char s[128];
       sprintf(s, "Player angle: %.2f deg (yaw), %.2f deg (pitch), %.2f deg (roll)", glm_deg(yaw), glm_deg(pitch),
@@ -357,6 +366,8 @@ void render_hud()
 
 void free_hud()
 {
+  free_hud_damage_indicator();
+
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   igDestroyContext(context);

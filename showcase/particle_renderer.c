@@ -1,43 +1,16 @@
 #include "particle_renderer.h"
 
 #include "particle_pipeline.h"
+#include "texture.h"
 
 #include <cglm/vec3.h>
 
 #include <glad/gl.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
 static GLuint vao, vbo;
 static GLuint instance_positions, instance_scales, instance_opacities;
 
 static GLuint smoke_texture, muzzleflash_texture, blood_texture;
-
-static bool load_texture(const char* filepath, GLuint* texture)
-{
-  int width, height, nrChannels;
-  unsigned char* data = stbi_load(filepath, &width, &height, &nrChannels, 4);
-  if (!data)
-  {
-    return false;
-  }
-
-  glGenTextures(1, texture);
-  glBindTexture(GL_TEXTURE_2D, *texture);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-  // Set basic texture parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  stbi_image_free(data);
-
-  return true;
-}
 
 bool load_particle_renderer()
 {
@@ -108,9 +81,10 @@ bool load_particle_renderer()
 
 void free_particle_renderer()
 {
-  glDeleteTextures(1, &blood_texture);
-  glDeleteTextures(1, &muzzleflash_texture);
-  glDeleteTextures(1, &smoke_texture);
+  free_texture(blood_texture);
+  free_texture(muzzleflash_texture);
+  free_texture(smoke_texture);
+
   glDeleteBuffers(1, &instance_opacities);
   glDeleteBuffers(1, &instance_scales);
   glDeleteBuffers(1, &instance_positions);
@@ -139,7 +113,7 @@ void render_particles(vec3* positions,
   if (additive)
   {
     glBlendFunc(GL_ONE, GL_ONE); // Additive blending without alpha, uses black instead
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending with alpha
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending with alpha
   }
   else
   {
