@@ -39,7 +39,7 @@ static GLuint joint_transform_buffer, joint_transform_texture;
 static mat4* joint_transforms;
 
 static struct AEMAnimationMixer* mixer;
-static struct AEMAnimationChannel *walk_channel, *reload_channel, *shoot_channel;
+static struct AEMAnimationChannel *idle_channel, *walk_channel, *reload_channel, *shoot_channel;
 
 static bool prev_moving = false;
 static bool is_reloading = false, is_shooting = false;
@@ -79,11 +79,13 @@ bool load_view_model(const struct AEMModel* model_)
 
   aem_set_animation_mixer_enabled(mixer, true);
 
-  // Idle
+  // Idle (used for equip animation initially)
   {
-    struct AEMAnimationChannel* channel = aem_get_animation_mixer_channel(mixer, 0);
-    channel->animation_index = 1;
-    channel->is_playing = true;
+    idle_channel = aem_get_animation_mixer_channel(mixer, 0);
+    idle_channel->animation_index = 0;
+    idle_channel->is_playing = true;
+    idle_channel->is_looping = false;
+    idle_channel->playback_speed = 1.5f;
   }
 
   // Walking
@@ -148,6 +150,19 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
       is_shooting = false;
       aem_set_animation_mixer_blend_speed(mixer, 10.0f);
       aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
+    }
+  }
+  // Equip animation
+  else if (idle_channel->animation_index == 0)
+  {
+    const float duration = aem_get_model_animation_duration(model, 0);
+    if (idle_channel->time >= duration)
+    {
+      // To idle
+      idle_channel->animation_index = 1;
+      idle_channel->time = 0.0f;
+      idle_channel->is_looping = true;
+      idle_channel->playback_speed = 1.0f;
     }
   }
   else
