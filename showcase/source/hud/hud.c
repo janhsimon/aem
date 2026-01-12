@@ -1,11 +1,11 @@
 #include "hud.h"
 
 #include "camera.h"
-#include "debug_renderer.h"
+#include "debug/debug_renderer.h"
 #include "hud_damage_indicator.h"
-#include "player.h"
+#include "player/player.h"
+#include "player/view_model.h"
 #include "preferences.h"
-#include "view_model.h"
 #include "window.h"
 
 #include <cglm/util.h>
@@ -90,7 +90,11 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
-void update_hud(uint32_t screen_width, uint32_t screen_height, float delta_time, bool debug_mode, struct Preferences* preferences)
+void update_hud(uint32_t screen_width,
+                uint32_t screen_height,
+                float delta_time,
+                bool debug_mode,
+                struct Preferences* preferences)
 {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();

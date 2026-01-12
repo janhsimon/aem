@@ -3,7 +3,7 @@
 #include "collision.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
-#include "player.h"
+#include "player/player.h"
 #include "preferences.h"
 #include "sound.h"
 

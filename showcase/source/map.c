@@ -1,7 +1,7 @@
 #include "map.h"
 
-#include "model_manager.h"
-#include "model_renderer.h"
+#include "model/model_manager.h"
+#include "model/model_renderer.h"
 
 #include <aem/model.h>
 

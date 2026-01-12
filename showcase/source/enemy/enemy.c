@@ -2,7 +2,7 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug_renderer.h"
+#include "debug/debug_renderer.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
 #include "enemy_state_die.h"

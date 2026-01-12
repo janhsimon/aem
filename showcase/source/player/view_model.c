@@ -2,13 +2,13 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug_renderer.h"
-#include "enemy.h"
+#include "debug/debug_renderer.h"
+#include "enemy/enemy.h"
 #include "input.h"
-#include "particle_manager.h"
+#include "particle/particle_manager.h"
 #include "preferences.h"
 #include "sound.h"
-#include "tracer_manager.h"
+#include "tracer/tracer_manager.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
@@ -123,6 +123,8 @@ bool load_view_model(const struct AEMModel* model_)
 
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
   glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, joint_transform_buffer);
+
+  play_ak47_equip_sound();
 
   return true;
 }

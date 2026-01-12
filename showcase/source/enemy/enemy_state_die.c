@@ -1,7 +1,7 @@
 #include "enemy_state_die.h"
 
 #include "enemy_state.h"
-#include "player.h"
+#include "player/player.h"
 
 #include <aem/animation_mixer.h>
 

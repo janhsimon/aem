@@ -1,99 +1,99 @@
 set(TARGET_NAME showcase)
 
 set(SOURCE
-  camera.c
-  camera.h
+  source/camera.c
+  source/camera.h
 
-  collision.c
-  collision.h
+  source/collision.c
+  source/collision.h
 
-  debug_pipeline.c
-  debug_pipeline.h
+  source/forward_pipeline.c
+  source/forward_pipeline.h
 
-  debug_renderer.c
-  debug_renderer.h
+  source/input.c
+  source/input.h
 
-  enemy.c
-  enemy.h
+  source/map.c
+  source/map.h
 
-  enemy_state.h
+  source/preferences.c
+  source/preferences.h
 
-  enemy_state_aim.c
-  enemy_state_aim.h
+  source/shadow_pipeline.c
+  source/shadow_pipeline.h
 
-  enemy_state_die.c
-  enemy_state_die.h
+  source/showcase.c
 
-  enemy_state_fire.c
-  enemy_state_fire.h
+  source/sound.c
+  source/sound.h
 
-  enemy_state_flinch.c
-  enemy_state_flinch.h
+  source/texture.c
+  source/texture.h
 
-  enemy_state_walk.c
-  enemy_state_walk.h
+  source/window.c
+  source/window.h
 
-  forward_pipeline.c
-  forward_pipeline.h
+  source/debug/debug_pipeline.c
+  source/debug/debug_pipeline.h
 
-  hud.c
-  hud.h
+  source/debug/debug_renderer.c
+  source/debug/debug_renderer.h
 
-  hud_damage_indicator.c
-  hud_damage_indicator.h
+  source/enemy/enemy.c
+  source/enemy/enemy.h
 
-  input.c
-  input.h
+  source/enemy/enemy_state.h
 
-  map.c
-  map.h
+  source/enemy/enemy_state_aim.c
+  source/enemy/enemy_state_aim.h
 
-  model_manager.c
-  model_manager.h
+  source/enemy/enemy_state_die.c
+  source/enemy/enemy_state_die.h
 
-  model_renderer.c
-  model_renderer.h
+  source/enemy/enemy_state_fire.c
+  source/enemy/enemy_state_fire.h
 
-  particle_manager.c
-  particle_manager.h
+  source/enemy/enemy_state_flinch.c
+  source/enemy/enemy_state_flinch.h
 
-  particle_pipeline.c
-  particle_pipeline.h
+  source/enemy/enemy_state_walk.c
+  source/enemy/enemy_state_walk.h
 
-  particle_renderer.c
-  particle_renderer.h
+  source/hud/hud.c
+  source/hud/hud.h
 
-  player.c
-  player.h
+  source/hud/hud_damage_indicator.c
+  source/hud/hud_damage_indicator.h
 
-  preferences.c
-  preferences.h
+  source/model/model_manager.c
+  source/model/model_manager.h
 
-  shadow_pipeline.c
-  shadow_pipeline.h
+  source/model/model_renderer.c
+  source/model/model_renderer.h
 
-  showcase.c
+  source/particle/particle_manager.c
+  source/particle/particle_manager.h
 
-  sound.c
-  sound.h
+  source/particle/particle_pipeline.c
+  source/particle/particle_pipeline.h
 
-  texture.c
-  texture.h
+  source/particle/particle_renderer.c
+  source/particle/particle_renderer.h
 
-  tracer_manager.c
-  tracer_manager.h
+  source/player/player.c
+  source/player/player.h
 
-  tracer_pipeline.c
-  tracer_pipeline.h
+  source/player/view_model.c
+  source/player/view_model.h
 
-  tracer_renderer.c
-  tracer_renderer.h
+  source/tracer/tracer_manager.c
+  source/tracer/tracer_manager.h
 
-  view_model.c
-  view_model.h
+  source/tracer/tracer_pipeline.c
+  source/tracer/tracer_pipeline.h
 
-  window.c
-  window.h
+  source/tracer/tracer_renderer.c
+  source/tracer/tracer_renderer.h
 
   shaders/particle.vert.glsl
   shaders/simple.vert.glsl
@@ -127,7 +127,7 @@ endif()
 
 add_executable(${TARGET_NAME})
 target_sources(${TARGET_NAME} PRIVATE ${SOURCE})
-target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_LIST_DIR}/source")
 target_link_libraries(${TARGET_NAME} PRIVATE ${DEPENDENCIES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SOURCE})
@@ -139,8 +139,8 @@ foreach (EXTRA_BIN ${EXTRA_BINS})
 endforeach()
 
 # Copy assets
-add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/fonts" "$<TARGET_FILE_DIR:${TARGET_NAME}>/fonts")
-add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/models" "$<TARGET_FILE_DIR:${TARGET_NAME}>/models")
-add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")
-add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "$<TARGET_FILE_DIR:${TARGET_NAME}>/sounds")
-add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/textures" "$<TARGET_FILE_DIR:${TARGET_NAME}>/textures")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_SOURCE_DIR}/${TARGET_NAME}/fonts" "$<TARGET_FILE_DIR:${TARGET_NAME}>/fonts")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_SOURCE_DIR}/${TARGET_NAME}/models" "$<TARGET_FILE_DIR:${TARGET_NAME}>/models")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_SOURCE_DIR}/${TARGET_NAME}/shaders" "$<TARGET_FILE_DIR:${TARGET_NAME}>/shaders")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_SOURCE_DIR}/${TARGET_NAME}/sounds" "$<TARGET_FILE_DIR:${TARGET_NAME}>/sounds")
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_directory "${CMAKE_SOURCE_DIR}/${TARGET_NAME}/textures" "$<TARGET_FILE_DIR:${TARGET_NAME}>/textures")

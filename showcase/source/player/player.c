@@ -2,7 +2,7 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "hud_damage_indicator.h"
+#include "hud/hud_damage_indicator.h"
 #include "input.h"
 #include "preferences.h"
 #include "sound.h"

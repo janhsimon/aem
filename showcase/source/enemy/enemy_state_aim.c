@@ -3,7 +3,7 @@
 #include "enemy_state.h"
 #include "enemy_state_fire.h"
 #include "enemy_state_walk.h"
-#include "player.h"
+#include "player/player.h"
 #include "preferences.h"
 
 #include <aem/animation_mixer.h>

@@ -1,24 +1,24 @@
 #include "camera.h"
-#include "debug_pipeline.h"
-#include "debug_renderer.h"
-#include "enemy.h"
+#include "debug/debug_pipeline.h"
+#include "debug/debug_renderer.h"
+#include "enemy/enemy.h"
 #include "forward_pipeline.h"
-#include "hud.h"
+#include "hud/hud.h"
 #include "input.h"
 #include "map.h"
-#include "model_manager.h"
-#include "model_renderer.h"
-#include "particle_manager.h"
-#include "particle_pipeline.h"
-#include "particle_renderer.h"
-#include "player.h"
+#include "model/model_manager.h"
+#include "model/model_renderer.h"
+#include "particle/particle_manager.h"
+#include "particle/particle_pipeline.h"
+#include "particle/particle_renderer.h"
+#include "player/player.h"
+#include "player/view_model.h"
 #include "preferences.h"
 #include "shadow_pipeline.h"
 #include "sound.h"
-#include "tracer_manager.h"
-#include "tracer_pipeline.h"
-#include "tracer_renderer.h"
-#include "view_model.h"
+#include "tracer/tracer_manager.h"
+#include "tracer/tracer_pipeline.h"
+#include "tracer/tracer_renderer.h"
 #include "window.h"
 
 #include <aem/model.h>
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
   {
     prepare_model_loading(3 + 1 + 1); // Max 3 map models, 1 enemy model, 1 view weapon model
 
-    if (!load_map(Map_Sponza /*Map_TestLevel*/))
+    if (!load_map(Map_Sponza))
     {
       printf("Failed to load map\n");
       return EXIT_FAILURE;
