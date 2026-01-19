@@ -18,3 +18,6 @@ float get_player_health();
 
 bool is_player_hit(vec3 from, vec3 to);
 void player_hurt(float damage, vec3 dir);
+
+float player_get_min_respawn_cooldown();
+float player_get_respawn_cooldown();

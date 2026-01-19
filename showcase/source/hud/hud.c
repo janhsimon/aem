@@ -17,13 +17,15 @@
 #define CIMGUI_USE_OPENGL3
 #include <cimgui/cimgui_impl.h>
 
+#include <string.h>
+
 #define FONT_SIZE 40.0f
 #define AMMO_OFFSET_X 25.0f
 #define AMMO_OFFSET_Y 10.0f
 
 static ImGuiContext* context = NULL;
 static ImGuiIO* io = NULL;
-static ImFont* font = NULL;
+static ImFont *font_lambda = NULL, *font_jura_med = NULL;
 
 static bool debug_window_focus = false;
 
@@ -37,13 +39,17 @@ bool load_hud()
 
   ImFontAtlas_AddFontDefault(io->Fonts, NULL); // Keep the built-in default font for debug text
 
-  // Load the UI font
+  // Load the fonts
+  font_lambda = ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/lambda.ttf", FONT_SIZE, NULL, NULL);
+  if (!font_lambda)
   {
-    font = ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/lambda.ttf", FONT_SIZE, NULL, NULL);
-    if (!font)
-    {
-      return false;
-    }
+    return false;
+  }
+
+  font_jura_med = ImFontAtlas_AddFontFromFileTTF(io->Fonts, "fonts/jura-medium.ttf", FONT_SIZE, NULL, NULL);
+  if (!font_jura_med)
+  {
+    return false;
   }
 
   const char* glsl_version = "#version 330 core";
@@ -145,7 +151,7 @@ void update_hud(uint32_t screen_width,
   // Health and ammo displays
   {
     const float ui_scale = screen_height / 720.0f;
-    igPushFont(font, FONT_SIZE * ui_scale);
+    igPushFont(font_lambda, FONT_SIZE * ui_scale);
 
     igPushStyleColor_Vec4(ImGuiCol_Text, foreground_color);
     igPushStyleColor_Vec4(ImGuiCol_WindowBg, background_color);
@@ -186,6 +192,50 @@ void update_hud(uint32_t screen_width,
 
     igPopStyleVar(3);
     igPopStyleColor(2);
+
+    igPopFont();
+  }
+
+  // Respawn text display
+  if (get_player_health() <= 0.0f)
+  {
+    const float ui_scale = screen_height / 720.0f;
+    igPushFont(font_jura_med, FONT_SIZE * ui_scale * 0.5f);
+
+    const ImU32 color = igGetColorU32_Vec4(foreground_color);
+    const ImU32 shadow_color = igGetColorU32_Vec4(background_color);
+
+    char text[32];
+    if (player_get_respawn_cooldown() >= player_get_min_respawn_cooldown())
+    {
+      sprintf(text, "Press <FIRE> to respawn...");
+    }
+    else
+    {
+      const float time_remaining = player_get_min_respawn_cooldown() - player_get_respawn_cooldown();
+      sprintf(text, "Respawn in %.1f seconds...", time_remaining);
+    }
+
+    ImVec2 size;
+    igCalcTextSize(&size, text, NULL, false, 0.0f);
+
+    // Shadow
+    ImDrawList_AddText_Vec2(draw_list,
+                            (ImVec2){ screen_width / 2 - size.x / 2 - 1, screen_height / 2 + screen_height / 4 },
+                            shadow_color, text, NULL);
+    ImDrawList_AddText_Vec2(draw_list,
+                            (ImVec2){ screen_width / 2 - size.x / 2 + 1, screen_height / 2 + screen_height / 4 },
+                            shadow_color, text, NULL);
+    ImDrawList_AddText_Vec2(draw_list,
+                            (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 - 1 },
+                            shadow_color, text, NULL);
+    ImDrawList_AddText_Vec2(draw_list,
+                            (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 + 1 },
+                            shadow_color, text, NULL);
+
+    // Actual text
+    ImDrawList_AddText_Vec2(draw_list, (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 },
+                            color, text, NULL);
 
     igPopFont();
   }

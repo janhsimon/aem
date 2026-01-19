@@ -19,6 +19,8 @@ uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
 
 uniform sampler2D shadow_tex;
 
+uniform float saturation;
+
 in VERT_TO_FRAG {
   vec3 position; // In world space
   vec3 normal;
@@ -270,5 +272,9 @@ void main()
     color = linear_to_srgb(color);
   // }
 
-    out_color = vec4(color, opacity);
+  float avg = (color.r + color.g + color.b) / 3.0;
+  vec3 grayscale = vec3(avg, avg, avg);
+  color.rgb = mix(grayscale, color.rgb, saturation);
+
+  out_color = vec4(color, opacity);
 }

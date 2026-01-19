@@ -4,8 +4,10 @@
 #include "collision.h"
 #include "hud/hud_damage_indicator.h"
 #include "input.h"
+#include "map.h"
 #include "preferences.h"
 #include "sound.h"
+#include "view_model.h"
 
 #include <cglm/mat3.h>
 #include <cglm/vec3.h>
@@ -21,12 +23,17 @@
 
 #define PLAYER_JUMP_STRENGTH 10.0f
 
+#define PLAYER_MIN_RESPAWN_COOLDOWN 3.0f // How long to wait after death until the player can respawn, in seconds
+
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
 static bool player_grounded = false;
 
 static float health = 100.0f;
 
 static float death_feet_height = 0.0f;
+
+static bool has_fire_key_been_up_since_death;
+static float respawn_cooldown = 0.0f;
 
 void player_update(const struct Preferences* preferences, bool mouse_look, float delta_time, bool* moving)
 {
@@ -57,6 +64,40 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       {
         roll = GLM_PI_2f;
         camera_set_yaw_pitch_roll(yaw, pitch, roll);
+      }
+    }
+
+    // Respawn
+    {
+      const bool fire_key_down = get_shoot_button_down();
+      if (!fire_key_down)
+      {
+        has_fire_key_been_up_since_death = true;
+      }
+
+      if (respawn_cooldown < PLAYER_MIN_RESPAWN_COOLDOWN)
+      {
+        respawn_cooldown += delta_time;
+        if (respawn_cooldown > PLAYER_MIN_RESPAWN_COOLDOWN)
+        {
+          respawn_cooldown = PLAYER_MIN_RESPAWN_COOLDOWN;
+        }
+      }
+
+      if (fire_key_down && respawn_cooldown >= PLAYER_MIN_RESPAWN_COOLDOWN && has_fire_key_been_up_since_death)
+      {
+        health = 100.0f;
+
+        vec3 spawn_position;
+        float spawn_yaw;
+        get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
+        spawn_position[1] += PLAYER_HEIGHT - PLAYER_RADIUS;
+        cam_set_position(spawn_position);
+        camera_set_yaw_pitch_roll(spawn_yaw, 0.0f, 0.0f);
+
+        view_model_respawn();
+
+        respawn_cooldown = 0.0f;
       }
     }
   }
@@ -310,15 +351,28 @@ void player_hurt(float damage, vec3 dir)
 
   if (health < 0)
   {
+    // Die
     health = 0;
 
     vec3 cam_pos;
     cam_get_position(cam_pos);
     death_feet_height = cam_pos[1] - PLAYER_HEIGHT + (PLAYER_RADIUS + 0.1f);
+
+    has_fire_key_been_up_since_death = false;
   }
 
   // Pain indicator
   {
     hud_damage_indicate(dir);
   }
+}
+
+float player_get_min_respawn_cooldown()
+{
+  return PLAYER_MIN_RESPAWN_COOLDOWN;
+}
+
+float player_get_respawn_cooldown()
+{
+  return respawn_cooldown;
 }

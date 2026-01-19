@@ -270,6 +270,12 @@ int main(int argc, char* argv[])
 
         forward_pipeline_use_ambient_color(preferences.ambient_color, preferences.ambient_intensity);
 
+        // Calculate saturation for effect when the player dies
+        {
+          // Fade from saturated to unsatured over the course of one second
+          const float saturation = 1.0f - glm_min(player_get_respawn_cooldown(), 1.0f);
+          forward_pipeline_use_saturation(saturation);
+        }
         mat4 view_matrix, proj_matrix, viewproj_matrix;
         {
           calc_view_matrix(view_matrix);

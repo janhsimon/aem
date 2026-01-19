@@ -15,3 +15,5 @@ void prepare_view_model_rendering(float aspect);
 void free_view_model();
 
 int view_model_get_ammo();
+
+void view_model_respawn();

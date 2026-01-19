@@ -10,7 +10,7 @@ static GLuint shader_program;
 static GLint world_uniform_location, viewproj_uniform_location, render_pass_uniform_location,
   light0_dir_uniform_location, light1_dir_uniform_location, camera_pos_uniform_location,
   light_viewproj_uniform_location, ambient_color_uniform_location, light0_color_uniform_location,
-  light1_color_uniform_location;
+  light1_color_uniform_location, saturation_uniform_location;
 
 bool load_forward_pipeline()
 {
@@ -49,6 +49,7 @@ bool load_forward_pipeline()
       ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
       light0_color_uniform_location = get_uniform_location(shader_program, "light_color0");
       light1_color_uniform_location = get_uniform_location(shader_program, "light_color1");
+      saturation_uniform_location = get_uniform_location(shader_program, "saturation");
 
       const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
       glUniform1i(joint_transform_tex_uniform_location, 0);
@@ -136,4 +137,9 @@ void forward_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intens
   a[3] = ambient_intensity;
 
   glUniform4fv(ambient_color_uniform_location, 1, a);
+}
+
+void forward_pipeline_use_saturation(float saturation)
+{
+  glUniform1f(saturation_uniform_location, saturation);
 }

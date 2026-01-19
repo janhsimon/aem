@@ -79,18 +79,11 @@ bool load_view_model(const struct AEMModel* model_)
 
   aem_set_animation_mixer_enabled(mixer, true);
 
-  // Idle (used for equip animation initially)
-  {
-    idle_channel = aem_get_animation_mixer_channel(mixer, 0);
-    idle_channel->animation_index = 0;
-    idle_channel->is_playing = true;
-    idle_channel->is_looping = false;
-    idle_channel->playback_speed = 1.5f;
-  }
+  idle_channel = aem_get_animation_mixer_channel(mixer, 0);
 
   // Walking
   {
-    walk_channel = aem_get_animation_mixer_channel(mixer, IDLE_ANIMATION_INDEX);
+    walk_channel = aem_get_animation_mixer_channel(mixer, 1);
     walk_channel->animation_index = WALK_ANIMATION_INDEX;
     walk_channel->is_playing = true;
     // walk_channel->playback_speed = 4.0f;
@@ -124,7 +117,7 @@ bool load_view_model(const struct AEMModel* model_)
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
   glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, joint_transform_buffer);
 
-  play_ak47_equip_sound();
+  view_model_respawn();
 
   return true;
 }
@@ -393,4 +386,19 @@ void free_view_model()
 int view_model_get_ammo()
 {
   return ammo;
+}
+
+void view_model_respawn()
+{
+  // Equip
+  idle_channel->animation_index = 0;
+  idle_channel->is_playing = true;
+  idle_channel->is_looping = false;
+  idle_channel->playback_speed = 1.5f;
+  idle_channel->time = 0.0f;
+  aem_cut_to_animation_mixer_channel(mixer, 0);
+
+  ammo = BULLET_COUNT;
+
+  play_ak47_equip_sound();
 }

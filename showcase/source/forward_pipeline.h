@@ -27,3 +27,4 @@ void forward_pipeline_use_lights(vec3 light_dir0,
                                  float light_intensity1,
                                  mat4 viewproj_matrix);
 void forward_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity);
+void forward_pipeline_use_saturation(float saturation);
