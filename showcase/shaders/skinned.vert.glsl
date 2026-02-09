@@ -1,7 +1,13 @@
 #version 330 core
 
+const int NORMALS_MODE_WORLD_SPACE = 0;
+const int NORMALS_MODE_VIEW_SPACE = 1;
+
+uniform int normals_mode;
+
 uniform mat4 world;
-uniform mat4 viewproj;
+uniform mat4 view;
+uniform mat4 proj;
 uniform samplerBuffer joint_transform_tex;
 
 layout(location = 0) in vec3 in_position;
@@ -43,11 +49,17 @@ void main()
 
   o.position = (world * joint_transform * vec4(in_position, 1)).xyz;
 
-  o.normal = normalize((world * joint_transform * vec4(in_normal, 0)).xyz);
+  if (normals_mode == NORMALS_MODE_WORLD_SPACE) {
+    o.normal = normalize((world * joint_transform * vec4(in_normal, 0)).xyz);
+  }
+  else {
+    o.normal = normalize((view * world * joint_transform * vec4(in_normal, 0)).xyz);
+
+  }
   o.tangent = normalize((world * joint_transform * vec4(in_tangent, 0)).xyz);
   o.bitangent = normalize((world * joint_transform * vec4(in_bitangent, 0)).xyz);
 
   o.uv = in_uv;
   
-  gl_Position = viewproj * vec4(o.position, 1);
+  gl_Position = proj * view * vec4(o.position, 1);
 }

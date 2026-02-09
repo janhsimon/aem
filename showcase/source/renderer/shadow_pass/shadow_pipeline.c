@@ -6,83 +6,46 @@
 
 #include <cglm/cam.h>
 #include <cglm/mat3.h>
-#include <cglm/mat4.h>
-#include <cglm/vec3.h>
 
 #include <glad/gl.h>
 
-#include <stdio.h>
-
-#define SHADOW_MAP_SIZE 4096 * 2
-
-static GLuint shadow_framebuffer, shadow_map;
-
 static GLuint shader_program;
-static GLint world_uniform_location, viewproj_uniform_location;
+static GLint world_uniform_location, view_uniform_location, proj_uniform_location;
 
-static mat4 light_viewproj;
+static mat4 light_view_matrix, light_proj_matrix;
 
 bool load_shadow_pipeline()
 {
-  glGenFramebuffers(1, &shadow_framebuffer);
-
-  // Create depth texture
-  glGenTextures(1, &shadow_map);
-  glBindTexture(GL_TEXTURE_2D, shadow_map);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT,
-               GL_FLOAT, NULL);
-
-  // Texture parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float[]){ 1.0, 1.0, 1.0, 1.0 });
-
-  // Attach it to framebuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, shadow_framebuffer);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_map, 0);
-
-  // We don’t need a color buffer
-  glDrawBuffer(GL_NONE);
-  glReadBuffer(GL_NONE);
-
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+  // Load shaders
+  GLuint vertex_shader, fragment_shader;
+  if (!load_shader("shaders/skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  // Load shaders
+  if (!load_shader("shaders/null.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
-    GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
-    {
-      return false;
-    }
+    return false;
+  }
 
-    if (!load_shader("shaders/null.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
-    {
-      return false;
-    }
+  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+  {
+    return false;
+  }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
-    {
-      return false;
-    }
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
 
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+  // Retrieve uniform locations and set constant uniforms
+  {
+    glUseProgram(shader_program);
 
-    // Retrieve uniform locations and set constant uniforms
-    {
-      glUseProgram(shader_program);
+    world_uniform_location = get_uniform_location(shader_program, "world");
+    view_uniform_location = get_uniform_location(shader_program, "view");
+    proj_uniform_location = get_uniform_location(shader_program, "proj");
 
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
-
-      const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
-      glUniform1i(joint_transform_tex_uniform_location, 0);
-    }
+    const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
+    glUniform1i(joint_transform_tex_uniform_location, 0);
   }
 
   return true;
@@ -91,15 +54,10 @@ bool load_shadow_pipeline()
 void free_shadow_pipeline()
 {
   glDeleteProgram(shader_program);
-
-  glDeleteTextures(1, &shadow_map);
-  glDeleteFramebuffers(1, &shadow_framebuffer);
 }
 
 void shadow_pipeline_start_rendering()
 {
-  glViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-  glBindFramebuffer(GL_FRAMEBUFFER, shadow_framebuffer);
   glUseProgram(shader_program);
 }
 
@@ -109,8 +67,8 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
 
   vec3 out_corners[8];
 
-  mat4 light_view;
   {
+
     vec3 cam_pos, cam_dir;
     cam_get_position(cam_pos);
 
@@ -219,11 +177,11 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
     glm_vec3_sub(center, tmp, light_pos);
 
     // 3) pick a stable up vector for the light (avoid degenerate cases)
-    glm_lookat(light_pos, center, GLM_YUP, light_view);
+    glm_lookat(light_pos, center, GLM_YUP, light_view_matrix);
+    glUniformMatrix4fv(view_uniform_location, 1, GL_FALSE, (float*)light_view_matrix);
   }
 
   // Build light proj matrix
-  mat4 light_proj;
   {
     vec3 min_ls, max_ls;
     for (int i = 0; i < 3; ++i)
@@ -235,7 +193,7 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
     for (int i = 0; i < 8; i++)
     {
       vec4 corner_ls;
-      glm_mat4_mulv3(light_view, out_corners[i], 1.0f, corner_ls);
+      glm_mat4_mulv3(light_view_matrix, out_corners[i], 1.0f, corner_ls);
 
       for (int j = 0; j < 3; ++j)
       {
@@ -244,11 +202,9 @@ void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov
       }
     }
 
-    glm_ortho(min_ls[0], max_ls[0], min_ls[1], max_ls[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 500.0f, light_proj);
+    glm_ortho(min_ls[0], max_ls[0], min_ls[1], max_ls[1], /* -maxLS[2]*/ 0.05f, /* -minLS[2]*/ 500.0f, light_proj_matrix);
+    glUniformMatrix4fv(proj_uniform_location, 1, GL_FALSE, (float*)light_proj_matrix);
   }
-
-  glm_mat4_mul(light_proj, light_view, light_viewproj);
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)light_viewproj);
 }
 
 void shadow_pipeline_use_world_matrix(mat4 world_matrix)
@@ -256,13 +212,7 @@ void shadow_pipeline_use_world_matrix(mat4 world_matrix)
   glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
 }
 
-void shadow_pipeline_bind_shadow_map(int slot)
-{
-  glActiveTexture(GL_TEXTURE0 + slot);
-  glBindTexture(GL_TEXTURE_2D, shadow_map);
-}
-
 void shadow_pipeline_get_light_viewproj(mat4 viewproj)
 {
-  glm_mat4_copy(light_viewproj, viewproj);
+  glm_mat4_mul(light_proj_matrix, light_view_matrix, viewproj);
 }

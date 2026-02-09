@@ -1,7 +1,7 @@
 #include "tracer_manager.h"
 
 #include "preferences.h"
-#include "tracer_renderer.h"
+#include "renderer/forward_pass/tracer_renderer.h"
 
 #include <cglm/ray.h>
 #include <cglm/vec3.h>

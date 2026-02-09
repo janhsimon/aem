@@ -2,13 +2,14 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug/debug_renderer.h"
+#include "debug_manager.h"
 #include "enemy/enemy.h"
 #include "input.h"
-#include "particle/particle_manager.h"
+#include "model_manager.h"
+#include "particle_manager.h"
 #include "preferences.h"
 #include "sound.h"
-#include "tracer/tracer_manager.h"
+#include "tracer_manager.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
@@ -33,7 +34,7 @@
 
 #define RECOIL_RECOVER 5.0f // How fast the gun recovers from recoil
 
-static const struct AEMModel* model = NULL;
+static struct ModelRenderInfo* render_info = NULL;
 
 static GLuint joint_transform_buffer, joint_transform_texture;
 static mat4* joint_transforms;
@@ -56,21 +57,25 @@ static void view_model_get_muzzleflash_world_matrix(struct Preferences* preferen
   view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
 
   mat4 temp;
-  aem_get_animation_mixer_joint_transform(model, mixer, 1054, (float*)temp);
+  aem_get_animation_mixer_joint_transform(render_info->model, mixer, 1054, (float*)temp);
 
   glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
 
   glm_translate(muzzleflash_world_matrix, (vec3){ -0.1f, -0.05f, -0.01f });
 }
 
-bool load_view_model(const struct AEMModel* model_)
+bool load_view_model()
 {
-  model = model_;
+  render_info = load_model("models/cz.aem");
+  if (!render_info)
+  {
+    return false;
+  }
 
   glGenBuffers(1, &joint_transform_buffer);
   glGenTextures(1, &joint_transform_texture);
 
-  const uint32_t joint_count = aem_get_model_joint_count(model);
+  const uint32_t joint_count = aem_get_model_joint_count(render_info->model);
 
   if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
   {
@@ -138,7 +143,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
 
   if (is_shooting)
   {
-    const float duration = aem_get_model_animation_duration(model, SHOOT_ANIMATION_INDEX);
+    const float duration = aem_get_model_animation_duration(render_info->model, SHOOT_ANIMATION_INDEX);
 
     if (shoot_channel->time >= duration - 0.165f)
     {
@@ -150,7 +155,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
   // Equip animation
   else if (idle_channel->animation_index == 0)
   {
-    const float duration = aem_get_model_animation_duration(model, 0);
+    const float duration = aem_get_model_animation_duration(render_info->model, 0);
     if (idle_channel->time >= duration)
     {
       // To idle
@@ -264,8 +269,8 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
     {
       if (is_reloading)
       {
-        const float duration = aem_get_model_animation_duration(model, RELOAD_ANIMATION_INDEX);
-        if (reload_channel->time >= aem_get_model_animation_duration(model, RELOAD_ANIMATION_INDEX) - 0.2f)
+        const float duration = aem_get_model_animation_duration(render_info->model, RELOAD_ANIMATION_INDEX);
+        if (reload_channel->time >= aem_get_model_animation_duration(render_info->model, RELOAD_ANIMATION_INDEX) - 0.2f)
         {
           is_reloading = false;
           aem_set_animation_mixer_blend_speed(mixer, 10.0f);
@@ -305,7 +310,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
     }
   }
 
-  aem_update_animation(model, mixer, delta_time, **joint_transforms);
+  aem_update_animation(render_info->model, mixer, delta_time, **joint_transforms);
 
   // Footstep sounds
   if (moving && !preferences->no_clip)
@@ -315,7 +320,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
     static float duration = 0.0f;
     if (duration <= 0.0f)
     {
-      duration = aem_get_model_animation_duration(model, WALK_ANIMATION_INDEX);
+      duration = aem_get_model_animation_duration(render_info->model, WALK_ANIMATION_INDEX);
     }
 
     float relative_time = (walk_channel->time - moving_start_time) / duration;
@@ -346,6 +351,11 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
   prev_moving = moving;
 }
 
+struct ModelRenderInfo* get_view_model_render_info()
+{
+  return render_info;
+}
+
 void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_matrix)
 {
   // Copy the camera position
@@ -363,10 +373,11 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
   glm_scale_uni(world_matrix, preferences->view_model_scale);
 }
 
-void prepare_view_model_rendering(float aspect)
+void prepare_view_model_rendering()
 {
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
+               GL_DYNAMIC_DRAW);
 
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);

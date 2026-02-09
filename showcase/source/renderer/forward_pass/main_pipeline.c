@@ -1,4 +1,4 @@
-#include "forward_pipeline.h"
+#include "main_pipeline.h"
 
 #include <util/util.h>
 
@@ -7,12 +7,12 @@
 #include <glad/gl.h>
 
 static GLuint shader_program;
-static GLint world_uniform_location, viewproj_uniform_location, render_pass_uniform_location,
+static GLint world_uniform_location, view_uniform_location, proj_uniform_location, render_pass_uniform_location,
   light0_dir_uniform_location, light1_dir_uniform_location, camera_pos_uniform_location,
   light_viewproj_uniform_location, ambient_color_uniform_location, light0_color_uniform_location,
-  light1_color_uniform_location, saturation_uniform_location;
+  light1_color_uniform_location;
 
-bool load_forward_pipeline()
+bool load_main_pipeline()
 {
   // Load shaders
   {
@@ -22,7 +22,7 @@ bool load_forward_pipeline()
       return false;
     }
 
-    if (!load_shader("shaders/forward.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!load_shader("shaders/main.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
@@ -40,7 +40,8 @@ bool load_forward_pipeline()
       glUseProgram(shader_program);
 
       world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      view_uniform_location = get_uniform_location(shader_program, "view");
+      proj_uniform_location = get_uniform_location(shader_program, "proj");
       render_pass_uniform_location = get_uniform_location(shader_program, "render_pass");
       light0_dir_uniform_location = get_uniform_location(shader_program, "light_dir0");
       light1_dir_uniform_location = get_uniform_location(shader_program, "light_dir1");
@@ -49,7 +50,9 @@ bool load_forward_pipeline()
       ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
       light0_color_uniform_location = get_uniform_location(shader_program, "light_color0");
       light1_color_uniform_location = get_uniform_location(shader_program, "light_color1");
-      saturation_uniform_location = get_uniform_location(shader_program, "saturation");
+
+      const GLint normals_mode_uniform_location = get_uniform_location(shader_program, "normals_mode");
+      glUniform1i(normals_mode_uniform_location, 0); // Produce world-space normals
 
       const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
       glUniform1i(joint_transform_tex_uniform_location, 0);
@@ -71,45 +74,48 @@ bool load_forward_pipeline()
   return true;
 }
 
-void free_forward_pipeline()
+void free_main_pipeline()
 {
   glDeleteProgram(shader_program);
 }
 
-void forward_pipeline_start_rendering(uint32_t screen_width, uint32_t screen_height)
+void main_pipeline_start_rendering()
 {
-  glViewport(0, 0, screen_width, screen_height);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glUseProgram(shader_program);
 }
 
-void forward_pipeline_use_world_matrix(mat4 world_matrix)
+void main_pipeline_use_world_matrix(mat4 world_matrix)
 {
   glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
 }
 
-void forward_pipeline_use_viewproj_matrix(mat4 viewproj_matrix)
+void main_pipeline_use_view_matrix(mat4 view_matrix)
 {
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+  glUniformMatrix4fv(view_uniform_location, 1, GL_FALSE, (float*)view_matrix);
 }
 
-void forward_pipeline_use_render_pass(enum ForwardPipelineRenderPass pass)
+void main_pipeline_use_proj_matrix(mat4 proj_matrix)
 {
-  glUniform1i(render_pass_uniform_location, (GLint)pass);
+  glUniformMatrix4fv(proj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
 }
 
-void forward_pipeline_use_camera(vec3 camera_pos)
+void main_pipeline_use_render_mode(enum ForwardPipelineRenderMode mode)
+{
+  glUniform1i(render_pass_uniform_location, (GLint)mode);
+}
+
+void main_pipeline_use_camera(vec3 camera_pos)
 {
   glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
 }
 
-void forward_pipeline_use_lights(vec3 light_dir0,
-                                 vec3 light_dir1,
-                                 vec3 light_color0,
-                                 vec3 light_color1,
-                                 float light_intensity0,
-                                 float light_intensity1,
-                                 mat4 viewproj_matrix)
+void main_pipeline_use_lights(vec3 light_dir0,
+                              vec3 light_dir1,
+                              vec3 light_color0,
+                              vec3 light_color1,
+                              float light_intensity0,
+                              float light_intensity1,
+                              mat4 viewproj_matrix)
 {
   vec4 l0;
   {
@@ -130,16 +136,11 @@ void forward_pipeline_use_lights(vec3 light_dir0,
   glUniformMatrix4fv(light_viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
 }
 
-void forward_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity)
+void main_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity)
 {
   vec4 a;
   glm_vec3_copy(ambient_color, a);
   a[3] = ambient_intensity;
 
   glUniform4fv(ambient_color_uniform_location, 1, a);
-}
-
-void forward_pipeline_use_saturation(float saturation)
-{
-  glUniform1f(saturation_uniform_location, saturation);
 }

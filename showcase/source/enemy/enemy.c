@@ -2,7 +2,7 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug/debug_renderer.h"
+#include "debug_manager.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
 #include "enemy_state_die.h"
@@ -10,6 +10,7 @@
 #include "enemy_state_flinch.h"
 #include "enemy_state_walk.h"
 #include "map.h"
+#include "model_manager.h"
 #include "preferences.h"
 #include "sound.h"
 
@@ -49,10 +50,11 @@
 #define ENEMY_HITBOX_LOWER_TORSO_TOP_Y 0.7f
 #define ENEMY_HITBOX_LOWER_TORSO_Z 0.0f
 
+static struct ModelRenderInfo* render_info = NULL;
+
 static enum EnemyState state;
 
 static const struct Preferences* preferences = NULL;
-static const struct AEMModel* model = NULL;
 
 static GLuint joint_transform_buffer, joint_transform_texture;
 static mat4* joint_transforms;
@@ -90,15 +92,20 @@ static void respawn_enemy(bool play_sound)
   enter_enemy_state_walk(true);
 }
 
-bool load_enemy(const struct Preferences* preferences_, const struct AEMModel* model_)
+bool load_enemy(const struct Preferences* preferences_)
 {
   preferences = preferences_;
-  model = model_;
+
+  render_info = load_model("models/soldier.aem");
+  if (!render_info)
+  {
+    return false;
+  }
 
   glGenBuffers(1, &joint_transform_buffer);
   glGenTextures(1, &joint_transform_texture);
 
-  const uint32_t joint_count = aem_get_model_joint_count(model);
+  const uint32_t joint_count = aem_get_model_joint_count(render_info->model);
 
   if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
   {
@@ -108,11 +115,11 @@ bool load_enemy(const struct Preferences* preferences_, const struct AEMModel* m
   aem_set_animation_mixer_enabled(mixer, true);
   aem_set_animation_mixer_blend_speed(mixer, 4.0f);
 
-  load_enemy_state_walk(preferences, &state, model, mixer);
+  load_enemy_state_walk(preferences, &state, render_info->model, mixer);
   load_enemy_state_aim(preferences, &state, mixer);
-  load_enemy_state_fire(preferences, &state, model, mixer);
-  load_enemy_state_flinch(&state, model, mixer);
-  load_enemy_state_die(&state, model, mixer);
+  load_enemy_state_fire(preferences, &state, render_info->model, mixer);
+  load_enemy_state_flinch(&state, render_info->model, mixer);
+  load_enemy_state_die(&state, render_info->model, mixer);
 
   // Enable skeletal animations
   {
@@ -141,7 +148,8 @@ static void update_hitboxes()
   // Head
   {
     mat4 hitbox_head_transform;
-    aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX, (float*)hitbox_head_transform);
+    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX,
+                                            (float*)hitbox_head_transform);
     glm_mat4_mul(transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_bottom);
@@ -154,7 +162,7 @@ static void update_hitboxes()
   // Upper torso
   {
     mat4 hitbox_upper_torso_transform;
-    aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
                                             (float*)hitbox_upper_torso_transform);
     glm_mat4_mul(transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
 
@@ -170,7 +178,7 @@ static void update_hitboxes()
   // Lower torso
   {
     mat4 hitbox_lower_torso_transform;
-    aem_get_animation_mixer_joint_transform(model, mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
                                             (float*)hitbox_lower_torso_transform);
     glm_mat4_mul(transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
 
@@ -307,18 +315,24 @@ void update_enemy(float delta_time)
   }
 
   // Always update animations and hitboxes
-  aem_update_animation(model, mixer, delta_time, **joint_transforms);
+  aem_update_animation(render_info->model, mixer, delta_time, **joint_transforms);
   update_hitboxes();
 }
 
 void prepare_enemy_rendering()
 {
   glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), joint_transforms, GL_DYNAMIC_DRAW);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
+               GL_DYNAMIC_DRAW);
 
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
+}
+
+struct ModelRenderInfo* get_enemy_render_info()
+{
+  return render_info;
 }
 
 void get_enemy_world_matrix(mat4 world_matrix)
@@ -336,12 +350,14 @@ void debug_draw_enemy()
     glm_vec3_copy(collider_bottom, collider_top);
     collider_top[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
 
-    debug_render_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP);
+    render_debug_manager_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP);
   }
 
-  debug_render_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
-  debug_render_capsule(hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS, GLM_XUP);
-  debug_render_capsule(hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS, GLM_XUP);
+  render_debug_manager_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
+  render_debug_manager_capsule(hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS,
+                               GLM_XUP);
+  render_debug_manager_capsule(hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS,
+                               GLM_XUP);
 }
 
 static bool check_hitbox(vec3 from, vec3 to, vec3 hitbox_bottom, vec3 hitbox_top, float hitbox_radius)

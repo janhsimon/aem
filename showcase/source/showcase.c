@@ -1,42 +1,28 @@
 #include "camera.h"
-#include "debug/debug_pipeline.h"
-#include "debug/debug_renderer.h"
 #include "enemy/enemy.h"
-#include "forward_pipeline.h"
 #include "hud/hud.h"
 #include "input.h"
 #include "map.h"
-#include "model/model_manager.h"
-#include "model/model_renderer.h"
-#include "particle/particle_manager.h"
-#include "particle/particle_pipeline.h"
-#include "particle/particle_renderer.h"
+#include "model_manager.h"
+#include "particle_manager.h"
 #include "player/player.h"
 #include "player/view_model.h"
 #include "preferences.h"
-#include "shadow_pipeline.h"
+#include "renderer/renderer.h"
 #include "sound.h"
-#include "tracer/tracer_manager.h"
-#include "tracer/tracer_pipeline.h"
-#include "tracer/tracer_renderer.h"
+#include "tracer_manager.h"
 #include "window.h"
 
-#include <aem/model.h>
-
-#include <cglm/affine.h>
-#include <cglm/mat4.h>
-#include <cglm/vec3.h>
+#include <cglm/util.h>
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define CAM_NEAR 0.01f
-#define CAM_FAR /*35.0f*/ 80.0f
+#define CAM_FAR 80.0f
 
-static struct ModelRenderInfo *soldier = NULL, *ak = NULL;
 static bool debug_mode_enabled = false;
 
 static struct Preferences preferences;
@@ -64,73 +50,33 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    soldier = load_model("models/soldier.aem");
-    if (!soldier)
+    if (!load_enemy(&preferences))
     {
-      printf("Failed to load enemy model\n");
+      printf("Failed to load enemy\n");
       return EXIT_FAILURE;
     }
 
-    ak = load_model("models/cz.aem");
-    if (!ak)
+    if (!load_view_model())
     {
       printf("Failed to load view model\n");
       return EXIT_FAILURE;
     }
 
-    load_model_renderer();
+    uint32_t window_width, window_height;
+    get_window_size(&window_width, &window_height);
+    if (!load_renderer(&preferences, window_width, window_height))
+    {
+      printf("Failed to load renderer\n");
+      return EXIT_FAILURE;
+    }
+
     finish_model_loading();
-    finish_loading_model_renderer();
-  }
-
-  load_debug_renderer();
-
-  if (!load_particle_renderer())
-  {
-    printf("Failed to load particle renderer\n");
-    return EXIT_FAILURE;
   }
 
   load_particle_manager();
   sync_particle_manager(&preferences);
 
-  if (!load_tracer_renderer())
-  {
-    printf("Failed to load tracer renderer\n");
-    return EXIT_FAILURE;
-  }
-
   load_tracer_manager();
-
-  if (!load_forward_pipeline())
-  {
-    printf("Failed to load forward pipeline\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!load_debug_pipeline())
-  {
-    printf("Failed to load debug pipeline\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!load_shadow_pipeline())
-  {
-    printf("Failed to load shadow pipeline\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!load_particle_pipeline())
-  {
-    printf("Failed to load particle pipeline\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!load_tracer_pipeline())
-  {
-    printf("Failed to load tracer pipeline\n");
-    return EXIT_FAILURE;
-  }
 
   if (!load_sound())
   {
@@ -138,18 +84,6 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
   set_master_volume(preferences.master_volume);
-
-  if (!load_view_model(ak->model))
-  {
-    printf("Failed to load view model\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!load_enemy(&preferences, soldier->model))
-  {
-    printf("Failed to load enemy\n");
-    return EXIT_FAILURE;
-  }
 
   if (!load_hud())
   {
@@ -230,187 +164,7 @@ int main(int argc, char* argv[])
 
     // Render
     {
-      const float window_aspect = (float)window_width / (float)window_height;
-
-      start_model_rendering();
-
-      // Shadow render
-      {
-        shadow_pipeline_start_rendering();
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        shadow_pipeline_calc_light_viewproj(preferences.light_dir0, window_aspect, preferences.camera_fov, CAM_NEAR,
-                                            CAM_FAR);
-
-        // Map
-        {
-          shadow_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
-          draw_map_opaque();
-        }
-
-        // Enemy
-        {
-          mat4 enemy_world_matrix;
-          get_enemy_world_matrix(enemy_world_matrix);
-          shadow_pipeline_use_world_matrix(enemy_world_matrix);
-
-          prepare_enemy_rendering();
-          render_model(soldier, ModelRenderMode_AllMeshes);
-        }
-      }
-
-      // Forward render
-      {
-        forward_pipeline_start_rendering(window_width, window_height);
-        glClearColor(preferences.camera_background_color[0], preferences.camera_background_color[1],
-                     preferences.camera_background_color[2], 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shadow_pipeline_bind_shadow_map(4);
-
-        forward_pipeline_use_ambient_color(preferences.ambient_color, preferences.ambient_intensity);
-
-        // Calculate saturation for effect when the player dies
-        {
-          // Fade from saturated to unsatured over the course of one second
-          const float saturation = 1.0f - glm_min(player_get_respawn_cooldown(), 1.0f);
-          forward_pipeline_use_saturation(saturation);
-        }
-        mat4 view_matrix, proj_matrix, viewproj_matrix;
-        {
-          calc_view_matrix(view_matrix);
-          calc_proj_matrix(window_aspect, preferences.camera_fov, CAM_NEAR, CAM_FAR, proj_matrix);
-          glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
-        }
-
-        forward_pipeline_use_viewproj_matrix(viewproj_matrix);
-
-        // Set the latest camera position
-        {
-          vec3 camera_position;
-          cam_get_position(camera_position);
-          forward_pipeline_use_camera(camera_position);
-        }
-
-        {
-          mat4 light_viewproj;
-          shadow_pipeline_get_light_viewproj(light_viewproj);
-          forward_pipeline_use_lights(preferences.light_dir0, preferences.light_dir1, preferences.light_color0,
-                                      preferences.light_color1, preferences.light_intensity0,
-                                      preferences.light_intensity1, light_viewproj);
-        }
-
-        // Map
-        {
-          forward_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
-
-          forward_pipeline_use_render_pass(ForwardPipelineRenderPass_Opaque);
-          draw_map_opaque();
-
-          forward_pipeline_use_render_pass(ForwardPipelineRenderPass_Transparent);
-
-          // Don't write depth (but do still test it) and enable blending
-          glDepthMask(GL_FALSE);
-          glEnable(GL_BLEND);
-          glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Alpha blending
-
-          draw_map_transparent();
-
-          // Reset OpenGL state
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-        }
-
-        // Enemy
-        {
-          forward_pipeline_use_render_pass(ForwardPipelineRenderPass_Opaque);
-
-          mat4 enemy_world_matrix;
-          get_enemy_world_matrix(enemy_world_matrix);
-          forward_pipeline_use_world_matrix(enemy_world_matrix);
-
-          prepare_enemy_rendering();
-          render_model(soldier, ModelRenderMode_AllMeshes);
-        }
-
-        // Tracers
-        {
-          start_tracer_rendering();
-          tracer_pipeline_start_rendering();
-
-          tracer_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
-          tracer_pipeline_use_color(preferences.tracer_color);
-          tracer_pipeline_use_thickness(preferences.tracer_thickness);
-
-          // Don't write depth (but do still test it) and enable blending
-          glDepthMask(GL_FALSE);
-          glEnable(GL_BLEND);
-
-          render_tracer_manager();
-
-          // Reset OpenGL state
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-        }
-
-        // Particles
-        {
-          start_particle_rendering();
-          particle_pipeline_start_rendering();
-
-          particle_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
-
-          // Don't write depth (but do still test it) and enable blending
-          glDepthMask(GL_FALSE);
-          glEnable(GL_BLEND);
-
-          render_particle_manager();
-
-          // Reset OpenGL state
-          glDepthMask(GL_TRUE);
-          glDisable(GL_BLEND);
-        }
-
-        // Draw view model
-        if (get_player_health() > 0.0f)
-        {
-          start_model_rendering();
-          forward_pipeline_start_rendering(window_width, window_height);
-
-          glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
-
-          {
-            mat4 view_model_world_matrix;
-            view_model_get_world_matrix(&preferences, view_model_world_matrix);
-            forward_pipeline_use_world_matrix(view_model_world_matrix);
-          }
-
-          {
-            mat4 view_model_viewproj_matrix;
-            calc_proj_matrix(window_aspect, preferences.view_model_fov, CAM_NEAR, CAM_FAR, view_model_viewproj_matrix);
-            glm_mat4_mul(view_model_viewproj_matrix, view_matrix, view_model_viewproj_matrix);
-            forward_pipeline_use_viewproj_matrix(view_model_viewproj_matrix);
-          }
-
-          prepare_view_model_rendering(window_aspect);
-          render_model(ak, ModelRenderMode_AllMeshes);
-        }
-
-        // Debug draw
-        if (preferences.debug_render)
-        {
-          glDisable(GL_DEPTH_TEST);
-
-          start_debug_rendering();
-          debug_pipeline_start_rendering();
-          debug_pipeline_use_viewproj_matrix(viewproj_matrix);
-          debug_render_lines(GLM_YUP);
-          debug_draw_enemy();
-
-          glEnable(GL_DEPTH_TEST);
-        }
-      }
-
+      render_frame(window_width, window_height, CAM_NEAR, CAM_FAR);
       render_hud();
 
       refresh_window();
@@ -430,17 +184,9 @@ int main(int argc, char* argv[])
     free_hud();
     free_enemy();
     free_view_model();
-    free_tracer_pipeline();
-    free_particle_pipeline();
-    free_shadow_pipeline();
-    free_debug_pipeline();
-    free_forward_pipeline();
     free_map();
     free_models();
-    free_tracer_renderer();
-    free_particle_renderer();
-    free_debug_renderer();
-    free_model_renderer();
+    free_renderer();
     free_window();
 
     free_sound(); // This needs to be at the end for some reason

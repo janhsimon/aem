@@ -1,7 +1,7 @@
 #include "hud.h"
 
 #include "camera.h"
-#include "debug/debug_renderer.h"
+#include "debug_manager.h"
 #include "hud_damage_indicator.h"
 #include "player/player.h"
 #include "player/view_model.h"

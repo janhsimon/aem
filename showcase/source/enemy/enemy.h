@@ -4,12 +4,14 @@
 
 #include <stdbool.h>
 
-struct AEMModel;
+struct ModelRenderInfo;
 
-bool load_enemy(const struct Preferences* preferences, const struct AEMModel* model);
+bool load_enemy(const struct Preferences* preferences);
 
 void update_enemy(float delta_time);
 void prepare_enemy_rendering();
+
+struct ModelRenderInfo* get_enemy_render_info();
 
 void get_enemy_world_matrix(mat4 world_matrix);
 

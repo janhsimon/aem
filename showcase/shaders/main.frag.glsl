@@ -19,11 +19,9 @@ uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
 
 uniform sampler2D shadow_tex;
 
-uniform float saturation;
-
 in VERT_TO_FRAG {
   vec3 position; // In world space
-  vec3 normal;
+  vec3 normal; // In world space
   vec3 tangent;
   vec3 bitangent;
   vec2 uv;
@@ -73,73 +71,8 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 linear_to_srgb(vec3 c) {
-    const float gamma = 2.2; // 2.4
-
-    vec3 a = 12.92 * c;
-    vec3 b = 1.055 * pow(c, vec3(1.0 / gamma)) - 0.055;
-    return mix(a, b, step(0.0031308, c));
-
-    //return pow(c, vec3(1.0 / gamma));
-}
-
-vec3 reinhard(vec3 color)
-{
-    return color / (color + vec3(1.0));
-}
-
-vec3 reinhard_x(vec3 color, float wp)
-{
-    return (color * (1.0 + (color / (wp * wp)))) / (1.0 + color);
-}
-
-vec3 aces(vec3 x)
-{
-    const float a = 2.51;
-    const float b = 0.03;
-    const float c = 2.43;
-    const float d = 0.59;
-    const float e = 0.14;
-    
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
-vec3 filmic(vec3 x)
-{
-    const float A = 0.15;
-    const float B = 0.50;
-    const float C = 0.10;
-    const float D = 0.20;
-    const float E = 0.02;
-    const float F = 0.30;
-
-    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-}
-
 void main()
 {
-  // Hack in shadow mapping here for now
-  //float shadow = 1.0;
-  //{
-  //  vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
-  //
-  //  // Perspective divide
-  //  vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-  //  projCoords = projCoords * 0.5 + 0.5; // to [0,1]
-  //
-  //  // Don’t shadow outside map
-  //  if (projCoords.z <= 1.0) {
-  //    // Read depth from shadow map
-  //    float closestDepth = texture(shadow_tex, projCoords.xy).r;
-  //    float currentDepth = projCoords.z;
-  //    
-  //    // Basic shadow test (add bias to reduce acne)
-  //    const float bias = 0.0025;
-  //    shadow = currentDepth - bias > closestDepth ? 0.0 : 1.0;
-  //  }
-  //}
-
-
   float shadow = 1.0;
 
   vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
@@ -170,14 +103,14 @@ void main()
     shadow = visibility / 25.0;
   }
 
-  vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space
+  vec4 base_color_sample = /*vec4(0.4, 0.4, 0.6, texture(base_color_tex, i.uv).a);*/ texture(base_color_tex, i.uv); // All channels are already in linear space
 
   float opacity = base_color_sample.a;
   if (render_pass == RENDER_PASS_OPAQUE) {
     if (opacity < 1.0 - 0.01) {
       discard;  
     }
-    else {
+    else { 
       opacity = 1.0;
     }
   }
@@ -253,28 +186,5 @@ void main()
   vec3 emissive = emissive_intensity * albedo;
 
   vec3 color = ambient + Lo0 * shadow + Lo1 + emissive;
-
-  // Postprocessing
-  // if (postprocessing_mode != POSTPROCESSING_MODE_LINEAR) {
-  //   if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD) {
-  //       color = reinhard(color);
-  //   }
-  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_REINHARD_X) {
-  //       color = reinhard_x(color, 1.0);
-  //   }
-  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_ACES) {
-         color = aces(color);
-  //   }
-  //   else if (postprocessing_mode == POSTPROCESSING_MODE_SRGB_FILMIC) {
-  //       color = filmic(color);
-  //   }
-
-    color = linear_to_srgb(color);
-  // }
-
-  float avg = (color.r + color.g + color.b) / 3.0;
-  vec3 grayscale = vec3(avg, avg, avg);
-  color.rgb = mix(grayscale, color.rgb, saturation);
-
   out_color = vec4(color, opacity);
 }

@@ -2,14 +2,14 @@
 
 #include "camera.h"
 #include "collision.h"
-#include "debug/debug_renderer.h"
+#include "debug_manager.h"
 #include "enemy_state.h"
 #include "enemy_state_walk.h"
-#include "particle/particle_manager.h"
+#include "particle_manager.h"
 #include "player/player.h"
 #include "preferences.h"
 #include "sound.h"
-#include "tracer/tracer_manager.h"
+#include "tracer_manager.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>

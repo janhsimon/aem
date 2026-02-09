@@ -7,8 +7,8 @@ set(SOURCE
   source/collision.c
   source/collision.h
 
-  source/forward_pipeline.c
-  source/forward_pipeline.h
+  source/debug_manager.c
+  source/debug_manager.h
 
   source/input.c
   source/input.h
@@ -16,11 +16,14 @@ set(SOURCE
   source/map.c
   source/map.h
 
+  source/model_manager.c
+  source/model_manager.h
+
+  source/particle_manager.c
+  source/particle_manager.h
+
   source/preferences.c
   source/preferences.h
-
-  source/shadow_pipeline.c
-  source/shadow_pipeline.h
 
   source/showcase.c
 
@@ -30,14 +33,11 @@ set(SOURCE
   source/texture.c
   source/texture.h
 
+  source/tracer_manager.c
+  source/tracer_manager.h
+
   source/window.c
   source/window.h
-
-  source/debug/debug_pipeline.c
-  source/debug/debug_pipeline.h
-
-  source/debug/debug_renderer.c
-  source/debug/debug_renderer.h
 
   source/enemy/enemy.c
   source/enemy/enemy.h
@@ -65,45 +65,66 @@ set(SOURCE
   source/hud/hud_damage_indicator.c
   source/hud/hud_damage_indicator.h
 
-  source/model/model_manager.c
-  source/model/model_manager.h
-
-  source/model/model_renderer.c
-  source/model/model_renderer.h
-
-  source/particle/particle_manager.c
-  source/particle/particle_manager.h
-
-  source/particle/particle_pipeline.c
-  source/particle/particle_pipeline.h
-
-  source/particle/particle_renderer.c
-  source/particle/particle_renderer.h
-
   source/player/player.c
   source/player/player.h
 
   source/player/view_model.c
   source/player/view_model.h
 
-  source/tracer/tracer_manager.c
-  source/tracer/tracer_manager.h
+  source/renderer/model_renderer.c
+  source/renderer/model_renderer.h
 
-  source/tracer/tracer_pipeline.c
-  source/tracer/tracer_pipeline.h
+  source/renderer/renderer.c
+  source/renderer/renderer.h
 
-  source/tracer/tracer_renderer.c
-  source/tracer/tracer_renderer.h
+  source/renderer/forward_pass/depth_pipeline.c
+  source/renderer/forward_pass/depth_pipeline.h
 
+  source/renderer/forward_pass/forward_framebuffer.c
+  source/renderer/forward_pass/forward_framebuffer.h
+
+  source/renderer/forward_pass/main_pipeline.c
+  source/renderer/forward_pass/main_pipeline.h
+
+  source/renderer/forward_pass/particle_pipeline.c
+  source/renderer/forward_pass/particle_pipeline.h
+
+  source/renderer/forward_pass/particle_renderer.c
+  source/renderer/forward_pass/particle_renderer.h
+
+  source/renderer/forward_pass/tracer_pipeline.c
+  source/renderer/forward_pass/tracer_pipeline.h
+
+  source/renderer/forward_pass/tracer_renderer.c
+  source/renderer/forward_pass/tracer_renderer.h
+
+  source/renderer/post_pass/debug_pipeline.c
+  source/renderer/post_pass/debug_pipeline.h
+
+  source/renderer/post_pass/debug_renderer.c
+  source/renderer/post_pass/debug_renderer.h
+
+  source/renderer/post_pass/tonemap_pipeline.c
+  source/renderer/post_pass/tonemap_pipeline.h
+
+  source/renderer/shadow_pass/shadow_framebuffer.c
+  source/renderer/shadow_pass/shadow_framebuffer.h
+
+  source/renderer/shadow_pass/shadow_pipeline.c
+  source/renderer/shadow_pass/shadow_pipeline.h
+
+  shaders/fullscreen.vert.glsl
   shaders/particle.vert.glsl
   shaders/simple.vert.glsl
   shaders/skinned.vert.glsl
   shaders/tracer.vert.glsl
 
   shaders/debug.frag.glsl
-  shaders/forward.frag.glsl
+  shaders/depth.frag.glsl
+  shaders/main.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
+  shaders/tonemap.frag.glsl
   shaders/tracer.frag.glsl
 )
 

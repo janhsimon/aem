@@ -9,21 +9,61 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static uint32_t model_index, model_count;
-static uint32_t total_vertex_count, total_index_count, total_texture_count;
-
-static struct ModelRenderInfo* model_render_infos = NULL;
-
 static GLuint vertex_array;
+static GLuint vertex_buffer, index_buffer;
+static uint32_t total_vertex_count = 0, total_index_count = 0, total_texture_count = 0;
+static GLuint* texture_handles = NULL;
 
-void load_model_renderer(unsigned int vertex_buffer, unsigned int index_buffer)
+void model_renderer_add_model(struct ModelRenderInfo* model_render_info)
+{
+  model_render_info->first_vertex = total_vertex_count;
+  model_render_info->first_index = total_index_count;
+  model_render_info->first_texture = total_texture_count;
+
+  total_vertex_count += model_render_info->vertex_count;
+  total_index_count += model_render_info->index_count;
+  total_texture_count += model_render_info->texture_count;
+}
+
+void load_model_renderer()
 {
   glGenVertexArrays(1, &vertex_array);
   glBindVertexArray(vertex_array);
-}
 
-void finish_loading_model_renderer()
-{
+  glGenBuffers(1, &vertex_buffer);
+  glGenBuffers(1, &index_buffer);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
+  glBufferData(GL_ARRAY_BUFFER, total_vertex_count * AEM_VERTEX_SIZE, NULL, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, total_index_count * AEM_INDEX_SIZE, NULL, GL_STATIC_DRAW);
+
+  const uint32_t texture_handles_size = sizeof(*texture_handles) * total_texture_count;
+  texture_handles = malloc(texture_handles_size);
+  assert(texture_handles);
+
+  for (uint32_t model_index = 0; model_index < model_manager_get_model_count(); ++model_index)
+  {
+    const struct ModelRenderInfo* mri = model_manager_get_model_render_info(model_index);
+    const struct AEMModel* model = mri->model;
+    if (!model)
+    {
+      continue;
+    }
+
+    glBufferSubData(GL_ARRAY_BUFFER, mri->first_vertex * AEM_VERTEX_SIZE, mri->vertex_count * AEM_VERTEX_SIZE,
+                    aem_get_model_vertex_buffer(model));
+
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, mri->first_index * AEM_INDEX_SIZE, mri->index_count * AEM_INDEX_SIZE,
+                    aem_get_model_index_buffer(model));
+
+    for (uint32_t texture_index = 0; texture_index < mri->texture_count; ++texture_index)
+    {
+      texture_handles[mri->first_texture + texture_index] = load_model_texture(model, &mri->textures[texture_index]);
+    }
+  }
+
   // Apply the vertex definition
   {
     // Position
@@ -58,6 +98,12 @@ void finish_loading_model_renderer()
 
 void free_model_renderer()
 {
+  glDeleteTextures(total_texture_count, texture_handles);
+  free(texture_handles);
+
+  glDeleteBuffers(1, &vertex_buffer);
+  glDeleteBuffers(1, &index_buffer);
+
   glDeleteVertexArrays(1, &vertex_array);
 }
 
@@ -70,13 +116,16 @@ void render_model(struct ModelRenderInfo* mri, enum ModelRenderMode mode)
 {
   const struct AEMModel* model = mri->model;
 
-  const GLuint* texture_handles = model_manager_get_texture_handles();
-
   const uint32_t mesh_count = aem_get_model_mesh_count(model);
   for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)
   {
     const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
     const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
+
+    if (mode == ModelRenderMode_OpaqueMeshesOnly && material->type != AEMMaterialType_Opaque)
+    {
+      continue;
+    }
 
     if (mode == ModelRenderMode_TransparentMeshesOnly && material->type != AEMMaterialType_Transparent)
     {

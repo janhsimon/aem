@@ -1,0 +1,403 @@
+#include "renderer.h"
+
+#include "camera.h"
+#include "debug_manager.h"
+#include "enemy/enemy.h"
+#include "forward_pass/depth_pipeline.h"
+#include "forward_pass/forward_framebuffer.h"
+#include "forward_pass/main_pipeline.h"
+#include "forward_pass/particle_pipeline.h"
+#include "forward_pass/particle_renderer.h"
+#include "forward_pass/tracer_pipeline.h"
+#include "forward_pass/tracer_renderer.h"
+#include "map.h"
+#include "model_renderer.h"
+#include "particle_manager.h"
+#include "player/player.h"
+#include "player/view_model.h"
+#include "post_pass/debug_pipeline.h"
+#include "post_pass/debug_renderer.h"
+#include "post_pass/tonemap_pipeline.h"
+#include "preferences.h"
+#include "shadow_pass/shadow_framebuffer.h"
+#include "shadow_pass/shadow_pipeline.h"
+#include "tracer_manager.h"
+
+#include <cglm/mat4.h>
+
+#include <glad/gl.h>
+
+static struct Preferences* preferences;
+static uint32_t screen_width, screen_height;
+static float screen_aspect;
+static float camera_near, camera_far;
+static mat4 view_matrix, proj_matrix;
+
+bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint32_t screen_height)
+{
+  preferences = preferences_;
+
+  load_model_renderer();
+
+  // Shadow pass
+  {
+    if (!load_shadow_framebuffer())
+    {
+      return false;
+    }
+
+    if (!load_shadow_pipeline())
+    {
+      return false;
+    }
+  }
+
+  // Forward pass
+  {
+    if (!load_forward_framebuffer(screen_width, screen_height))
+    {
+      return false;
+    }
+
+    if (!load_depth_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_main_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_particle_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_tracer_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_particle_renderer())
+    {
+      return false;
+    }
+
+    if (!load_tracer_renderer())
+    {
+      return false;
+    }
+  }
+
+  // Post pass
+  {
+    if (!load_tonemap_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_debug_pipeline())
+    {
+      return false;
+    }
+
+    load_debug_renderer();
+  }
+
+  return true;
+}
+
+void free_renderer()
+{
+  free_model_renderer();
+
+  // Shadow pass
+  free_shadow_framebuffer();
+  free_shadow_pipeline();
+
+  // Forward pass
+  free_forward_framebuffer();
+  free_depth_pipeline();
+  free_main_pipeline();
+  free_particle_pipeline();
+  free_tracer_pipeline();
+  free_particle_renderer();
+  free_tracer_renderer();
+
+  // Post pass
+  free_tonemap_pipeline();
+  free_debug_pipeline();
+  free_debug_renderer();
+}
+
+static void render_shadow_pass()
+{
+  start_model_rendering();
+
+  shadow_framebuffer_start_rendering();
+  shadow_pipeline_start_rendering();
+  glClear(GL_DEPTH_BUFFER_BIT);
+
+  shadow_pipeline_calc_light_viewproj(preferences->light_dir0, screen_aspect, preferences->camera_fov, camera_near,
+                                      camera_far);
+
+  // Map
+  {
+    shadow_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+
+    const uint32_t part_count = get_map_part_count();
+    for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+    {
+      render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+    }
+  }
+
+  // Enemy
+  {
+    mat4 enemy_world_matrix;
+    get_enemy_world_matrix(enemy_world_matrix);
+    shadow_pipeline_use_world_matrix(enemy_world_matrix);
+
+    prepare_enemy_rendering();
+    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+  }
+}
+
+static void render_depth_pass()
+{
+  start_model_rendering();
+
+  forward_framebuffer_start_rendering(screen_width, screen_height,
+                                      ForwardFramebufferAttachment_ViewspaceNormalsTexture);
+
+  depth_pipeline_start_rendering();
+
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  depth_pipeline_use_view_matrix(view_matrix);
+  depth_pipeline_use_proj_matrix(proj_matrix);
+
+  // Map
+  {
+    depth_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+    // draw_map_opaque();
+
+    const uint32_t part_count = get_map_part_count();
+    for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+    {
+      render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+    }
+  }
+
+  // Enemy
+  {
+    mat4 enemy_world_matrix;
+    get_enemy_world_matrix(enemy_world_matrix);
+    depth_pipeline_use_world_matrix(enemy_world_matrix);
+
+    prepare_enemy_rendering();
+    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+  }
+}
+
+static void render_forward_pass()
+{
+  start_model_rendering();
+
+  forward_framebuffer_start_rendering(screen_width, screen_height, ForwardFramebufferAttachment_HDRTexture);
+
+  main_pipeline_start_rendering();
+  glClearColor(preferences->camera_background_color[0], preferences->camera_background_color[1],
+               preferences->camera_background_color[2], 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // Depth already exists, don't overwrite, use early-Z optimization
+  glDepthMask(GL_FALSE);  // Don't write depth values
+  glDepthFunc(GL_LEQUAL); // Early Z TODO: Should be EQUAL once skinning issue is solved
+
+  shadow_framebuffer_bind_shadow_texture(4);
+
+  main_pipeline_use_ambient_color(preferences->ambient_color, preferences->ambient_intensity);
+  main_pipeline_use_view_matrix(view_matrix);
+  main_pipeline_use_proj_matrix(proj_matrix);
+
+  // Set the latest camera position
+  {
+    vec3 camera_position;
+    cam_get_position(camera_position);
+    main_pipeline_use_camera(camera_position);
+  }
+
+  {
+    mat4 light_viewproj;
+    shadow_pipeline_get_light_viewproj(light_viewproj);
+    main_pipeline_use_lights(preferences->light_dir0, preferences->light_dir1, preferences->light_color0,
+                             preferences->light_color1, preferences->light_intensity0, preferences->light_intensity1,
+                             light_viewproj);
+  }
+
+  // Main pipeline (opaque)
+  {
+    main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
+
+    // Map
+    {
+      main_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+
+      const uint32_t part_count = get_map_part_count();
+      for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+      {
+        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+      }
+    }
+
+    // Enemy
+    {
+      mat4 enemy_world_matrix;
+      get_enemy_world_matrix(enemy_world_matrix);
+      main_pipeline_use_world_matrix(enemy_world_matrix);
+
+      prepare_enemy_rendering();
+      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+    }
+  }
+
+  glDepthFunc(GL_LEQUAL);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  // Main pipeline (transparent)
+  {
+    main_pipeline_use_render_mode(MainPipelineRenderMode_Transparent);
+
+    // Map
+    {
+      main_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+
+      const uint32_t part_count = get_map_part_count();
+      for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+      {
+        render_model(get_map_part(map_part_index), ModelRenderMode_TransparentMeshesOnly);
+      }
+    }
+  }
+
+  // Tracer pipeline
+  {
+    start_tracer_rendering();
+    tracer_pipeline_start_rendering();
+
+    tracer_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
+    tracer_pipeline_use_color(preferences->tracer_color);
+    tracer_pipeline_use_thickness(preferences->tracer_thickness);
+
+    render_tracer_manager();
+  }
+
+  // Particle pipeline
+  {
+    start_particle_rendering();
+    particle_pipeline_start_rendering();
+
+    particle_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
+
+    render_particle_manager();
+  }
+
+  glDepthFunc(GL_LESS);
+  glDisable(GL_BLEND);
+  glDepthMask(GL_TRUE);
+
+  // Main pipeline (view model)
+  if (get_player_health() > 0.0f)
+  {
+    start_model_rendering();
+    main_pipeline_start_rendering();
+
+    glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
+
+    {
+      mat4 view_model_world_matrix;
+      view_model_get_world_matrix(preferences, view_model_world_matrix);
+      main_pipeline_use_world_matrix(view_model_world_matrix);
+    }
+
+    {
+      mat4 view_model_proj_matrix;
+      calc_proj_matrix(screen_aspect, preferences->view_model_fov, camera_near, camera_far, view_model_proj_matrix);
+      main_pipeline_use_proj_matrix(view_model_proj_matrix);
+    }
+
+    main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
+
+    prepare_view_model_rendering();
+    render_model(get_view_model_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+  }
+}
+
+static void render_post_pass()
+{
+  // Tonemap pipeline
+  {
+    // Render full-screen quad with forward HDR texture to screen
+    glViewport(0, 0, screen_width, screen_height);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    tonemap_pipeline_start_rendering();
+
+    forward_framebuffer_bind_hdr_texture(0);
+
+    // Calculate saturation for effect when the player dies
+    {
+      const float saturation = 1.0f - glm_min(player_get_respawn_cooldown(), 1.0f); // One sec fade
+      tonemap_pipeline_use_saturation(saturation);
+    }
+
+    glDisable(GL_DEPTH_TEST);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glEnable(GL_DEPTH_TEST);
+  }
+
+  // Debug pipeline
+  if (preferences->debug_render)
+  {
+    const float aspect = (float)screen_width / (float)screen_height;
+
+    mat4 viewproj_matrix;
+    glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
+
+    glDisable(GL_DEPTH_TEST);
+
+    debug_pipeline_start_rendering();
+    debug_pipeline_use_viewproj_matrix(viewproj_matrix);
+
+    // Lines
+    render_debug_manager_lines(GLM_YUP);
+
+    // Capsules
+    start_debug_rendering_capsules();
+    debug_draw_enemy();
+
+    glEnable(GL_DEPTH_TEST);
+  }
+}
+
+void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_near_, float camera_far_)
+{
+  screen_width = screen_width_;
+  screen_height = screen_height_;
+  camera_near = camera_near_;
+  camera_far = camera_far_;
+
+  screen_aspect = (float)screen_width / (float)screen_height;
+
+  calc_view_matrix(view_matrix);
+  calc_proj_matrix(screen_aspect, preferences->camera_fov, camera_near, camera_far, proj_matrix);
+
+  render_shadow_pass();
+  render_depth_pass();
+  render_forward_pass();
+  render_post_pass();
+}

@@ -1,7 +1,6 @@
 #include "map.h"
 
-#include "model/model_manager.h"
-#include "model/model_renderer.h"
+#include "model_manager.h"
 
 #include <aem/model.h>
 
@@ -89,32 +88,20 @@ bool load_map(enum Map map)
   return true;
 }
 
-void draw_map_opaque()
-{
-  for (uint32_t i = 0; i < MAP_PART_COUNT; ++i)
-  {
-    if (map_parts[i])
-    {
-      render_model(map_parts[i], ModelRenderMode_AllMeshes);
-    }
-  }
-}
-
-void draw_map_transparent()
-{
-  for (uint32_t i = 0; i < MAP_PART_COUNT; ++i)
-  {
-    if (map_parts[i])
-    {
-      render_model(map_parts[i], ModelRenderMode_TransparentMeshesOnly);
-    }
-  }
-}
-
 void free_map()
 {
   free(collision_vertices);
   free(collision_indices);
+}
+
+uint32_t get_map_part_count()
+{
+  return MAP_PART_COUNT; // TODO: Make this work for other counts (like for the test level with 1 part)
+}
+
+struct ModelRenderInfo* get_map_part(uint32_t index)
+{
+  return map_parts[index];
 }
 
 uint32_t get_map_collision_index_count()

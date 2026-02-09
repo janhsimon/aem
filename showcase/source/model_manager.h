@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-typedef AEMModel;
-typedef AEMTexture;
+struct AEMModel;
+struct AEMTexture;
 
 struct ModelRenderInfo
 {
@@ -18,6 +18,8 @@ void prepare_model_loading(uint32_t model_count);
 struct ModelRenderInfo* load_model(const char* filename);
 void finish_model_loading();
 
-unsigned int* model_manager_get_texture_handles();
+uint32_t model_manager_get_model_count();
+
+struct ModelRenderInfo* model_manager_get_model_render_info(uint32_t index);
 
 void free_models();

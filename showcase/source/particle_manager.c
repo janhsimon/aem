@@ -1,7 +1,7 @@
 #include "particle_manager.h"
 
-#include "particle_renderer.h"
 #include "preferences.h"
+#include "renderer/forward_pass/particle_renderer.h"
 
 #include <cglm/vec3.h>
 
