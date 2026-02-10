@@ -76,8 +76,6 @@ int main(int argc, char* argv[])
   load_particle_manager();
   sync_particle_manager(&preferences);
 
-  load_tracer_manager();
-
   if (!load_sound())
   {
     printf("Failed to load sound engine\n");
@@ -132,7 +130,6 @@ int main(int argc, char* argv[])
       if (get_debug_key_up())
       {
         debug_mode_enabled = !debug_mode_enabled;
-
         set_cursor_mode(!debug_mode_enabled);
       }
 

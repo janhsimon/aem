@@ -11,7 +11,7 @@
 
 #define MAX_TRACERS 10000
 
-uint32_t tracer_count; // How many tracers are alive
+uint32_t tracer_count = 0; // How many tracers are alive
 
 // CPU data
 vec3 tracer_sources[MAX_TRACERS];
@@ -21,11 +21,6 @@ float tracer_progresses[MAX_TRACERS];
 // GPU data
 vec3 tracer_starts[MAX_TRACERS];
 vec3 tracer_ends[MAX_TRACERS];
-
-void load_tracer_manager()
-{
-  tracer_count = 0;
-}
 
 void spawn_tracer(const struct Preferences* preferences, vec3 source, vec3 destination)
 {

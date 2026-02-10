@@ -340,11 +340,6 @@ void player_hurt(float damage, vec3 dir)
     return;
   }
 
-  // TODO: Could also do this with a separate 'layer' of camera 'recoil' to do custom easing back to the origin
-  const float visual_damage = min(damage, 25.0f);
-  camera_add_recoil_yaw_pitch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
-                              ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
-
   play_player_hurt_sound();
 
   health -= damage;
@@ -359,6 +354,13 @@ void player_hurt(float damage, vec3 dir)
     death_feet_height = cam_pos[1] - PLAYER_HEIGHT + (PLAYER_RADIUS + 0.1f);
 
     has_fire_key_been_up_since_death = false;
+  }
+  else
+  {
+    // TODO: Could also do this with a separate 'layer' of camera 'recoil' to do custom easing back to the origin
+    const float visual_damage = min(damage, 25.0f);
+    camera_add_recoil_yaw_pitch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
+                                ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
   }
 
   // Pain indicator
