@@ -48,7 +48,10 @@ void finish_model_loading()
   for (uint32_t model_index_ = 0; model_index_ < model_count; ++model_index_)
   {
     const struct ModelRenderInfo* mri = &model_render_infos[model_index_];
-    aem_finish_loading_model(mri->model);
+    if (mri->model)
+    {
+      aem_finish_loading_model(mri->model);
+    }
   }
 }
 

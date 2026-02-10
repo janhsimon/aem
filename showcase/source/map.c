@@ -8,11 +8,12 @@
 
 #include <string.h>
 
-#define MAP_PART_COUNT 3
+#define MAP_MAX_PART_COUNT 3
 
 static enum Map current_map;
 
-static struct ModelRenderInfo* map_parts[MAP_PART_COUNT];
+static struct ModelRenderInfo* map_parts[MAP_MAX_PART_COUNT];
+static uint32_t map_part_count;
 
 static uint32_t collision_index_count = 0;
 
@@ -29,10 +30,13 @@ bool load_map(enum Map map)
   if (map == Map_TestLevel)
   {
     map_parts[0] = load_model("models/test_level.aem");
+
     if (!map_parts[0])
     {
       return false;
     }
+
+    map_part_count = 1;
   }
   else if (map == Map_Sponza)
   {
@@ -44,6 +48,8 @@ bool load_map(enum Map map)
     {
       return false;
     }
+
+    map_part_count = 3;
   }
 
   {
@@ -96,7 +102,7 @@ void free_map()
 
 uint32_t get_map_part_count()
 {
-  return MAP_PART_COUNT; // TODO: Make this work for other counts (like for the test level with 1 part)
+  return map_part_count;
 }
 
 struct ModelRenderInfo* get_map_part(uint32_t index)
