@@ -5,8 +5,6 @@
 
 bool load_hud();
 
-bool has_debug_window_focus();
-
 void update_hud(uint32_t screen_width,
                 uint32_t screen_height,
                 float delta_time,

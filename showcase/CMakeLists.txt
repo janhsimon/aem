@@ -59,11 +59,17 @@ set(SOURCE
   source/enemy/enemy_state_walk.c
   source/enemy/enemy_state_walk.h
 
+  source/hud/debug_window.c
+  source/hud/debug_window.h
+
   source/hud/hud.c
   source/hud/hud.h
 
   source/hud/hud_damage_indicator.c
   source/hud/hud_damage_indicator.h
+
+  source/hud/texture_window.c
+  source/hud/texture_window.h
 
   source/player/player.c
   source/player/player.h
@@ -113,6 +119,12 @@ set(SOURCE
   source/renderer/shadow_pass/shadow_pipeline.c
   source/renderer/shadow_pass/shadow_pipeline.h
 
+  source/renderer/ssao_pass/ssao_framebuffer.c
+  source/renderer/ssao_pass/ssao_framebuffer.h
+  
+  source/renderer/ssao_pass/ssao_pipeline.c
+  source/renderer/ssao_pass/ssao_pipeline.h
+
   shaders/fullscreen.vert.glsl
   shaders/particle.vert.glsl
   shaders/simple.vert.glsl
@@ -124,6 +136,7 @@ set(SOURCE
   shaders/main.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
+  shaders/ssao.frag.glsl
   shaders/tonemap.frag.glsl
   shaders/tracer.frag.glsl
 )

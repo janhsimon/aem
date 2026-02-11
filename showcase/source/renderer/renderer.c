@@ -21,6 +21,8 @@
 #include "preferences.h"
 #include "shadow_pass/shadow_framebuffer.h"
 #include "shadow_pass/shadow_pipeline.h"
+#include "ssao_pass/ssao_framebuffer.h"
+#include "ssao_pass/ssao_pipeline.h"
 #include "tracer_manager.h"
 
 #include <cglm/mat4.h>
@@ -47,6 +49,19 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint
     }
 
     if (!load_shadow_pipeline())
+    {
+      return false;
+    }
+  }
+
+  // SSAO pass
+  {
+    if (!load_ssao_framebuffer(screen_width, screen_height))
+    {
+      return false;
+    }
+
+    if (!load_ssao_pipeline())
     {
       return false;
     }
@@ -116,6 +131,10 @@ void free_renderer()
   free_shadow_framebuffer();
   free_shadow_pipeline();
 
+  // SSAO pass
+  free_ssao_framebuffer();
+  free_ssao_pipeline();
+
   // Forward pass
   free_forward_framebuffer();
   free_depth_pipeline();
@@ -139,7 +158,7 @@ static void render_shadow_pass()
   shadow_pipeline_start_rendering();
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  shadow_pipeline_calc_light_viewproj(preferences->light_dir0, screen_aspect, preferences->camera_fov, camera_near,
+  shadow_pipeline_calc_light_viewproj(preferences->light_dir, screen_aspect, preferences->camera_fov, camera_near,
                                       camera_far);
 
   // Map
@@ -164,7 +183,7 @@ static void render_shadow_pass()
   }
 }
 
-static void render_depth_pass()
+static void render_forward_pass_early()
 {
   start_model_rendering();
 
@@ -182,7 +201,6 @@ static void render_depth_pass()
   // Map
   {
     depth_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
-    // draw_map_opaque();
 
     const uint32_t part_count = get_map_part_count();
     for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
@@ -202,7 +220,41 @@ static void render_depth_pass()
   }
 }
 
-static void render_forward_pass()
+static void render_ssao_pass()
+{
+  ssao_framebuffer_start_rendering(screen_width, screen_height);
+  ssao_pipeline_start_rendering();
+
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // Bind view-space normals texture
+  {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_view_space_normals_texture());
+  }
+
+  // Bind depth texture
+  {
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+  }
+
+  ssao_pipeline_use_proj_matrix(proj_matrix);
+  ssao_pipeline_use_parameters(preferences->ssao_radius, preferences->ssao_bias, preferences->ssao_strength);
+
+  // Screen size
+  {
+    vec2 screen_size = { screen_width, screen_height };
+    ssao_pipeline_use_screen_size(screen_size);
+  }
+
+  glDisable(GL_DEPTH_TEST);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+  glEnable(GL_DEPTH_TEST);
+}
+
+static void render_forward_pass_late()
 {
   start_model_rendering();
 
@@ -214,14 +266,30 @@ static void render_forward_pass()
   glClear(GL_COLOR_BUFFER_BIT);
 
   // Depth already exists, don't overwrite, use early-Z optimization
-  glDepthMask(GL_FALSE);  // Don't write depth values
-  glDepthFunc(GL_LEQUAL); // Early Z TODO: Should be EQUAL once skinning issue is solved
+  glDepthMask(GL_FALSE); // Don't write depth values
+  glDepthFunc(GL_EQUAL); // Early-Z
 
-  shadow_framebuffer_bind_shadow_texture(4);
+  // Bind shadow map
+  {
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_texture());
+  }
+
+  // Bind SSAO texture
+  {
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture());
+  }
 
   main_pipeline_use_ambient_color(preferences->ambient_color, preferences->ambient_intensity);
   main_pipeline_use_view_matrix(view_matrix);
   main_pipeline_use_proj_matrix(proj_matrix);
+
+  // Screen size
+  {
+    vec2 screen_size = { screen_width, screen_height };
+    main_pipeline_use_screen_size(screen_size);
+  }
 
   // Set the latest camera position
   {
@@ -233,9 +301,8 @@ static void render_forward_pass()
   {
     mat4 light_viewproj;
     shadow_pipeline_get_light_viewproj(light_viewproj);
-    main_pipeline_use_lights(preferences->light_dir0, preferences->light_dir1, preferences->light_color0,
-                             preferences->light_color1, preferences->light_intensity0, preferences->light_intensity1,
-                             light_viewproj);
+    main_pipeline_use_light(preferences->light_dir, preferences->light_color, preferences->light_intensity,
+                            light_viewproj);
   }
 
   // Main pipeline (opaque)
@@ -347,7 +414,11 @@ static void render_post_pass()
 
     tonemap_pipeline_start_rendering();
 
-    forward_framebuffer_bind_hdr_texture(0);
+    // Bind HDR texture
+    {
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_hdr_texture());
+    }
 
     // Calculate saturation for effect when the player dies
     {
@@ -396,8 +467,9 @@ void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_
   calc_view_matrix(view_matrix);
   calc_proj_matrix(screen_aspect, preferences->camera_fov, camera_near, camera_far, proj_matrix);
 
-  render_shadow_pass();
-  render_depth_pass();
-  render_forward_pass();
-  render_post_pass();
+  render_shadow_pass();        // Shadow mapping
+  render_forward_pass_early(); // Early-Z and view-space normals
+  render_ssao_pass();          // SSAO
+  render_forward_pass_late();  // HDR shading
+  render_post_pass();          // Tonemap
 }

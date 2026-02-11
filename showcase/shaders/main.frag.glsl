@@ -6,10 +6,8 @@ const int RENDER_PASS_TRANSPARENT = 1;
 uniform int render_pass;
 
 uniform vec4 ambient_color; // In linear space, RGB, A: intensity
-uniform vec4 light_color0; // In linear space, RGB, A: intensity
-uniform vec3 light_dir0;
-uniform vec4 light_color1; // In linear space, RGB, A: intensity
-uniform vec3 light_dir1;
+uniform vec4 light_color; // In linear space, RGB, A: intensity
+uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
 uniform mat4 light_viewproj;
 
@@ -18,6 +16,9 @@ uniform sampler2D normal_tex;
 uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
 
 uniform sampler2D shadow_tex;
+uniform sampler2D ssao_tex;
+
+uniform vec2 screen_size;
 
 in VERT_TO_FRAG {
   vec3 position; // In world space
@@ -138,11 +139,11 @@ void main()
   vec3 albedo = mix(vec3(0.04), base_color_sample.rgb, 0.98); // Physically incorrect but avoids full black and preserves color tint
   vec3 F0 = mix(vec3(0.04), albedo, metalness);
 
-  vec3 Lo0;
+  vec3 Lo;
   {
-      vec3 L = normalize(-light_dir0); // light_dir points from the light
+      vec3 L = normalize(-light_dir); // light_dir points from the light
       vec3 H = normalize(V + L);
-      vec3 radiance = light_color0.rgb * light_color0.a;
+      vec3 radiance = light_color.rgb * light_color.a;
 
       // Cook-Torrance BRDF
       float NDF = DistributionGGX(N, H, roughness);
@@ -156,35 +157,19 @@ void main()
       float NdotL = max(dot(N, L), 0.0);
       vec3 diffuse = (kD * albedo / PI);
       vec3 specular = (NDF * G * F) / max(4.0 * max(dot(N, V), 0.0) * NdotL, 0.001);
-      Lo0 = (diffuse + specular) * radiance * NdotL;
+      Lo = (diffuse + specular) * radiance * NdotL;
   }
 
-  vec3 Lo1;
-  {
-      vec3 L = normalize(-light_dir1); // light_dir points from the light
-      vec3 H = normalize(V + L);
-      vec3 radiance = light_color1.rgb * light_color1.a;
-
-      // Cook-Torrance BRDF
-      float NDF = DistributionGGX(N, H, roughness);
-      float G   = GeometrySmith(N, V, L, roughness);
-      vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);
-      F = mix(F, F0, roughness); // reduces specular on rough surfaces
-
-      vec3 kS = F;
-      vec3 kD = (1.0 - kS) * (1.0 - metalness);
-
-      float NdotL = max(dot(N, L), 0.0);
-      vec3 diffuse = (kD * albedo / PI);
-      vec3 specular = (NDF * G * F) / max(4.0 * max(dot(N, V), 0.0) * NdotL, 0.001);
-      Lo1 = (diffuse + specular) * radiance * NdotL;
-  } 
-  
   // Basic ambient (ideally use IBL or ambient probe here)
-  vec3 ambient = ambient_color.rgb * ambient_color.a * albedo * occlusion;
+  vec2 screen_uv = gl_FragCoord.xy / screen_size;
+  float ssao = texture(ssao_tex, screen_uv).r;
+
+  float ao = min(occlusion, ssao);
+
+  vec3 ambient = ambient_color.rgb * ambient_color.a * albedo * ao;
 
   vec3 emissive = emissive_intensity * albedo;
 
-  vec3 color = ambient + Lo0 * shadow + Lo1 + emissive;
+  vec3 color = ambient + Lo * shadow + emissive;
   out_color = vec4(color, opacity);
 }

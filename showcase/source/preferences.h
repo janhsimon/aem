@@ -39,12 +39,9 @@ struct Preferences
   float camera_fov;
 
   // Lighting
-  vec3 light_dir0;
-  vec3 light_color0;
-  float light_intensity0;
-  vec3 light_dir1;
-  vec3 light_color1;
-  float light_intensity1;
+  vec3 light_dir;
+  vec3 light_color;
+  float light_intensity;
   vec3 ambient_color;
   float ambient_intensity;
 
@@ -67,6 +64,11 @@ struct Preferences
   float tracer_thickness;
   float tracer_length;
   float tracer_speed; // In units per second
+
+  // Ambient occlusion
+  float ssao_radius;
+  float ssao_bias;
+  float ssao_strength;
 };
 
 void load_default_preferences(struct Preferences* preferences);

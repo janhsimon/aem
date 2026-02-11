@@ -16,4 +16,6 @@ void forward_framebuffer_start_rendering(uint32_t screen_width,
                                          uint32_t screen_height,
                                          enum ForwardFramebufferAttachment attachment);
 
-void forward_framebuffer_bind_hdr_texture(int slot);
+unsigned int forward_framebuffer_get_hdr_texture();
+unsigned int forward_framebuffer_get_view_space_normals_texture();
+unsigned int forward_framebuffer_get_depth_texture();

@@ -19,11 +19,6 @@ void main_pipeline_use_view_matrix(mat4 view_matrix);
 void main_pipeline_use_proj_matrix(mat4 proj_matrix);
 void main_pipeline_use_render_mode(enum MainPipelineRenderMode mode);
 void main_pipeline_use_camera(vec3 camera_pos);
-void main_pipeline_use_lights(vec3 light_dir0,
-                                 vec3 light_dir1,
-                                 vec3 light_color0,
-                                 vec3 light_color1,
-                                 float light_intensity0,
-                                 float light_intensity1,
-                                 mat4 viewproj_matrix);
+void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity, mat4 viewproj_matrix);
 void main_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity);
+void main_pipeline_use_screen_size(vec2 size);

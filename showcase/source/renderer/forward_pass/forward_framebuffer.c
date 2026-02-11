@@ -70,8 +70,17 @@ void forward_framebuffer_start_rendering(uint32_t screen_width,
   glDrawBuffer(GL_COLOR_ATTACHMENT0 + attachment);
 }
 
-void forward_framebuffer_bind_hdr_texture(int slot)
+unsigned int forward_framebuffer_get_hdr_texture()
 {
-  glActiveTexture(GL_TEXTURE0 + slot);
-  glBindTexture(GL_TEXTURE_2D, hdr_texture);
+  return hdr_texture;
+}
+
+unsigned int forward_framebuffer_get_view_space_normals_texture()
+{
+  return view_space_normals_texture;
+}
+
+unsigned int forward_framebuffer_get_depth_texture()
+{
+  return depth_texture;
 }

@@ -53,8 +53,7 @@ void shadow_framebuffer_start_rendering()
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_framebuffer);
 }
 
-void shadow_framebuffer_bind_shadow_texture(int slot)
+unsigned int shadow_framebuffer_get_shadow_texture()
 {
-  glActiveTexture(GL_TEXTURE0 + slot);
-  glBindTexture(GL_TEXTURE_2D, shadow_texture);
+  return shadow_texture;
 }
