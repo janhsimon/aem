@@ -11,7 +11,6 @@
 static GLuint shader_program;
 static GLint proj_uniform_location, inv_proj_uniform_location, radius_uniform_location, bias_uniform_location,
   strength_uniform_location, screen_size_uniform_location;
-static GLuint noise_texture;
 
 static inline float randf(float min, float max)
 {
@@ -58,11 +57,7 @@ bool load_ssao_pipeline()
       const GLint depth_tex_uniform_location = get_uniform_location(shader_program, "depth_tex");
       glUniform1i(depth_tex_uniform_location, 1);
 
-      const GLint noise_tex_uniform_location = get_uniform_location(shader_program, "noise_tex");
-      glUniform1i(noise_tex_uniform_location, 2);
-
       {
-        vec3 random_samples[64];
         for (int i = 0; i < 64; ++i)
         {
           vec3 sample = { randf(-1.0f, 1.0f), randf(-1.0f, 1.0f), randf(0.0f, 1.0f) };
@@ -79,37 +74,12 @@ bool load_ssao_pipeline()
           const float lerp_scale = glm_lerp(0.1f, 1.0f, t * t);
           glm_vec3_scale(sample, lerp_scale, sample);
 
-          glm_vec3_copy(sample, random_samples[i]);
-        }
+          glm_vec3_copy(sample, sample);
 
-        for (int i = 0; i < 64; ++i)
-        {
           char name[32];
           sprintf(name, "random_samples[%d]", i);
-          glUniform3fv(glGetUniformLocation(shader_program, name), 1, random_samples[i]);
+          glUniform3fv(glGetUniformLocation(shader_program, name), 1, sample);
         }
-      }
-
-      {
-        vec3 noise[16];
-        for (int i = 0; i < 16; ++i)
-        {
-          vec3 n = { randf(-1.0f, 1.0f), randf(-1.0f, 1.0f), 0.0f };
-
-          glm_vec3_normalize(n);
-          glm_vec3_copy(n, noise[i]);
-        }
-
-        glGenTextures(1, &noise_texture);
-        glBindTexture(GL_TEXTURE_2D, noise_texture);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, noise);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
       }
     }
   }
@@ -119,16 +89,12 @@ bool load_ssao_pipeline()
 
 void free_ssao_pipeline()
 {
-  glDeleteTextures(1, &noise_texture);
   glDeleteProgram(shader_program);
 }
 
 void ssao_pipeline_start_rendering()
 {
   glUseProgram(shader_program);
-
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D, noise_texture);
 }
 
 void ssao_pipeline_use_proj_matrix(mat4 proj_matrix)

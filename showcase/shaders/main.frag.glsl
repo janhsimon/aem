@@ -161,7 +161,7 @@ void main()
   }
 
   // Basic ambient (ideally use IBL or ambient probe here)
-  vec2 screen_uv = gl_FragCoord.xy / screen_size;
+  vec2 screen_uv = (gl_FragCoord.xy + 0.5) / screen_size;
   float ssao = texture(ssao_tex, screen_uv).r;
 
   float ao = min(occlusion, ssao);

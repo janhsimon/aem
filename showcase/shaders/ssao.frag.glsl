@@ -1,8 +1,7 @@
 #version 330 core
 
-uniform sampler2D normals_tex; // In view-space
+uniform sampler2D normals_tex;
 uniform sampler2D depth_tex;
-uniform sampler2D noise_tex;
 
 uniform vec3 random_samples[64];
 
@@ -19,64 +18,76 @@ in vec2 uv;
 
 out float ao;
 
-vec3 get_view_pos(vec2 uv_)
+// ------------------------------------------------------------
+// Reconstruct view position from FULL-RES aligned depth
+// ------------------------------------------------------------
+vec3 get_view_pos_aligned(vec2 full_uv)
 {
-    float depth = texture(depth_tex, uv_).r;
+    vec2 full_pixel = floor(full_uv * (screen_size * 2.0));
+    vec2 aligned_uv = (full_pixel + 0.5) / (screen_size * 2.0);
 
-    // Reconstruct clip space position
-    vec4 clip = vec4(uv_ * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    float depth = texture(depth_tex, aligned_uv).r;
 
-    // Back to view space
+    vec4 clip = vec4(full_uv * 2.0 - 1.0,
+                     depth * 2.0 - 1.0,
+                     1.0);
+
     vec4 view = inv_proj * clip;
     return view.xyz / view.w;
 }
 
+float hash12(vec2 p)
+{
+    vec3 p3  = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
 void main()
 {
-    vec3 normal = normalize(texture(normals_tex, uv).xyz);
+    // Decode normal
+    vec3 normal = texture(normals_tex, uv).xyz;
+    normal = normalize(normal * 2.0 - 1.0);
 
-    vec3 frag_pos = get_view_pos(uv);
+    // Map half-res pixel to full-res UV (aligned)
+    vec2 full_pixel = gl_FragCoord.xy * 2.0;
+    vec2 full_uv = (full_pixel + 0.5) / (screen_size * 2.0);
 
-    // Rotate kernel using noise
-    vec2 noise_scale = screen_size / 4.0;
-    vec3 random_dir = normalize(texture(noise_tex, uv * noise_scale).xyz * 2.0 - 1.0);
+    vec3 frag_pos = get_view_pos_aligned(full_uv);
+
+    float angle = hash12(gl_FragCoord.xy) * 6.2831853;
+    vec3 random_dir = vec3(cos(angle), sin(angle), 0.0);
 
     vec3 tangent   = normalize(random_dir - normal * dot(random_dir, normal));
     vec3 bitangent = cross(normal, tangent);
     mat3 TBN       = mat3(tangent, bitangent, normal);
 
-    ao = 0.0;
+    float occlusion = 0.0;
 
     for (int i = 0; i < 64; ++i)
     {
-        vec3 sample_pos = frag_pos + TBN * random_samples[i] * radius;
+        vec3 sample_vec = TBN * random_samples[i];
+        vec3 sample_pos = frag_pos + sample_vec * radius;
 
-        // Project sample position
         vec4 offset = proj * vec4(sample_pos, 1.0);
         offset.xyz /= offset.w;
         vec2 sample_uv = offset.xy * 0.5 + 0.5;
 
-        float sample_depth = texture(depth_tex, sample_uv).r;
-        vec3 sample_view_pos = get_view_pos(sample_uv);
+        if (sample_uv.x < 0.0 || sample_uv.x > 1.0 ||
+            sample_uv.y < 0.0 || sample_uv.y > 1.0)
+            continue;
 
-        float range_check = smoothstep(0.0, 1.0, radius / abs(frag_pos.z - sample_view_pos.z));
+        vec3 sample_view = get_view_pos_aligned(sample_uv);
 
-        if (sample_view_pos.z >= sample_pos.z + bias)
-        {
-            ao += range_check;
-        }
+        float depth_diff = sample_view.z - sample_pos.z;
 
-        //if (sample_view_pos.z <= sample_pos.z - bias)
-        //{
-        //    ao += range_check;
-        //}
+        float range = smoothstep(0.0, 1.0,
+                                 radius / abs(frag_pos.z - sample_view.z));
 
-        //float range_check = smoothstep(0.0, 1.0, radius / abs(frag_pos.z - sample_depth));
-        //ao += (sample_depth >= sample_pos.z + bias ? 1.0 : 0.0) * range_check;   
+        if (depth_diff > bias)
+            occlusion += range;
     }
 
-    ao = 1.0 - (ao / 64.0);
-    
-    // Apply strength shaping
-    ao = pow(ao, strength);
+    occlusion = 1.0 - (occlusion / 64.0);
+    ao = pow(occlusion, strength);
 }

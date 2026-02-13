@@ -122,6 +122,9 @@ set(SOURCE
   source/renderer/ssao_pass/ssao_framebuffer.c
   source/renderer/ssao_pass/ssao_framebuffer.h
   
+  source/renderer/ssao_pass/ssao_blur_pipeline.c
+  source/renderer/ssao_pass/ssao_blur_pipeline.h
+
   source/renderer/ssao_pass/ssao_pipeline.c
   source/renderer/ssao_pass/ssao_pipeline.h
 
@@ -137,6 +140,7 @@ set(SOURCE
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
   shaders/ssao.frag.glsl
+  shaders/ssao_blur.frag.glsl
   shaders/tonemap.frag.glsl
   shaders/tracer.frag.glsl
 )

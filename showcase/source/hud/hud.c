@@ -13,6 +13,7 @@
 #include "window.h"
 
 #include <cglm/util.h>
+#include <cglm/vec2.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -266,18 +267,18 @@ void update_hud(uint32_t screen_width,
   {
     if (get_show_shadow_map_window())
     {
-      update_texture_window("Shadow map", shadow_framebuffer_get_shadow_texture(), screen_width, screen_height);
+      update_texture_window("Shadow map", shadow_framebuffer_get_shadow_texture(), 0, screen_width, screen_height);
     }
 
     if (get_show_view_space_normals_window())
     {
-      update_texture_window("View-space normals", forward_framebuffer_get_view_space_normals_texture(), screen_width,
+      update_texture_window("View-space normals", forward_framebuffer_get_view_space_normals_texture(), 1, screen_width,
                             screen_height);
     }
 
     if (get_show_ssao_window())
     {
-      update_texture_window("SSAO", ssao_framebuffer_get_texture(), screen_width, screen_height);
+      update_texture_window("SSAO", ssao_framebuffer_get_texture(0), 2, screen_width, screen_height);
     }
   }
 

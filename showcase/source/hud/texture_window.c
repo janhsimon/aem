@@ -5,11 +5,16 @@
 
 #include <cglm/util.h>
 
-void update_texture_window(const char* title, unsigned int texture_index, uint32_t screen_width, uint32_t screen_height)
+void update_texture_window(const char* title,
+                           unsigned int texture_index,
+                           unsigned int window_index,
+                           uint32_t screen_width,
+                           uint32_t screen_height)
 {
-  igSetNextWindowPos((ImVec2){ screen_width / 2, screen_height / 2 }, ImGuiCond_Once, (ImVec2){ 0.5f, 0.5f });
+  igSetNextWindowPos((ImVec2){ screen_width - screen_width / 4, (screen_height / 4) * window_index }, ImGuiCond_Once,
+                     (ImVec2){ 0.0f, 0.0f });
 
-  igSetNextWindowSizeConstraints((ImVec2){ screen_width / 8.0f, screen_height / 8.0f },
+  igSetNextWindowSizeConstraints((ImVec2){ screen_width / 4, screen_height / 4 },
                                  (ImVec2){ screen_width, screen_height }, NULL, NULL);
 
   bool open = true;

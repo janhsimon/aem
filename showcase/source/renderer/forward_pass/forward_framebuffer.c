@@ -5,37 +5,53 @@
 #include <stdio.h>
 
 static GLuint forward_framebuffer, hdr_texture, view_space_normals_texture, depth_texture;
+static uint32_t width, height;
 
-bool load_forward_framebuffer(uint32_t screen_width, uint32_t screen_height)
+static void resize_textures(uint32_t new_width, uint32_t new_height)
+{
+  width = new_width;
+  height = new_height;
+
+  glBindTexture(GL_TEXTURE_2D, hdr_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+
+  glBindTexture(GL_TEXTURE_2D, view_space_normals_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+  glBindTexture(GL_TEXTURE_2D, depth_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+}
+
+bool load_forward_framebuffer(uint32_t width_, uint32_t height_)
 {
   glGenFramebuffers(1, &forward_framebuffer);
 
-  // Create HDR texture
-  glGenTextures(1, &hdr_texture);
-  glBindTexture(GL_TEXTURE_2D, hdr_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, screen_width, screen_height, 0, GL_RGB, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // Generate textures
+  {
+    // HDR texture
+    glGenTextures(1, &hdr_texture);
+    glBindTexture(GL_TEXTURE_2D, hdr_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  // Create view-space normals texture
-  glGenTextures(1, &view_space_normals_texture);
-  glBindTexture(GL_TEXTURE_2D, view_space_normals_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, screen_width, screen_height, 0, GL_RGB, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // View-space normals texture
+    glGenTextures(1, &view_space_normals_texture);
+    glBindTexture(GL_TEXTURE_2D, view_space_normals_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  // Create depth texture
-  glGenTextures(1, &depth_texture);
-  glBindTexture(GL_TEXTURE_2D, depth_texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-               NULL);
+    // Depth texture
+    glGenTextures(1, &depth_texture);
+    glBindTexture(GL_TEXTURE_2D, depth_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float[]){ 1.0, 1.0, 1.0, 1.0 });
+  }
 
-  // Texture parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float[]){ 1.0, 1.0, 1.0, 1.0 });
+  // Allocate textures with the correct initial resolution
+  resize_textures(width_, height_);
 
   // Attach the textures to the framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, forward_framebuffer);
@@ -59,12 +75,16 @@ void free_forward_framebuffer()
   glDeleteFramebuffers(1, &forward_framebuffer);
 }
 
-void forward_framebuffer_start_rendering(uint32_t screen_width,
-                                         uint32_t screen_height,
+void forward_framebuffer_start_rendering(uint32_t width_,
+                                         uint32_t height_,
                                          enum ForwardFramebufferAttachment attachment)
 {
-  // TODO: Resize framebuffer
-  glViewport(0, 0, screen_width, screen_height);
+  if (width != width_ || height != height_)
+  {
+    resize_textures(width_, height_);
+  }
+
+  glViewport(0, 0, width, height);
   glBindFramebuffer(GL_FRAMEBUFFER, forward_framebuffer);
 
   glDrawBuffer(GL_COLOR_ATTACHMENT0 + attachment);

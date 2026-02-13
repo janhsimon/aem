@@ -21,11 +21,13 @@
 #include "preferences.h"
 #include "shadow_pass/shadow_framebuffer.h"
 #include "shadow_pass/shadow_pipeline.h"
+#include "ssao_pass/ssao_blur_pipeline.h"
 #include "ssao_pass/ssao_framebuffer.h"
 #include "ssao_pass/ssao_pipeline.h"
 #include "tracer_manager.h"
 
 #include <cglm/mat4.h>
+#include <cglm/vec2.h>
 
 #include <glad/gl.h>
 
@@ -56,12 +58,17 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint
 
   // SSAO pass
   {
-    if (!load_ssao_framebuffer(screen_width, screen_height))
+    if (!load_ssao_framebuffer(screen_width / 2, screen_height / 2))
     {
       return false;
     }
 
     if (!load_ssao_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_ssao_blur_pipeline())
     {
       return false;
     }
@@ -134,6 +141,7 @@ void free_renderer()
   // SSAO pass
   free_ssao_framebuffer();
   free_ssao_pipeline();
+  free_ssao_blur_pipeline();
 
   // Forward pass
   free_forward_framebuffer();
@@ -222,36 +230,92 @@ static void render_forward_pass_early()
 
 static void render_ssao_pass()
 {
-  ssao_framebuffer_start_rendering(screen_width, screen_height);
-  ssao_pipeline_start_rendering();
-
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  // Bind view-space normals texture
+  // SSAO generation
   {
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_view_space_normals_texture());
+    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 0);
+    ssao_pipeline_start_rendering();
+
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Bind view-space normals texture
+    {
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_view_space_normals_texture());
+    }
+
+    // Bind depth texture
+    {
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+    }
+
+    ssao_pipeline_use_proj_matrix(proj_matrix);
+    ssao_pipeline_use_parameters(preferences->ssao_radius, preferences->ssao_bias, preferences->ssao_strength);
+
+    // Screen size
+    {
+      vec2 screen_size = { screen_width / 2, screen_height / 2 };
+      ssao_pipeline_use_screen_size(screen_size);
+    }
+
+    glDisable(GL_DEPTH_TEST);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glEnable(GL_DEPTH_TEST);
   }
 
-  // Bind depth texture
+  if (!preferences->ssao_blur)
   {
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+    return;
   }
 
-  ssao_pipeline_use_proj_matrix(proj_matrix);
-  ssao_pipeline_use_parameters(preferences->ssao_radius, preferences->ssao_bias, preferences->ssao_strength);
-
-  // Screen size
+  // SSAO horizontal blur
   {
-    vec2 screen_size = { screen_width, screen_height };
-    ssao_pipeline_use_screen_size(screen_size);
+    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 1);
+    ssao_blur_pipeline_start_rendering();
+
+    // Bind SSAO texture
+    {
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
+    }
+
+    // Texel size
+    {
+      vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
+      ssao_blur_pipeline_use_texel_size(texel_size);
+    }
+
+    ssao_blur_pipeline_use_axis((vec2){ 1.0f, 0.0f }); // Horizontal
+
+    glDisable(GL_DEPTH_TEST);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glEnable(GL_DEPTH_TEST);
   }
 
-  glDisable(GL_DEPTH_TEST);
-  glDrawArrays(GL_TRIANGLES, 0, 3);
-  glEnable(GL_DEPTH_TEST);
+  // SSAO vertical blur
+  {
+    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 0);
+    ssao_blur_pipeline_start_rendering();
+
+    // Bind SSAO texture
+    {
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(1));
+    }
+
+    //// Texel size
+    //{
+    //  vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
+    //  ssao_blur_pipeline_use_texel_size(texel_size);
+    //}
+
+    ssao_blur_pipeline_use_axis((vec2){ 0.0f, 1.0f }); // Vertical
+
+    glDisable(GL_DEPTH_TEST);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glEnable(GL_DEPTH_TEST);
+  }
 }
 
 static void render_forward_pass_late()
@@ -278,7 +342,7 @@ static void render_forward_pass_late()
   // Bind SSAO texture
   {
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture());
+    glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
   }
 
   main_pipeline_use_ambient_color(preferences->ambient_color, preferences->ambient_intensity);

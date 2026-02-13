@@ -109,6 +109,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->tracer_speed = 500.0f;
 
   // Ambient occlusion
+  preferences->ssao_blur = true;
   preferences->ssao_radius = 0.2f;
   preferences->ssao_bias = 0.001f;
   preferences->ssao_strength = 3.0f;
