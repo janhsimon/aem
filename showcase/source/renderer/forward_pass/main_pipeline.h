@@ -22,3 +22,4 @@ void main_pipeline_use_camera(vec3 camera_pos);
 void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity, mat4 viewproj_matrix);
 void main_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity);
 void main_pipeline_use_screen_size(vec2 size);
+void main_pipeline_use_ssao(bool apply_ssao);

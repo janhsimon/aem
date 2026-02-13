@@ -2,6 +2,7 @@
 
 uniform sampler2D normals_tex;
 uniform sampler2D depth_tex;
+uniform sampler2D noise_tex;
 
 uniform vec3 random_samples[64];
 
@@ -36,13 +37,6 @@ vec3 get_view_pos_aligned(vec2 full_uv)
     return view.xyz / view.w;
 }
 
-float hash12(vec2 p)
-{
-    vec3 p3  = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
-
 void main()
 {
     // Decode normal
@@ -55,8 +49,9 @@ void main()
 
     vec3 frag_pos = get_view_pos_aligned(full_uv);
 
-    float angle = hash12(gl_FragCoord.xy) * 6.2831853;
-    vec3 random_dir = vec3(cos(angle), sin(angle), 0.0);
+     // Rotate kernel using noise
+    vec2 noise_scale = screen_size / 4.0;
+    vec3 random_dir = normalize(texture(noise_tex, uv * noise_scale).xyz * 2.0 - 1.0);
 
     vec3 tangent   = normalize(random_dir - normal * dot(random_dir, normal));
     vec3 bitangent = cross(normal, tangent);

@@ -230,6 +230,8 @@ static void render_forward_pass_early()
 
 static void render_ssao_pass()
 {
+  glDisable(GL_DEPTH_TEST);
+
   // SSAO generation
   {
     ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 0);
@@ -259,9 +261,7 @@ static void render_ssao_pass()
       ssao_pipeline_use_screen_size(screen_size);
     }
 
-    glDisable(GL_DEPTH_TEST);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    glEnable(GL_DEPTH_TEST);
   }
 
   if (!preferences->ssao_blur)
@@ -280,17 +280,24 @@ static void render_ssao_pass()
       glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
     }
 
+    // Bind depth texture
+    {
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+    }
+
     // Texel size
     {
       vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
       ssao_blur_pipeline_use_texel_size(texel_size);
     }
 
+    ssao_blur_pipeline_use_full_resolution((vec2){ screen_width, screen_height });
+    ssao_blur_pipeline_use_parameters(preferences->ssao_blur_depth_sigma, preferences->ssao_blur_radius);
+
     ssao_blur_pipeline_use_axis((vec2){ 1.0f, 0.0f }); // Horizontal
 
-    glDisable(GL_DEPTH_TEST);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    glEnable(GL_DEPTH_TEST);
   }
 
   // SSAO vertical blur
@@ -304,18 +311,12 @@ static void render_ssao_pass()
       glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(1));
     }
 
-    //// Texel size
-    //{
-    //  vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
-    //  ssao_blur_pipeline_use_texel_size(texel_size);
-    //}
-
     ssao_blur_pipeline_use_axis((vec2){ 0.0f, 1.0f }); // Vertical
 
-    glDisable(GL_DEPTH_TEST);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    glEnable(GL_DEPTH_TEST);
   }
+
+  glEnable(GL_DEPTH_TEST);
 }
 
 static void render_forward_pass_late()
@@ -372,6 +373,7 @@ static void render_forward_pass_late()
   // Main pipeline (opaque)
   {
     main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
+    main_pipeline_use_ssao(true);
 
     // Map
     {
@@ -394,6 +396,8 @@ static void render_forward_pass_late()
       render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
     }
   }
+
+  main_pipeline_use_ssao(false);
 
   glDepthFunc(GL_LEQUAL);
   glEnable(GL_BLEND);
@@ -470,6 +474,8 @@ static void render_forward_pass_late()
 
 static void render_post_pass()
 {
+  glDisable(GL_DEPTH_TEST);
+
   // Tonemap pipeline
   {
     // Render full-screen quad with forward HDR texture to screen
@@ -490,9 +496,7 @@ static void render_post_pass()
       tonemap_pipeline_use_saturation(saturation);
     }
 
-    glDisable(GL_DEPTH_TEST);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-    glEnable(GL_DEPTH_TEST);
   }
 
   // Debug pipeline
@@ -503,8 +507,6 @@ static void render_post_pass()
     mat4 viewproj_matrix;
     glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
 
-    glDisable(GL_DEPTH_TEST);
-
     debug_pipeline_start_rendering();
     debug_pipeline_use_viewproj_matrix(viewproj_matrix);
 
@@ -514,9 +516,9 @@ static void render_post_pass()
     // Capsules
     start_debug_rendering_capsules();
     debug_draw_enemy();
-
-    glEnable(GL_DEPTH_TEST);
   }
+
+  glEnable(GL_DEPTH_TEST);
 }
 
 void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_near_, float camera_far_)

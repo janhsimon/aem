@@ -9,7 +9,8 @@
 static GLuint shader_program;
 static GLint world_uniform_location, view_uniform_location, proj_uniform_location, render_pass_uniform_location,
   light_dir_uniform_location, camera_pos_uniform_location, light_viewproj_uniform_location,
-  ambient_color_uniform_location, light_color_uniform_location, screen_size_uniform_location;
+  ambient_color_uniform_location, light_color_uniform_location, screen_size_uniform_location,
+  apply_ssao_uniform_location;
 
 bool load_main_pipeline()
 {
@@ -48,6 +49,7 @@ bool load_main_pipeline()
       ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
       light_color_uniform_location = get_uniform_location(shader_program, "light_color");
       screen_size_uniform_location = get_uniform_location(shader_program, "screen_size");
+      apply_ssao_uniform_location = get_uniform_location(shader_program, "apply_ssao");
 
       const GLint normals_mode_uniform_location = get_uniform_location(shader_program, "normals_mode");
       glUniform1i(normals_mode_uniform_location, 0); // Produce world-space normals
@@ -135,4 +137,9 @@ void main_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity
 void main_pipeline_use_screen_size(vec2 size)
 {
   glUniform2fv(screen_size_uniform_location, 1, size);
+}
+
+void main_pipeline_use_ssao(bool apply_ssao)
+{
+  glUniform1i(apply_ssao_uniform_location, apply_ssao);
 }

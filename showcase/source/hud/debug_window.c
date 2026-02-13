@@ -165,10 +165,14 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
   if (igCollapsingHeader_TreeNodeFlags("Ambient occlusion", ImGuiTreeNodeFlags_None))
   {
-    igCheckbox("Blur##SSAO", &preferences->ssao_blur);
     igSliderFloat("Radius##SSAO", &preferences->ssao_radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Bias##SSAO", &preferences->ssao_bias, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Strength##SSAO", &preferences->ssao_strength, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+
+    igCheckbox("Blur##SSAO", &preferences->ssao_blur);
+    igSliderFloat("Blur depth sigma##SSAO", &preferences->ssao_blur_depth_sigma, 0.0f, 1.0f, "%f",
+                  ImGuiSliderFlags_Logarithmic);
+    igSliderFloat("Blur radius##SSAO", &preferences->ssao_blur_radius, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   }
 
   debug_window_focus = igIsWindowFocused(ImGuiFocusedFlags_AnyWindow) || igIsWindowHovered(ImGuiHoveredFlags_AnyWindow);
