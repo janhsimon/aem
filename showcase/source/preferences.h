@@ -66,6 +66,7 @@ struct Preferences
   float tracer_speed; // In units per second
 
   // Ambient occlusion
+  bool ssao_enable;
   float ssao_radius;
   float ssao_bias;
   float ssao_strength;
@@ -74,6 +75,11 @@ struct Preferences
   bool ssao_blur;
   float ssao_blur_depth_sigma;
   float ssao_blur_radius;
+
+  // Bloom
+  float bloom_threshold;
+  float bloom_soft_knee;
+  float bloom_intensity;
 };
 
 void load_default_preferences(struct Preferences* preferences);

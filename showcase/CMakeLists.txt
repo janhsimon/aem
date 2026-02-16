@@ -83,6 +83,18 @@ set(SOURCE
   source/renderer/renderer.c
   source/renderer/renderer.h
 
+  source/renderer/bloom_pass/bloom_downsample_pipeline.c
+  source/renderer/bloom_pass/bloom_downsample_pipeline.h
+
+  source/renderer/bloom_pass/bloom_framebuffer.c
+  source/renderer/bloom_pass/bloom_framebuffer.h
+
+  source/renderer/bloom_pass/bloom_prefilter_pipeline.c
+  source/renderer/bloom_pass/bloom_prefilter_pipeline.h
+
+  source/renderer/bloom_pass/bloom_upsample_pipeline.c
+  source/renderer/bloom_pass/bloom_upsample_pipeline.h
+
   source/renderer/forward_pass/depth_pipeline.c
   source/renderer/forward_pass/depth_pipeline.h
 
@@ -134,6 +146,9 @@ set(SOURCE
   shaders/skinned.vert.glsl
   shaders/tracer.vert.glsl
 
+  shaders/bloom_downsample.frag.glsl
+  shaders/bloom_prefilter.frag.glsl
+  shaders/bloom_upsample.frag.glsl
   shaders/debug.frag.glsl
   shaders/depth.frag.glsl
   shaders/main.frag.glsl

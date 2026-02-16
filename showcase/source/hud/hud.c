@@ -6,6 +6,7 @@
 #include "player/player.h"
 #include "player/view_model.h"
 #include "preferences.h"
+#include "renderer/bloom_pass/bloom_framebuffer.h"
 #include "renderer/forward_pass/forward_framebuffer.h"
 #include "renderer/shadow_pass/shadow_framebuffer.h"
 #include "renderer/ssao_pass/ssao_framebuffer.h"
@@ -267,18 +268,97 @@ void update_hud(uint32_t screen_width,
   {
     if (get_show_shadow_map_window())
     {
-      update_texture_window("Shadow map", shadow_framebuffer_get_shadow_texture(), 0, screen_width, screen_height);
+      if (begin_texture_window("Shadow map", false, 0, screen_width, screen_height))
+      {
+        add_texture_window_image(shadow_framebuffer_get_shadow_texture(), screen_width, screen_height);
+      }
+
+      end_texture_window();
     }
 
     if (get_show_view_space_normals_window())
     {
-      update_texture_window("View-space normals", forward_framebuffer_get_view_space_normals_texture(), 1, screen_width,
-                            screen_height);
+      if (begin_texture_window("View-space normals", false, 1, screen_width, screen_height))
+      {
+        add_texture_window_image(forward_framebuffer_get_view_space_normals_texture(), screen_width, screen_height);
+      }
+
+      end_texture_window();
     }
 
     if (get_show_ssao_window())
     {
-      update_texture_window("SSAO", ssao_framebuffer_get_texture(0), 2, screen_width, screen_height);
+      if (begin_texture_window("SSAO", false, 2, screen_width, screen_height))
+      {
+        add_texture_window_image(ssao_framebuffer_get_texture(0), screen_width, screen_height);
+      }
+
+      end_texture_window();
+    }
+
+    if (get_show_bloom_window())
+    {
+      if (begin_texture_window("Bloom", true, 3, screen_width, screen_height))
+      {
+        static int shown_texture_index = 0;
+        static enum BloomFramebufferPhase shown_texture_phase = BloomFramebufferPhase_Downsample;
+
+        if (igBeginMenuBar())
+        {
+          if (igBeginMenu("Texture", true))
+          {
+            const int downsample_texture_count = bloom_framebuffer_get_texture_count(BloomFramebufferPhase_Downsample);
+            const int upsample_texture_count = bloom_framebuffer_get_texture_count(BloomFramebufferPhase_Upsample);
+
+            // Downsample
+            for (int texture_index = 0; texture_index < downsample_texture_count; ++texture_index)
+            {
+              uint32_t w, h;
+              bloom_framebuffer_get_texture_resolution(texture_index, &w, &h);
+
+              char title[32];
+              sprintf(title, "Downsample #%d [%u x %u]", texture_index, w, h);
+
+              const bool selected =
+                (shown_texture_index == texture_index) && (shown_texture_phase == BloomFramebufferPhase_Downsample);
+              if (igMenuItemEx(title, NULL, NULL, selected, true))
+              {
+                shown_texture_index = texture_index;
+                shown_texture_phase = BloomFramebufferPhase_Downsample;
+              }
+            }
+
+            // Upsample
+            for (int texture_index = 0; texture_index < upsample_texture_count; ++texture_index)
+            {
+              const int flipped_index = upsample_texture_count - texture_index - 1;
+
+              uint32_t w, h;
+              bloom_framebuffer_get_texture_resolution(flipped_index, &w, &h);
+
+              char title[32];
+              sprintf(title, "Upsample #%d [%u x %u]", flipped_index, w, h);
+
+              const bool selected =
+                (shown_texture_index == flipped_index) && (shown_texture_phase == BloomFramebufferPhase_Upsample);
+              if (igMenuItemEx(title, NULL, NULL, selected, true))
+              {
+                shown_texture_index = flipped_index;
+                shown_texture_phase = BloomFramebufferPhase_Upsample;
+              }
+            }
+
+            igEndMenu();
+          }
+
+          igEndMenuBar();
+
+          add_texture_window_image(bloom_framebuffer_get_texture(shown_texture_index, shown_texture_phase),
+                                   screen_width, screen_height);
+        }
+      }
+
+      end_texture_window();
     }
   }
 

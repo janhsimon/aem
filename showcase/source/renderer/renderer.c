@@ -1,5 +1,9 @@
 #include "renderer.h"
 
+#include "bloom_pass/bloom_downsample_pipeline.h"
+#include "bloom_pass/bloom_framebuffer.h"
+#include "bloom_pass/bloom_prefilter_pipeline.h"
+#include "bloom_pass/bloom_upsample_pipeline.h"
 #include "camera.h"
 #include "debug_manager.h"
 #include "enemy/enemy.h"
@@ -112,6 +116,29 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint
     }
   }
 
+  // Bloom pass
+  {
+    if (!load_bloom_framebuffer(screen_width, screen_height))
+    {
+      return false;
+    }
+
+    if (!load_bloom_prefilter_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_bloom_downsample_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_bloom_upsample_pipeline())
+    {
+      return false;
+    }
+  }
+
   // Post pass
   {
     if (!load_tonemap_pipeline())
@@ -151,6 +178,12 @@ void free_renderer()
   free_tracer_pipeline();
   free_particle_renderer();
   free_tracer_renderer();
+
+  // Bloom pass
+  free_bloom_framebuffer();
+  free_bloom_prefilter_pipeline();
+  free_bloom_downsample_pipeline();
+  free_bloom_upsample_pipeline();
 
   // Post pass
   free_tonemap_pipeline();
@@ -373,7 +406,7 @@ static void render_forward_pass_late()
   // Main pipeline (opaque)
   {
     main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
-    main_pipeline_use_ssao(true);
+    main_pipeline_use_ssao(preferences->ssao_enable);
 
     // Map
     {
@@ -472,6 +505,102 @@ static void render_forward_pass_late()
   }
 }
 
+static void render_bloom_pass()
+{
+  glDisable(GL_DEPTH_TEST);
+
+  // Bloom prefilter
+  {
+    bloom_framebuffer_start_rendering(screen_width, screen_height, 0, BloomFramebufferPhase_Downsample);
+    bloom_prefilter_pipeline_start_rendering();
+
+    // Bind HDR texture
+    {
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_hdr_texture());
+    }
+
+    bloom_prefilter_pipeline_use_parameters(preferences->bloom_threshold, preferences->bloom_soft_knee);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+  }
+
+  // Bloom downsample
+  {
+    const int downsample_texture_count = bloom_framebuffer_get_texture_count(BloomFramebufferPhase_Downsample);
+    for (int source_texture_index = 0; source_texture_index < downsample_texture_count - 1; ++source_texture_index)
+    {
+      const int destination_texture_index = source_texture_index + 1;
+
+      // Render into the destination texture
+      bloom_framebuffer_start_rendering(screen_width, screen_height, destination_texture_index,
+                                        BloomFramebufferPhase_Downsample);
+      bloom_downsample_pipeline_start_rendering();
+
+      // Bind source texture
+      {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D,
+                      bloom_framebuffer_get_texture(source_texture_index, BloomFramebufferPhase_Downsample));
+      }
+
+      // Source resolution
+      {
+        uint32_t source_width, source_height;
+        bloom_framebuffer_get_texture_resolution(source_texture_index, &source_width, &source_height);
+        bloom_downsample_pipeline_use_source_resolution(source_width, source_height);
+      }
+
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
+  }
+
+  // Bloom upsample
+  {
+    const int upsample_texture_count = bloom_framebuffer_get_texture_count(BloomFramebufferPhase_Upsample);
+    for (int source_texture_index = upsample_texture_count; source_texture_index > 0; --source_texture_index)
+    {
+      const int destination_texture_index = source_texture_index - 1;
+
+      bloom_framebuffer_start_rendering(screen_width, screen_height, destination_texture_index,
+                                        BloomFramebufferPhase_Upsample);
+      bloom_upsample_pipeline_start_rendering();
+
+      // Bind source textures
+      {
+        // Low
+        {
+          // Read the last downsample texture for the first iteration, otherwise read the latest upsample texture
+          enum BloomFramebufferPhase phase = (source_texture_index == upsample_texture_count) ?
+                                               BloomFramebufferPhase_Downsample :
+                                               BloomFramebufferPhase_Upsample;
+
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_2D, bloom_framebuffer_get_texture(source_texture_index, phase));
+        }
+
+        // High
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D,
+                      bloom_framebuffer_get_texture(destination_texture_index, BloomFramebufferPhase_Downsample));
+      }
+
+      // Low resolution
+      {
+        uint32_t w, h;
+        bloom_framebuffer_get_texture_resolution(source_texture_index, &w, &h);
+        bloom_upsample_pipeline_use_low_resolution((vec2){ w, h });
+      }
+
+      bloom_upsample_pipeline_use_intensity(preferences->bloom_intensity);
+
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
+  }
+
+  glEnable(GL_DEPTH_TEST);
+}
+
 static void render_post_pass()
 {
   glDisable(GL_DEPTH_TEST);
@@ -488,6 +617,12 @@ static void render_post_pass()
     {
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_hdr_texture());
+    }
+
+    // Bind bloom texture
+    {
+      glActiveTexture(GL_TEXTURE1);
+      glBindTexture(GL_TEXTURE_2D, bloom_framebuffer_get_texture(0, BloomFramebufferPhase_Upsample));
     }
 
     // Calculate saturation for effect when the player dies
@@ -535,7 +670,13 @@ void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_
 
   render_shadow_pass();        // Shadow mapping
   render_forward_pass_early(); // Early-Z and view-space normals
-  render_ssao_pass();          // SSAO
-  render_forward_pass_late();  // HDR shading
-  render_post_pass();          // Tonemap
+
+  if (preferences->ssao_enable)
+  {
+    render_ssao_pass(); // SSAO
+  }
+
+  render_forward_pass_late(); // HDR shading
+  render_bloom_pass();        // Bloom
+  render_post_pass();         // Tonemap
 }

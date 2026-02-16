@@ -1,4 +1,4 @@
-#include "tonemap_pipeline.h"
+#include "bloom_prefilter_pipeline.h"
 
 #include <util/util.h>
 
@@ -7,9 +7,9 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint saturation_uniform_location;
+static GLint threshold_uniform_location, soft_knee_uniform_location;
 
-bool load_tonemap_pipeline()
+bool load_bloom_prefilter_pipeline()
 {
   // Load shaders
   GLuint vertex_shader, fragment_shader;
@@ -18,7 +18,7 @@ bool load_tonemap_pipeline()
     return false;
   }
 
-  if (!load_shader("shaders/tonemap.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!load_shader("shaders/bloom_prefilter.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
@@ -32,13 +32,11 @@ bool load_tonemap_pipeline()
   {
     glUseProgram(shader_program);
 
-    saturation_uniform_location = get_uniform_location(shader_program, "saturation");
+    threshold_uniform_location = get_uniform_location(shader_program, "threshold");
+    soft_knee_uniform_location = get_uniform_location(shader_program, "soft_knee");
 
     const GLint hdr_tex_uniform_location = get_uniform_location(shader_program, "hdr_tex");
     glUniform1i(hdr_tex_uniform_location, 0);
-
-    const GLint bloom_tex_uniform_location = get_uniform_location(shader_program, "bloom_tex");
-    glUniform1i(bloom_tex_uniform_location, 1);
   }
 
   glDeleteShader(vertex_shader);
@@ -47,17 +45,18 @@ bool load_tonemap_pipeline()
   return true;
 }
 
-void free_tonemap_pipeline()
+void free_bloom_prefilter_pipeline()
 {
   glDeleteProgram(shader_program);
 }
 
-void tonemap_pipeline_start_rendering()
+void bloom_prefilter_pipeline_start_rendering()
 {
   glUseProgram(shader_program);
 }
 
-void tonemap_pipeline_use_saturation(float saturation)
+void bloom_prefilter_pipeline_use_parameters(float threshold, float soft_knee)
 {
-  glUniform1f(saturation_uniform_location, saturation);
+  glUniform1f(threshold_uniform_location, threshold);
+  glUniform1f(soft_knee_uniform_location, soft_knee);
 }

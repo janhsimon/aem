@@ -21,7 +21,7 @@
 #include <stdlib.h>
 
 #define CAM_NEAR 0.01f
-#define CAM_FAR 80.0f
+#define CAM_FAR 35.0f
 
 static bool debug_mode_enabled = false;
 

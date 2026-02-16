@@ -27,7 +27,7 @@ void load_default_preferences(struct Preferences* preferences)
   glm_vec3_copy((vec3){ 1.0f, 0.75f, 0.75f }, preferences->ambient_color);
   preferences->ambient_intensity = 0.4f;
   glm_vec3_copy((vec3){ 0.97f, 0.63f, 0.3f }, preferences->light_color);
-  preferences->light_intensity = 60.0f;
+  preferences->light_intensity = 90.0f;
   glm_vec3_copy((vec3){ 0.22f, -0.97f, 0.12f }, preferences->light_dir);
 
   // AK
@@ -109,6 +109,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->tracer_speed = 500.0f;
 
   // Ambient occlusion
+  preferences->ssao_enable = true;
   preferences->ssao_radius = 0.4f;
   preferences->ssao_bias = 0.001f;
   preferences->ssao_strength = 7.0f;
@@ -117,4 +118,9 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->ssao_blur = true;
   preferences->ssao_blur_depth_sigma = 0.02f;
   preferences->ssao_blur_radius = 12.5f;
+
+  // Bloom
+  preferences->bloom_threshold = 14.5f;
+  preferences->bloom_soft_knee = 0.95f;
+  preferences->bloom_intensity = 0.9f;
 }

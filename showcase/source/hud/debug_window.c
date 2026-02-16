@@ -7,7 +7,8 @@
 #include <cimgui/cimgui.h>
 
 static bool debug_window_focus = false;
-static bool show_shadow_map_window = false, show_view_space_normals_window = false, show_ssao_window = false;
+static bool show_shadow_map_window = false, show_view_space_normals_window = false, show_ssao_window = false,
+            show_bloom_window = false;
 
 bool has_debug_window_focus()
 {
@@ -27,6 +28,11 @@ bool get_show_view_space_normals_window()
 bool get_show_ssao_window()
 {
   return show_ssao_window;
+}
+
+bool get_show_bloom_window()
+{
+  return show_bloom_window;
 }
 
 static void update_particle_system(struct ParticleSystemPreferences* preferences)
@@ -72,6 +78,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igCheckbox("Show shadow map", &show_shadow_map_window);
     igCheckbox("Show view-space normals", &show_view_space_normals_window);
     igCheckbox("Show SSAO", &show_ssao_window);
+    igCheckbox("Show bloom", &show_bloom_window);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("AI", ImGuiTreeNodeFlags_None))
@@ -163,16 +170,34 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igSliderFloat("Speed##Tracer", &preferences->tracer_speed, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
   }
 
-  if (igCollapsingHeader_TreeNodeFlags("Ambient occlusion", ImGuiTreeNodeFlags_None))
+  if (igCollapsingHeader_TreeNodeFlags("Post-processing", ImGuiTreeNodeFlags_None))
   {
-    igSliderFloat("Radius##SSAO", &preferences->ssao_radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat("Bias##SSAO", &preferences->ssao_bias, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat("Strength##SSAO", &preferences->ssao_strength, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+    if (igTreeNode_Str("Ambient occlusion"))
+    {
+      igCheckbox("Enable##SSAO", &preferences->ssao_enable);
 
-    igCheckbox("Blur##SSAO", &preferences->ssao_blur);
-    igSliderFloat("Blur depth sigma##SSAO", &preferences->ssao_blur_depth_sigma, 0.0f, 1.0f, "%f",
-                  ImGuiSliderFlags_Logarithmic);
-    igSliderFloat("Blur radius##SSAO", &preferences->ssao_blur_radius, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Radius##SSAO", &preferences->ssao_radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Bias##SSAO", &preferences->ssao_bias, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Strength##SSAO", &preferences->ssao_strength, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+
+      igCheckbox("Blur##SSAO", &preferences->ssao_blur);
+      igSliderFloat("Blur depth sigma##SSAO", &preferences->ssao_blur_depth_sigma, 0.0f, 1.0f, "%f",
+                    ImGuiSliderFlags_Logarithmic);
+      igSliderFloat("Blur radius##SSAO", &preferences->ssao_blur_radius, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+
+      igTreePop();
+    }
+
+    if (igTreeNode_Str("Bloom"))
+    {
+      // igCheckbox("Enable##Bloom", &preferences->bloom_enable);
+
+      igSliderFloat("Threshold##Bloom", &preferences->bloom_threshold, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Soft knee##Bloom", &preferences->bloom_soft_knee, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+      igSliderFloat("Intensity##Bloom", &preferences->bloom_intensity, 0.0f, 10.0f, "%f", ImGuiSliderFlags_Logarithmic);
+
+      igTreePop();
+    }
   }
 
   debug_window_focus = igIsWindowFocused(ImGuiFocusedFlags_AnyWindow) || igIsWindowHovered(ImGuiHoveredFlags_AnyWindow);

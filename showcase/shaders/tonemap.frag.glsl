@@ -4,6 +4,7 @@ in vec2 uv;
 out vec4 out_color;
 
 uniform sampler2D hdr_tex;
+uniform sampler2D bloom_tex;
 
 uniform float saturation;
 
@@ -19,7 +20,7 @@ vec3 aces_filmic(vec3 x)
 
 void main()
 {
-    vec3 hdr = texture(hdr_tex, uv).rgb;
+    vec3 hdr = texture(hdr_tex, uv).rgb + texture(bloom_tex, uv).rgb;
 
     // Tone map
     vec3 mapped = aces_filmic(hdr);
