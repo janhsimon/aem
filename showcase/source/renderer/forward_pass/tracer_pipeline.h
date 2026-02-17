@@ -9,5 +9,4 @@ void free_tracer_pipeline();
 
 void tracer_pipeline_start_rendering();
 void tracer_pipeline_use_viewproj_matrix(mat4 view_matrix, mat4 proj_matrix);
-void tracer_pipeline_use_color(vec4 color);
-void tracer_pipeline_use_thickness(float thickness);
+void tracer_pipeline_use_parameters(float brightness, vec4 color, float thickness);

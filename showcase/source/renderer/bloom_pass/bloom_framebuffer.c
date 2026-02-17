@@ -1,69 +1,67 @@
 #include "bloom_framebuffer.h"
 
+#include <cglm/ivec2.h>
+
 #include <glad/gl.h>
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#define DOWNSAMPLE_TEXTURE_COUNT 8
-#define UPSAMPLE_TEXTURE_COUNT (DOWNSAMPLE_TEXTURE_COUNT - 1)
+#define BLOOM_SIZE_THRESHOLD 16
 
-static GLuint bloom_framebuffer, bloom_downsample_textures[DOWNSAMPLE_TEXTURE_COUNT],
-  bloom_upsample_textures[UPSAMPLE_TEXTURE_COUNT];
-static uint32_t width, height;
+static GLuint framebuffer;
 
-void bloom_framebuffer_get_texture_resolution(int texture_index, uint32_t* texture_width, uint32_t* texture_height)
+static uint32_t downsample_texture_count, upsample_texture_count;
+static GLuint *downsample_textures = NULL, *upsample_textures = NULL;
+
+static ivec2* texture_resolutions;
+
+static uint32_t calc_texture_count(uint32_t width, uint32_t height)
 {
-  *texture_width = width >> texture_index;
-  *texture_height = height >> texture_index;
-
-  if (*texture_width == 0)
+  uint32_t texture_count = 0;
+  while (width > BLOOM_SIZE_THRESHOLD && height > BLOOM_SIZE_THRESHOLD)
   {
-    *texture_width = 1;
+    width >>= 1;
+    height >>= 1;
+    ++texture_count;
   }
 
-  if (*texture_height == 0)
-  {
-    *texture_height = 1;
-  }
+  return texture_count + 1;
 }
 
-static void resize_textures(uint32_t new_width, uint32_t new_height)
+static void create_textures(uint32_t width, uint32_t height)
 {
-  width = new_width;
-  height = new_height;
+  downsample_texture_count = calc_texture_count(width, height);
+  upsample_texture_count = downsample_texture_count - 1;
 
-  // Resize downsample textures
-  for (int texture_index = 0; texture_index < DOWNSAMPLE_TEXTURE_COUNT; ++texture_index)
+  // Texture resolutions
   {
-    glBindTexture(GL_TEXTURE_2D, bloom_downsample_textures[texture_index]);
+    texture_resolutions = malloc(sizeof(*texture_resolutions) * downsample_texture_count);
+    assert(texture_resolutions);
 
-    uint32_t texture_width, texture_height;
-    bloom_framebuffer_get_texture_resolution(texture_index, &texture_width, &texture_height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texture_width, texture_height, 0, GL_RGB, GL_FLOAT, NULL);
-  }
-
-  // Resize upsample textures
-  for (int texture_index = 0; texture_index < UPSAMPLE_TEXTURE_COUNT; ++texture_index)
-  {
-    glBindTexture(GL_TEXTURE_2D, bloom_upsample_textures[texture_index]);
-
-    uint32_t texture_width, texture_height;
-    bloom_framebuffer_get_texture_resolution(texture_index, &texture_width, &texture_height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texture_width, texture_height, 0, GL_RGB, GL_FLOAT, NULL);
-  }
-}
-
-bool load_bloom_framebuffer(uint32_t width_, uint32_t height_)
-{
-  glGenFramebuffers(1, &bloom_framebuffer);
-
-  // Generate downsample textures
-  {
-    glGenTextures(DOWNSAMPLE_TEXTURE_COUNT, bloom_downsample_textures);
-
-    for (int texture_index = 0; texture_index < DOWNSAMPLE_TEXTURE_COUNT; ++texture_index)
+    glm_ivec2_copy((ivec2){ width, height }, texture_resolutions[0]);
+    for (uint32_t texture_index = 1; texture_index < downsample_texture_count; ++texture_index)
     {
-      glBindTexture(GL_TEXTURE_2D, bloom_downsample_textures[texture_index]);
+      glm_ivec2_copy(texture_resolutions[texture_index - 1], texture_resolutions[texture_index]);
+      texture_resolutions[texture_index][0] >>= 1;
+      texture_resolutions[texture_index][1] >>= 1;
+    }
+  }
+
+  // Downsample textures
+  {
+    downsample_texture_count = calc_texture_count(width, height);
+    downsample_textures = malloc(sizeof(*downsample_textures) * downsample_texture_count);
+    assert(downsample_textures);
+
+    glGenTextures(downsample_texture_count, downsample_textures);
+
+    for (int texture_index = 0; texture_index < downsample_texture_count; ++texture_index)
+    {
+      glBindTexture(GL_TEXTURE_2D, downsample_textures[texture_index]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texture_resolutions[texture_index][0],
+                   texture_resolutions[texture_index][1], 0, GL_RGB, GL_FLOAT, NULL);
 
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -72,13 +70,19 @@ bool load_bloom_framebuffer(uint32_t width_, uint32_t height_)
     }
   }
 
-  // Generate upsample textures
+  // Upsample textures
   {
-    glGenTextures(UPSAMPLE_TEXTURE_COUNT, bloom_upsample_textures);
+    upsample_texture_count = downsample_texture_count - 1;
+    upsample_textures = malloc(sizeof(*upsample_textures) * upsample_texture_count);
+    assert(upsample_textures);
 
-    for (int texture_index = 0; texture_index < UPSAMPLE_TEXTURE_COUNT; ++texture_index)
+    glGenTextures(upsample_texture_count, upsample_textures);
+
+    for (int texture_index = 0; texture_index < upsample_texture_count; ++texture_index)
     {
-      glBindTexture(GL_TEXTURE_2D, bloom_upsample_textures[texture_index]);
+      glBindTexture(GL_TEXTURE_2D, upsample_textures[texture_index]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texture_resolutions[texture_index][0],
+                   texture_resolutions[texture_index][1], 0, GL_RGB, GL_FLOAT, NULL);
 
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -86,13 +90,18 @@ bool load_bloom_framebuffer(uint32_t width_, uint32_t height_)
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
   }
+}
+
+bool load_bloom_framebuffer(uint32_t screen_width, uint32_t screen_height)
+{
+  glGenFramebuffers(1, &framebuffer);
 
   // Allocate textures with the correct initial resolution
-  resize_textures(width_, height_);
+  create_textures(screen_width, screen_height);
 
   // Attach the first downsample texture to the framebuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, bloom_framebuffer);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloom_downsample_textures[0], 0);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, downsample_textures[0], 0);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
   {
@@ -104,30 +113,32 @@ bool load_bloom_framebuffer(uint32_t width_, uint32_t height_)
 
 void free_bloom_framebuffer()
 {
-  glDeleteTextures(DOWNSAMPLE_TEXTURE_COUNT, bloom_downsample_textures);
-  glDeleteTextures(UPSAMPLE_TEXTURE_COUNT, bloom_upsample_textures);
-  glDeleteFramebuffers(1, &bloom_framebuffer);
+  glDeleteTextures(downsample_texture_count, downsample_textures);
+  glDeleteTextures(upsample_texture_count, upsample_textures);
+  glDeleteFramebuffers(1, &framebuffer);
 }
 
-void bloom_framebuffer_start_rendering(uint32_t width_,
-                                       uint32_t height_,
-                                       int texture_index,
-                                       enum BloomFramebufferPhase phase)
+void bloom_framebuffer_on_screen_resize(uint32_t screen_width, uint32_t screen_height)
 {
-  if (width != width_ || height != height_)
-  {
-    resize_textures(width_, height_);
-  }
+  free(texture_resolutions);
 
-  uint32_t texture_width, texture_height;
-  bloom_framebuffer_get_texture_resolution(texture_index, &texture_width, &texture_height);
+  glDeleteTextures(downsample_texture_count, downsample_textures);
+  free(downsample_textures);
 
-  glViewport(0, 0, texture_width, texture_height);
-  glBindFramebuffer(GL_FRAMEBUFFER, bloom_framebuffer);
+  glDeleteTextures(upsample_texture_count, upsample_textures);
+  free(upsample_textures);
+
+  create_textures(screen_width, screen_height);
+}
+
+void bloom_framebuffer_start_rendering(int texture_index, enum BloomFramebufferPhase phase)
+{
+  glViewport(0, 0, texture_resolutions[texture_index][0], texture_resolutions[texture_index][1]);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         (phase == BloomFramebufferPhase_Downsample) ? bloom_downsample_textures[texture_index] :
-                                                                       bloom_upsample_textures[texture_index],
+                         (phase == BloomFramebufferPhase_Downsample) ? downsample_textures[texture_index] :
+                                                                       upsample_textures[texture_index],
                          0);
 
   glDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -135,11 +146,17 @@ void bloom_framebuffer_start_rendering(uint32_t width_,
 
 unsigned int bloom_framebuffer_get_texture(int texture_index, enum BloomFramebufferPhase phase)
 {
-  return (phase == BloomFramebufferPhase_Downsample) ? bloom_downsample_textures[texture_index] :
-                                                       bloom_upsample_textures[texture_index];
+  return (phase == BloomFramebufferPhase_Downsample) ? downsample_textures[texture_index] :
+                                                       upsample_textures[texture_index];
 }
 
 unsigned int bloom_framebuffer_get_texture_count(enum BloomFramebufferPhase phase)
 {
-  return (phase == BloomFramebufferPhase_Downsample) ? DOWNSAMPLE_TEXTURE_COUNT : UPSAMPLE_TEXTURE_COUNT;
+  return (phase == BloomFramebufferPhase_Downsample) ? downsample_texture_count : upsample_texture_count;
+}
+
+void bloom_framebuffer_get_texture_resolution(int texture_index, uint32_t* texture_width, uint32_t* texture_height)
+{
+  *texture_width = texture_resolutions[texture_index][0];
+  *texture_height = texture_resolutions[texture_index][1];
 }

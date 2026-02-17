@@ -4,13 +4,15 @@
 
 #include <stdio.h>
 
-static GLuint ssao_framebuffer, textures[2];
-static uint32_t width, height;
+static GLuint ssao_framebuffer;
+static GLuint textures[2];
 
-static void resize_textures(uint32_t new_width, uint32_t new_height)
+static uint32_t framebuffer_width, framebuffer_height;
+
+static void resize_textures(uint32_t width, uint32_t height)
 {
-  width = new_width;
-  height = new_height;
+  framebuffer_width = width;
+  framebuffer_height = height;
 
   for (int i = 0; i < 2; ++i)
   {
@@ -19,7 +21,7 @@ static void resize_textures(uint32_t new_width, uint32_t new_height)
   }
 }
 
-bool load_ssao_framebuffer(uint32_t width_, uint32_t height_)
+bool load_ssao_framebuffer(uint32_t screen_width, uint32_t screen_height)
 {
   glGenFramebuffers(1, &ssao_framebuffer);
 
@@ -35,7 +37,7 @@ bool load_ssao_framebuffer(uint32_t width_, uint32_t height_)
   }
 
   // Allocate textures with the correct initial resolution
-  resize_textures(width_, height_);
+  resize_textures(screen_width / 2, screen_height / 2);
 
   // Attach the first texture to the framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, ssao_framebuffer);
@@ -55,14 +57,14 @@ void free_ssao_framebuffer()
   glDeleteFramebuffers(1, &ssao_framebuffer);
 }
 
-void ssao_framebuffer_start_rendering(uint32_t width_, uint32_t height_, int texture_index)
+void ssao_framebuffer_on_screen_resize(uint32_t screen_width, uint32_t screen_height)
 {
-  if (width != width_ || height != height_)
-  {
-    resize_textures(width_, height_);
-  }
+  resize_textures(screen_width / 2, screen_height / 2);
+}
 
-  glViewport(0, 0, width, height);
+void ssao_framebuffer_start_rendering(int texture_index)
+{
+  glViewport(0, 0, framebuffer_width, framebuffer_height);
   glBindFramebuffer(GL_FRAMEBUFFER, ssao_framebuffer);
 
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[texture_index], 0);

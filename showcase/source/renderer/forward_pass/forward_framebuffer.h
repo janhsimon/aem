@@ -9,10 +9,12 @@ enum ForwardFramebufferAttachment
   ForwardFramebufferAttachment_ViewspaceNormalsTexture
 };
 
-bool load_forward_framebuffer(uint32_t width, uint32_t height);
+bool load_forward_framebuffer(uint32_t screen_width, uint32_t screen_height);
 void free_forward_framebuffer();
 
-void forward_framebuffer_start_rendering(uint32_t width, uint32_t height, enum ForwardFramebufferAttachment attachment);
+void forward_framebuffer_on_screen_resize(uint32_t screen_width, uint32_t screen_height);
+
+void forward_framebuffer_start_rendering(enum ForwardFramebufferAttachment attachment);
 
 unsigned int forward_framebuffer_get_hdr_texture();
 unsigned int forward_framebuffer_get_view_space_normals_texture();

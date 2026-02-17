@@ -41,9 +41,11 @@ static float screen_aspect;
 static float camera_near, camera_far;
 static mat4 view_matrix, proj_matrix;
 
-bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint32_t screen_height)
+bool load_renderer(struct Preferences* preferences_, uint32_t screen_width_, uint32_t screen_height_)
 {
   preferences = preferences_;
+  screen_width = screen_width_;
+  screen_height = screen_height_;
 
   load_model_renderer();
 
@@ -62,7 +64,7 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width, uint
 
   // SSAO pass
   {
-    if (!load_ssao_framebuffer(screen_width / 2, screen_height / 2))
+    if (!load_ssao_framebuffer(screen_width, screen_height))
     {
       return false;
     }
@@ -228,8 +230,7 @@ static void render_forward_pass_early()
 {
   start_model_rendering();
 
-  forward_framebuffer_start_rendering(screen_width, screen_height,
-                                      ForwardFramebufferAttachment_ViewspaceNormalsTexture);
+  forward_framebuffer_start_rendering(ForwardFramebufferAttachment_ViewspaceNormalsTexture);
 
   depth_pipeline_start_rendering();
 
@@ -267,7 +268,7 @@ static void render_ssao_pass()
 
   // SSAO generation
   {
-    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 0);
+    ssao_framebuffer_start_rendering(0);
     ssao_pipeline_start_rendering();
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -297,56 +298,54 @@ static void render_ssao_pass()
     glDrawArrays(GL_TRIANGLES, 0, 3);
   }
 
-  if (!preferences->ssao_blur)
+  if (preferences->ssao_blur_enable)
   {
-    return;
-  }
-
-  // SSAO horizontal blur
-  {
-    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 1);
-    ssao_blur_pipeline_start_rendering();
-
-    // Bind SSAO texture
+    // SSAO horizontal blur
     {
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
+      ssao_framebuffer_start_rendering(1);
+      ssao_blur_pipeline_start_rendering();
+
+      // Bind SSAO texture
+      {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
+      }
+
+      // Bind depth texture
+      {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+      }
+
+      // Texel size
+      {
+        vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
+        ssao_blur_pipeline_use_texel_size(texel_size);
+      }
+
+      ssao_blur_pipeline_use_full_resolution((vec2){ screen_width, screen_height });
+      ssao_blur_pipeline_use_parameters(preferences->ssao_blur_depth_sigma, preferences->ssao_blur_radius);
+
+      ssao_blur_pipeline_use_axis((vec2){ 1.0f, 0.0f }); // Horizontal
+
+      glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 
-    // Bind depth texture
+    // SSAO vertical blur
     {
-      glActiveTexture(GL_TEXTURE1);
-      glBindTexture(GL_TEXTURE_2D, forward_framebuffer_get_depth_texture());
+      ssao_framebuffer_start_rendering(0);
+      ssao_blur_pipeline_start_rendering();
+
+      // Bind SSAO texture
+      {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(1));
+      }
+
+      ssao_blur_pipeline_use_axis((vec2){ 0.0f, 1.0f }); // Vertical
+
+      glDrawArrays(GL_TRIANGLES, 0, 3);
     }
-
-    // Texel size
-    {
-      vec2 texel_size = { 1.0f / (float)(screen_width / 2), 1.0f / (float)(screen_height / 2) };
-      ssao_blur_pipeline_use_texel_size(texel_size);
-    }
-
-    ssao_blur_pipeline_use_full_resolution((vec2){ screen_width, screen_height });
-    ssao_blur_pipeline_use_parameters(preferences->ssao_blur_depth_sigma, preferences->ssao_blur_radius);
-
-    ssao_blur_pipeline_use_axis((vec2){ 1.0f, 0.0f }); // Horizontal
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-  }
-
-  // SSAO vertical blur
-  {
-    ssao_framebuffer_start_rendering(screen_width / 2, screen_height / 2, 0);
-    ssao_blur_pipeline_start_rendering();
-
-    // Bind SSAO texture
-    {
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(1));
-    }
-
-    ssao_blur_pipeline_use_axis((vec2){ 0.0f, 1.0f }); // Vertical
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
   }
 
   glEnable(GL_DEPTH_TEST);
@@ -356,7 +355,7 @@ static void render_forward_pass_late()
 {
   start_model_rendering();
 
-  forward_framebuffer_start_rendering(screen_width, screen_height, ForwardFramebufferAttachment_HDRTexture);
+  forward_framebuffer_start_rendering(ForwardFramebufferAttachment_HDRTexture);
 
   main_pipeline_start_rendering();
   glClearColor(preferences->camera_background_color[0], preferences->camera_background_color[1],
@@ -374,6 +373,7 @@ static void render_forward_pass_late()
   }
 
   // Bind SSAO texture
+  if (preferences->ssao_enable)
   {
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
@@ -458,8 +458,8 @@ static void render_forward_pass_late()
     tracer_pipeline_start_rendering();
 
     tracer_pipeline_use_viewproj_matrix(view_matrix, proj_matrix);
-    tracer_pipeline_use_color(preferences->tracer_color);
-    tracer_pipeline_use_thickness(preferences->tracer_thickness);
+    tracer_pipeline_use_parameters(preferences->tracer_brightness, preferences->tracer_color,
+                                   preferences->tracer_thickness);
 
     render_tracer_manager();
   }
@@ -511,7 +511,7 @@ static void render_bloom_pass()
 
   // Bloom prefilter
   {
-    bloom_framebuffer_start_rendering(screen_width, screen_height, 0, BloomFramebufferPhase_Downsample);
+    bloom_framebuffer_start_rendering(0, BloomFramebufferPhase_Downsample);
     bloom_prefilter_pipeline_start_rendering();
 
     // Bind HDR texture
@@ -533,8 +533,7 @@ static void render_bloom_pass()
       const int destination_texture_index = source_texture_index + 1;
 
       // Render into the destination texture
-      bloom_framebuffer_start_rendering(screen_width, screen_height, destination_texture_index,
-                                        BloomFramebufferPhase_Downsample);
+      bloom_framebuffer_start_rendering(destination_texture_index, BloomFramebufferPhase_Downsample);
       bloom_downsample_pipeline_start_rendering();
 
       // Bind source texture
@@ -562,8 +561,7 @@ static void render_bloom_pass()
     {
       const int destination_texture_index = source_texture_index - 1;
 
-      bloom_framebuffer_start_rendering(screen_width, screen_height, destination_texture_index,
-                                        BloomFramebufferPhase_Upsample);
+      bloom_framebuffer_start_rendering(destination_texture_index, BloomFramebufferPhase_Upsample);
       bloom_upsample_pipeline_start_rendering();
 
       // Bind source textures
@@ -620,6 +618,7 @@ static void render_post_pass()
     }
 
     // Bind bloom texture
+    if (preferences->bloom_enable)
     {
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_2D, bloom_framebuffer_get_texture(0, BloomFramebufferPhase_Upsample));
@@ -630,6 +629,8 @@ static void render_post_pass()
       const float saturation = 1.0f - glm_min(player_get_respawn_cooldown(), 1.0f); // One sec fade
       tonemap_pipeline_use_saturation(saturation);
     }
+
+    tonemap_pipeline_use_bloom(preferences->bloom_enable);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
   }
@@ -656,10 +657,30 @@ static void render_post_pass()
   glEnable(GL_DEPTH_TEST);
 }
 
-void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_near_, float camera_far_)
+void renderer_on_screen_resize(uint32_t screen_width_, uint32_t screen_height_)
 {
   screen_width = screen_width_;
   screen_height = screen_height_;
+
+  // Ignore when the window gets minimized
+  if (screen_width == 0 || screen_height == 0)
+  {
+    return;
+  }
+
+  ssao_framebuffer_on_screen_resize(screen_width, screen_height);
+  forward_framebuffer_on_screen_resize(screen_width, screen_height);
+  bloom_framebuffer_on_screen_resize(screen_width, screen_height);
+}
+
+void render_frame(float camera_near_, float camera_far_)
+{
+  // Ignore when the window gets minimized
+  if (screen_width == 0 || screen_height == 0)
+  {
+    return;
+  }
+
   camera_near = camera_near_;
   camera_far = camera_far_;
 
@@ -677,6 +698,11 @@ void render_frame(uint32_t screen_width_, uint32_t screen_height_, float camera_
   }
 
   render_forward_pass_late(); // HDR shading
-  render_bloom_pass();        // Bloom
-  render_post_pass();         // Tonemap
+
+  if (preferences->bloom_enable)
+  {
+    render_bloom_pass(); // Bloom
+  }
+
+  render_post_pass(); // Tonemap
 }

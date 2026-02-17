@@ -49,6 +49,7 @@ void load_default_preferences(struct Preferences* preferences)
   // Smoke particle system
   preferences->smoke_particle_system.particle_count = 600;
   preferences->smoke_particle_system.additive = true;
+  preferences->smoke_particle_system.brightness = 1.0f;
   glm_vec3_copy((vec3){ 1.0f, 0.84f, 0.7f }, preferences->smoke_particle_system.tint);
   preferences->smoke_particle_system.direction_spread = 1.0f;
   preferences->smoke_particle_system.radius = 0.01f;
@@ -63,7 +64,8 @@ void load_default_preferences(struct Preferences* preferences)
   // Shrapnel particle system
   preferences->shrapnel_particle_system.particle_count = 100;
   preferences->shrapnel_particle_system.additive = true;
-  glm_vec3_copy(GLM_VEC3_ONE, preferences->shrapnel_particle_system.tint);
+  preferences->shrapnel_particle_system.brightness = 32.0f;
+  glm_vec3_copy((vec3){ 0.99f, 0.3f, 0.12f }, preferences->shrapnel_particle_system.tint);
   preferences->shrapnel_particle_system.direction_spread = 0.25f;
   preferences->shrapnel_particle_system.radius = 0.0f;
   preferences->shrapnel_particle_system.gravity = 1.73f;
@@ -77,7 +79,8 @@ void load_default_preferences(struct Preferences* preferences)
   // Muzzleflash particle system
   preferences->muzzleflash_particle_system.particle_count = 1;
   preferences->muzzleflash_particle_system.additive = true;
-  glm_vec3_copy(GLM_VEC3_ONE, preferences->muzzleflash_particle_system.tint);
+  preferences->muzzleflash_particle_system.brightness = 19.2f;
+  glm_vec3_copy((vec3){ 0.98f, 0.43f, 0.09f }, preferences->muzzleflash_particle_system.tint);
   preferences->muzzleflash_particle_system.direction_spread = 0.0f;
   preferences->muzzleflash_particle_system.radius = 0.0f;
   preferences->muzzleflash_particle_system.gravity = 0.0f;
@@ -89,8 +92,9 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->muzzleflash_particle_system.scale_falloff = 0.0f;
 
   // Blood particle system
-  preferences->blood_particle_system.particle_count = 600;
+  preferences->blood_particle_system.particle_count = 2000;
   preferences->blood_particle_system.additive = false;
+  preferences->blood_particle_system.brightness = 1.0f;
   glm_vec3_copy((vec3){ 0.27f, 0.0f, 0.0f }, preferences->blood_particle_system.tint);
   preferences->blood_particle_system.direction_spread = 5.8f;
   preferences->blood_particle_system.radius = 0.01f;
@@ -98,15 +102,16 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->blood_particle_system.opacity = 1.0f;
   preferences->blood_particle_system.opacity_spread = 0.12f;
   preferences->blood_particle_system.opacity_falloff = 0.0f;
-  preferences->blood_particle_system.scale = 0.56f;
-  preferences->blood_particle_system.scale_spread = 0.76f;
+  preferences->blood_particle_system.scale = 0.05f;
+  preferences->blood_particle_system.scale_spread = 0.4f;
   preferences->blood_particle_system.scale_falloff = 0.03f;
 
   // Tracer
-  glm_vec4_copy((vec4){ 1.0f, 0.79f, 0.64f, 0.15f }, preferences->tracer_color);
-  preferences->tracer_thickness = 0.01f;
-  preferences->tracer_length = 10.0f;
-  preferences->tracer_speed = 500.0f;
+  glm_vec4_copy((vec4){ 0.75f, 0.18f, 0.01f, 0.47f }, preferences->tracer_color);
+  preferences->tracer_brightness = 30.8f;
+  preferences->tracer_thickness = 0.02f;
+  preferences->tracer_length = 2.5f;
+  preferences->tracer_speed = 250.0f;
 
   // Ambient occlusion
   preferences->ssao_enable = true;
@@ -115,12 +120,13 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->ssao_strength = 7.0f;
 
   // Ambient occlusion blur
-  preferences->ssao_blur = true;
+  preferences->ssao_blur_enable = true;
   preferences->ssao_blur_depth_sigma = 0.02f;
   preferences->ssao_blur_radius = 12.5f;
 
   // Bloom
+  preferences->bloom_enable = true;
   preferences->bloom_threshold = 14.5f;
   preferences->bloom_soft_knee = 0.95f;
-  preferences->bloom_intensity = 0.9f;
+  preferences->bloom_intensity = 0.7f;
 }

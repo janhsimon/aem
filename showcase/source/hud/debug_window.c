@@ -39,6 +39,7 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
 {
   igSliderInt("Particle count", &preferences->particle_count, 0, 10000, "%d", ImGuiSliderFlags_None);
   igCheckbox("Additive", &preferences->additive);
+  igSliderFloat("Particle brightness", &preferences->brightness, 0.0f, 100.0f, "%f", ImGuiSliderFlags_Logarithmic);
   igColorEdit3("Particle color", preferences->tint, ImGuiColorEditFlags_None);
   igSliderFloat("Direction spread", &preferences->direction_spread, 0.0f, 360.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Emitter radius", &preferences->radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
@@ -165,9 +166,11 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
   if (igCollapsingHeader_TreeNodeFlags("Tracer", ImGuiTreeNodeFlags_None))
   {
     igColorEdit4("Color##Tracer", preferences->tracer_color, ImGuiColorEditFlags_None);
-    igSliderFloat("Thickness##Tracer", &preferences->tracer_thickness, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat("Length##Tracer", &preferences->tracer_length, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-    igSliderFloat("Speed##Tracer", &preferences->tracer_speed, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Brightness##Tracer", &preferences->tracer_brightness, 0.0f, 100.0f, "%f",
+                  ImGuiSliderFlags_Logarithmic);
+    igSliderFloat("Thickness##Tracer", &preferences->tracer_thickness, 0.0f, 1.0f, "%f", ImGuiSliderFlags_Logarithmic);
+    igSliderFloat("Length##Tracer", &preferences->tracer_length, 0.0f, 100.0f, "%f", ImGuiSliderFlags_Logarithmic);
+    igSliderFloat("Speed##Tracer", &preferences->tracer_speed, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_Logarithmic);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Post-processing", ImGuiTreeNodeFlags_None))
@@ -180,7 +183,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
       igSliderFloat("Bias##SSAO", &preferences->ssao_bias, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
       igSliderFloat("Strength##SSAO", &preferences->ssao_strength, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
 
-      igCheckbox("Blur##SSAO", &preferences->ssao_blur);
+      igCheckbox("Blur##SSAO", &preferences->ssao_blur_enable);
       igSliderFloat("Blur depth sigma##SSAO", &preferences->ssao_blur_depth_sigma, 0.0f, 1.0f, "%f",
                     ImGuiSliderFlags_Logarithmic);
       igSliderFloat("Blur radius##SSAO", &preferences->ssao_blur_radius, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
@@ -190,7 +193,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
     if (igTreeNode_Str("Bloom"))
     {
-      // igCheckbox("Enable##Bloom", &preferences->bloom_enable);
+      igCheckbox("Enable##Bloom", &preferences->bloom_enable);
 
       igSliderFloat("Threshold##Bloom", &preferences->bloom_threshold, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
       igSliderFloat("Soft knee##Bloom", &preferences->bloom_soft_knee, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);

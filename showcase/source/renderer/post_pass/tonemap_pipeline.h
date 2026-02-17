@@ -8,3 +8,4 @@ void free_tonemap_pipeline();
 void tonemap_pipeline_start_rendering();
 
 void tonemap_pipeline_use_saturation(float saturation);
+void tonemap_pipeline_use_bloom(bool apply_bloom);

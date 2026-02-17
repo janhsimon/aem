@@ -2,6 +2,7 @@
 
 uniform sampler2D tex;
 
+uniform float brightness;
 uniform vec3 tint;
 
 in vec2 uv;
@@ -13,5 +14,5 @@ void main()
 {
   vec4 color;
   color = texture(tex, uv) * opacity;
-  out_color = vec4(color.rgb * tint, color.a);
+  out_color = vec4(color.rgb * tint * brightness, color.a);
 }

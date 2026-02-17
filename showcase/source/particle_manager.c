@@ -22,6 +22,7 @@ struct ParticleSystem
   // Particle properties
   float particle_gravity;
   bool particle_additive; // Blend mode: Additive or alpha blending
+  float particle_brightness;
   vec3 particle_tint;
   float particle_lifetime; // -1.0: Forever
   float particle_initial_opacity;
@@ -167,6 +168,7 @@ static void sync_particle_system(struct ParticleSystem* particle_system, struct 
 
   particle_system->particle_gravity = preferences->gravity;
   particle_system->particle_additive = preferences->additive;
+  particle_system->particle_brightness = preferences->brightness;
   glm_vec3_copy(preferences->tint, particle_system->particle_tint);
 
   particle_system->particle_initial_opacity = preferences->opacity;
@@ -237,16 +239,18 @@ void update_particle_manager(float delta_time)
 void render_particle_manager()
 {
   render_particles(smoke.particle_positions, smoke.particle_scales, smoke.particle_opacities, smoke.particle_count,
-                   smoke.particle_additive, smoke.particle_tint, smoke.particle_texture_index);
+                   smoke.particle_additive, smoke.particle_brightness, smoke.particle_tint,
+                   smoke.particle_texture_index);
 
   render_particles(shrapnel.particle_positions, shrapnel.particle_scales, shrapnel.particle_opacities,
-                   shrapnel.particle_count, shrapnel.particle_additive, shrapnel.particle_tint,
-                   shrapnel.particle_texture_index);
+                   shrapnel.particle_count, shrapnel.particle_additive, shrapnel.particle_brightness,
+                   shrapnel.particle_tint, shrapnel.particle_texture_index);
 
   render_particles(muzzleflash.particle_positions, muzzleflash.particle_scales, muzzleflash.particle_opacities,
-                   muzzleflash.particle_count, muzzleflash.particle_additive, muzzleflash.particle_tint,
-                   muzzleflash.particle_texture_index);
+                   muzzleflash.particle_count, muzzleflash.particle_additive, muzzleflash.particle_brightness,
+                   muzzleflash.particle_tint, muzzleflash.particle_texture_index);
 
   render_particles(blood.particle_positions, blood.particle_scales, blood.particle_opacities, blood.particle_count,
-                   blood.particle_additive, blood.particle_tint, blood.particle_texture_index);
+                   blood.particle_additive, blood.particle_brightness, blood.particle_tint,
+                   blood.particle_texture_index);
 }

@@ -163,11 +163,13 @@ void main()
   }
 
   float ao = occlusion;
-  if (apply_ssao) {
+  if (apply_ssao)
+  {
     vec2 screen_uv = (gl_FragCoord.xy + 0.5) / screen_size;
     float ssao = texture(ssao_tex, screen_uv).r;
     ao = min(ao, ssao); // Mix baked occlusion and SSAO
   }
+
   vec3 ambient = ambient_color.rgb * ambient_color.a * albedo * ao;
 
   vec3 emissive = emissive_intensity * albedo;

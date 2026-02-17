@@ -102,6 +102,7 @@ void render_particles(vec3* positions,
                       float* opacities,
                       uint32_t particle_count,
                       bool additive,
+                      float brightness,
                       vec3 tint,
                       uint32_t texture_index)
 {
@@ -120,6 +121,7 @@ void render_particles(vec3* positions,
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   }
 
+  particle_pipeline_use_brightness(brightness);
   particle_pipeline_use_tint(tint);
 
   glBindBuffer(GL_ARRAY_BUFFER, instance_positions);

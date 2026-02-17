@@ -14,5 +14,6 @@ void render_particles(vec3* positions,
                       float* opacities,
                       uint32_t particle_count,
                       bool additive,
+                      float brightness,
                       vec3 tint,
                       uint32_t texture_index);

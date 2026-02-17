@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
 
     // Render
     {
-      render_frame(window_width, window_height, CAM_NEAR, CAM_FAR);
+      render_frame(CAM_NEAR, CAM_FAR);
       render_hud();
 
       refresh_window();

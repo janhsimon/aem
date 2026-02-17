@@ -2,6 +2,8 @@
 
 #include "input.h"
 
+#include "renderer/renderer.h"
+
 #include <glad/gl.h>
 #include <glfw/glfw3.h>
 
@@ -14,6 +16,8 @@ static void framebuffer_size_callback(GLFWwindow* window, int width_, int height
 {
   width = (uint32_t)width_;
   height = (uint32_t)height_;
+
+  renderer_on_screen_resize(width, height);
 }
 
 static void cursor_pos_callback(GLFWwindow* window, double x, double y)

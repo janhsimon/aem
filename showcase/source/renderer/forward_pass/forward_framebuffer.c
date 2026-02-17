@@ -4,13 +4,15 @@
 
 #include <stdio.h>
 
-static GLuint forward_framebuffer, hdr_texture, view_space_normals_texture, depth_texture;
-static uint32_t width, height;
+static GLuint framebuffer;
+static GLuint hdr_texture, view_space_normals_texture, depth_texture;
 
-static void resize_textures(uint32_t new_width, uint32_t new_height)
+static uint32_t framebuffer_width, framebuffer_height;
+
+static void resize_textures(uint32_t width, uint32_t height)
 {
-  width = new_width;
-  height = new_height;
+  framebuffer_width = width;
+  framebuffer_height = height;
 
   glBindTexture(GL_TEXTURE_2D, hdr_texture);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
@@ -22,9 +24,9 @@ static void resize_textures(uint32_t new_width, uint32_t new_height)
   glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 }
 
-bool load_forward_framebuffer(uint32_t width_, uint32_t height_)
+bool load_forward_framebuffer(uint32_t screen_width, uint32_t screen_height)
 {
-  glGenFramebuffers(1, &forward_framebuffer);
+  glGenFramebuffers(1, &framebuffer);
 
   // Generate textures
   {
@@ -51,10 +53,10 @@ bool load_forward_framebuffer(uint32_t width_, uint32_t height_)
   }
 
   // Allocate textures with the correct initial resolution
-  resize_textures(width_, height_);
+  resize_textures(screen_width, screen_height);
 
   // Attach the textures to the framebuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, forward_framebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, hdr_texture, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, view_space_normals_texture, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture, 0);
@@ -72,20 +74,18 @@ void free_forward_framebuffer()
   glDeleteTextures(1, &depth_texture);
   glDeleteTextures(1, &view_space_normals_texture);
   glDeleteTextures(1, &hdr_texture);
-  glDeleteFramebuffers(1, &forward_framebuffer);
+  glDeleteFramebuffers(1, &framebuffer);
 }
 
-void forward_framebuffer_start_rendering(uint32_t width_,
-                                         uint32_t height_,
-                                         enum ForwardFramebufferAttachment attachment)
+void forward_framebuffer_on_screen_resize(uint32_t screen_width, uint32_t screen_height)
 {
-  if (width != width_ || height != height_)
-  {
-    resize_textures(width_, height_);
-  }
+  resize_textures(screen_width, screen_height);
+}
 
-  glViewport(0, 0, width, height);
-  glBindFramebuffer(GL_FRAMEBUFFER, forward_framebuffer);
+void forward_framebuffer_start_rendering(enum ForwardFramebufferAttachment attachment)
+{
+  glViewport(0, 0, framebuffer_width, framebuffer_height);
+  glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 
   glDrawBuffer(GL_COLOR_ATTACHMENT0 + attachment);
 }

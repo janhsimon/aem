@@ -9,6 +9,7 @@ struct ParticleSystemPreferences
 {
   uint32_t particle_count;
   bool additive;
+  float brightness;
   vec3 tint;
   float direction_spread;
   float radius;
@@ -61,6 +62,7 @@ struct Preferences
 
   // Tracer
   vec4 tracer_color;
+  float tracer_brightness;
   float tracer_thickness;
   float tracer_length;
   float tracer_speed; // In units per second
@@ -72,11 +74,12 @@ struct Preferences
   float ssao_strength;
 
   // Ambient occlusion blur
-  bool ssao_blur;
+  bool ssao_blur_enable;
   float ssao_blur_depth_sigma;
   float ssao_blur_radius;
 
   // Bloom
+  bool bloom_enable;
   float bloom_threshold;
   float bloom_soft_knee;
   float bloom_intensity;
