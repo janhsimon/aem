@@ -26,7 +26,7 @@ void main()
     
     if (apply_bloom)
     {
-        hdr += texture(bloom_tex, uv).rgb;;
+        hdr += texture(bloom_tex, uv).rgb;
     }
 
     // Tone map

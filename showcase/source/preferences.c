@@ -117,12 +117,12 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->ssao_enable = true;
   preferences->ssao_radius = 0.4f;
   preferences->ssao_bias = 0.001f;
-  preferences->ssao_strength = 7.0f;
+  preferences->ssao_strength = 0.9f;
 
   // Ambient occlusion blur
   preferences->ssao_blur_enable = true;
   preferences->ssao_blur_depth_sigma = 0.02f;
-  preferences->ssao_blur_radius = 12.5f;
+  preferences->ssao_blur_radius = 1.04f;
 
   // Bloom
   preferences->bloom_enable = true;
