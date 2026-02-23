@@ -8,7 +8,7 @@ struct ModelRenderInfo;
 
 bool load_view_model();
 
-void update_view_model(struct Preferences* preferences, bool moving, float delta_time);
+void update_view_model(struct Preferences* preferences, bool firing_enabled, bool moving, float delta_time);
 
 struct ModelRenderInfo* get_view_model_render_info();
 

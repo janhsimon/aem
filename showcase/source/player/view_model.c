@@ -127,7 +127,7 @@ bool load_view_model()
   return true;
 }
 
-void update_view_model(struct Preferences* preferences, bool moving, float delta_time)
+void update_view_model(struct Preferences* preferences, bool firing_enabled, bool moving, float delta_time)
 {
   shot_cooldown -= delta_time;
 
@@ -170,7 +170,7 @@ void update_view_model(struct Preferences* preferences, bool moving, float delta
     vec3 cam_pos;
     cam_get_position(cam_pos);
 
-    if (get_shoot_button_down() && !is_reloading && shot_cooldown <= 0.0f)
+    if (get_shoot_button_down() && firing_enabled && !is_reloading && shot_cooldown <= 0.0f)
     {
       if (ammo <= 0)
       {

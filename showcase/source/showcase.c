@@ -147,9 +147,10 @@ int main(int argc, char* argv[])
         sync_particle_manager(&preferences);
       }
 
-      if ((!debug_mode_enabled || !has_debug_window_focus()) && get_player_health() > 0.0f)
+      if (get_player_health() > 0.0f)
       {
-        update_view_model(&preferences, player_moving, delta_time);
+        const firing_enabled = !debug_mode_enabled || !has_debug_window_focus();
+        update_view_model(&preferences, firing_enabled, player_moving, delta_time);
       }
 
       update_enemy(delta_time);
