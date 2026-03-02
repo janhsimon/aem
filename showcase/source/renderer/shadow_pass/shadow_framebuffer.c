@@ -25,18 +25,18 @@ bool load_shadow_framebuffer()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
   glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float[]){ 1.0, 1.0, 1.0, 1.0 });
 
-  // Attach it to framebuffer
+  //  Attach the shadow map texture
   glBindFramebuffer(GL_FRAMEBUFFER, shadow_framebuffer);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadow_texture, 0);
-
-  // We don’t need a color buffer
-  glDrawBuffer(GL_NONE);
-  glReadBuffer(GL_NONE);
 
   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
   {
     return false;
   }
+
+  // We don't need a color buffer
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
 
   return true;
 }

@@ -7,8 +7,8 @@
 #include "player/view_model.h"
 #include "preferences.h"
 #include "renderer/bloom_pass/bloom_framebuffer.h"
+#include "renderer/debug_texture_pass/debug_texture_framebuffer.h"
 #include "renderer/forward_pass/forward_framebuffer.h"
-#include "renderer/shadow_pass/shadow_framebuffer.h"
 #include "renderer/ssao_pass/ssao_framebuffer.h"
 #include "texture_window.h"
 #include "window.h"
@@ -270,7 +270,7 @@ void update_hud(uint32_t screen_width,
     {
       if (begin_texture_window("Shadow map", false, 0, screen_width, screen_height))
       {
-        add_texture_window_image(shadow_framebuffer_get_shadow_texture(), screen_width, screen_height);
+        add_texture_window_image(debug_texture_framebuffer_get_shadow_map(), 1024, 1024);
       }
 
       end_texture_window();

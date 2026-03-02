@@ -202,7 +202,7 @@ static bool calc_player_visible()
     vec3 enemy_to_player;
     {
       vec3 player_pos;
-      cam_get_position(player_pos);
+      camera_get_position(player_pos);
 
       glm_vec3_sub(player_pos, transform[3], enemy_to_player);
       enemy_to_player[1] = 0.0f; // Flatten
@@ -221,7 +221,7 @@ static bool calc_player_visible()
     vec3 ray_from, ray_to;
     glm_vec3_copy(transform[3], ray_from);
     ray_from[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to head
-    cam_get_position(ray_to);
+    camera_get_position(ray_to);
 
     vec3 ray;
     glm_vec3_sub(ray_to, ray_from, ray);

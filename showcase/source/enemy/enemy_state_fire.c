@@ -56,7 +56,7 @@ static void fire(mat4 enemy_transform)
 
   vec3 end;
   {
-    cam_get_position(end);
+    camera_get_position(end);
     end[0] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_HORIZONTAL - (ENEMY_ACCURACY_HORIZONTAL * 0.5f);
     end[1] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_VERTICAL - (ENEMY_ACCURACY_VERTICAL * 0.5f);
     end[2] += ((rand() % 100) / 100.0f) * ENEMY_ACCURACY_HORIZONTAL - (ENEMY_ACCURACY_HORIZONTAL * 0.5f);

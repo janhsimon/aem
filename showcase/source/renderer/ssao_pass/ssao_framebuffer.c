@@ -39,15 +39,6 @@ bool load_ssao_framebuffer(uint32_t screen_width, uint32_t screen_height)
   // Allocate textures with the correct initial resolution
   resize_textures(screen_width / 2, screen_height / 2);
 
-  // Attach the first texture to the framebuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, ssao_framebuffer);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[0], 0);
-
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-  {
-    return false;
-  }
-
   return true;
 }
 

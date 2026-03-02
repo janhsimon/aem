@@ -11,6 +11,10 @@ uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
 uniform mat4 light_viewproj;
 
+uniform float shadow_map_bias;
+uniform float pcf_radius;
+uniform int pcf_kernel_size;
+
 uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
@@ -74,6 +78,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+float gaussian(float x, float y, float sigma)
+{
+    return exp(-(x*x + y*y) / (2.0 * sigma * sigma));
+}
+
 void main()
 {
   float shadow = 1.0;
@@ -83,30 +92,28 @@ void main()
   projCoords = projCoords * 0.5 + 0.5;
   
   if (projCoords.z <= 1.0) {
-    const float bias = 0.0015; // From 0.0025
-    
     // Get texture coordinate offset (1 pixel in texture space)
     vec2 texelSize = 1.0 / textureSize(shadow_tex, 0);
     const float radius = 2.0; // try 1.5–3.0
     float visibility = 0.0;
     
     // 5x5 PCF kernel
-    for (int x = -2; x <= 2; ++x) {
-      for (int y = -2; y <= 2; ++y) {
-        vec2 offset = vec2(x, y) * texelSize * radius;
-        
-        //vec2 offset = vec2(x, y) * texelSize;
+    for (int x = -pcf_kernel_size; x <= pcf_kernel_size; ++x) {
+      for (int y = -pcf_kernel_size; y <= pcf_kernel_size; ++y) {
+        vec2 offset = vec2(x, y) * texelSize * pcf_radius;
+
         float closestDepth = texture(shadow_tex, projCoords.xy + offset).r;
-        float currentDepth = projCoords.z - bias;
-        visibility += currentDepth <= closestDepth ? 1.0 : 0.0;
+        float currentDepth = projCoords.z - shadow_map_bias;
+        visibility += (currentDepth <= closestDepth ? 1.0 : 0.0) * gaussian(x, y, pcf_kernel_size * 0.5);
       }
     }
     
     // Average result
-    shadow = visibility / 25.0;
+    float sample_count = pcf_kernel_size * 2 + 1;
+    shadow = visibility / (sample_count * sample_count);
   }
 
-  vec4 base_color_sample = /*vec4(0.4, 0.4, 0.6, texture(base_color_tex, i.uv).a);*/ texture(base_color_tex, i.uv); // All channels are already in linear space
+  vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space
 
   float opacity = base_color_sample.a;
   if (render_pass == RENDER_PASS_OPAQUE) {

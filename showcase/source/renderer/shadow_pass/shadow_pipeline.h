@@ -8,7 +8,6 @@ bool load_shadow_pipeline();
 void free_shadow_pipeline();
 
 void shadow_pipeline_start_rendering();
-void shadow_pipeline_calc_light_viewproj(vec3 light_dir, float aspect, float fov, float near, float far);
-void shadow_pipeline_use_world_matrix(mat4 world_matrix);
 
-void shadow_pipeline_get_light_viewproj(mat4 viewproj);
+void shadow_pipeline_use_world_matrix(mat4 world_matrix);
+void shadow_pipeline_use_view_projection_matrices(mat4 view_matrix, mat4 proj_matrix);

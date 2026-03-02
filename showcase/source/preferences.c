@@ -30,6 +30,11 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->light_intensity = 90.0f;
   glm_vec3_copy((vec3){ 0.22f, -0.97f, 0.12f }, preferences->light_dir);
 
+  // Shadow mapping
+  preferences->shadow_mapping_bias = 0.0015f;
+  preferences->shadow_mapping_pcf_radius = 2.0f;
+  preferences->shadow_mapping_pcf_kernel_size = 2;
+
   // AK
   // glm_vec3_copy((vec3){ 0.0f, -0.02f, 0.1f }, preferences->view_model_position);
   // preferences->view_model_scale = 0.02f;

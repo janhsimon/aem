@@ -43,7 +43,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     // Let the camera drop to the feet
     {
       vec3 pos;
-      cam_get_position(pos);
+      camera_get_position(pos);
       if (death_feet_height < pos[1])
       {
         pos[1] -= delta_time * 3.0f;
@@ -51,7 +51,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         {
           pos[1] = death_feet_height;
         }
-        cam_set_position(pos);
+        camera_set_position(pos);
       }
     }
 
@@ -92,8 +92,8 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         float spawn_yaw;
         get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
         spawn_position[1] += PLAYER_HEIGHT - PLAYER_RADIUS;
-        cam_set_position(spawn_position);
-        camera_set_yaw_pitch_roll(spawn_yaw, 0.0f, 0.0f);
+        camera_set_position(spawn_position);
+        camera_set_yaw_pitch_roll(glm_rad(spawn_yaw), 0.0f, 0.0f);
 
         view_model_respawn();
 
@@ -103,10 +103,21 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   }
   else
   {
+    // Mouse look
+    if (mouse_look)
+    {
+      double delta_x, delta_y;
+      get_mouse_delta(&delta_x, &delta_y);
+      camera_add_yaw_pitch_roll(delta_x * 0.001f, delta_y * 0.001f, 0.0f);
+    }
+
+    camera_calc_forward();
+    camera_calc_rotation();
+
     // Movement
     vec3 start_cam_pos;
     {
-      cam_get_position(start_cam_pos);
+      camera_get_position(start_cam_pos);
 
       vec3 move;
       get_move_vector(move, moving);
@@ -114,7 +125,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       if (*moving)
       {
         mat3 cam_rotation;
-        cam_calc_rotation(cam_rotation, CameraRotationMode_WithoutRecoil);
+        camera_get_rotation_without_recoil(cam_rotation);
         glm_mat3_mulv(cam_rotation, move, move); // Transform move from local to camera space
 
         if (!preferences->no_clip)
@@ -170,7 +181,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       // Phase 1: Horizontal movement versus walls
       vec3 pos;
       {
-        cam_get_position(pos);
+        camera_get_position(pos);
 
         vec3 horizontal_move = { player_velocity[0], 0.0f, player_velocity[2] };
 
@@ -231,27 +242,19 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         player_velocity[1] = vy;
       }
 
-      cam_set_position(pos);
+      camera_set_position(pos);
     }
     else
     {
       glm_vec3_add(start_cam_pos, player_velocity, start_cam_pos);
-      cam_set_position(start_cam_pos);
-    }
-
-    // Mouse look
-    if (mouse_look)
-    {
-      double delta_x, delta_y;
-      get_mouse_delta(&delta_x, &delta_y);
-      camera_add_yaw_pitch_roll(delta_x * 0.001f, delta_y * 0.001f, 0.0f);
+      camera_set_position(start_cam_pos);
     }
   }
 }
 
 void get_player_position(vec3 position)
 {
-  cam_get_position(position);
+  camera_get_position(position);
   position[1] -= PLAYER_HEIGHT - PLAYER_RADIUS;
 }
 
@@ -267,7 +270,7 @@ float calc_angle_delta_towards_player(vec3 from_position, vec3 from_forward)
   float target_yaw = 0.0f;
   {
     vec3 player_position;
-    cam_get_position(player_position);
+    camera_get_position(player_position);
 
     vec3 dir;
     glm_vec3_sub(player_position, from_position, dir);
@@ -320,7 +323,7 @@ float get_player_health()
 bool is_player_hit(vec3 from, vec3 to)
 {
   vec3 player_top;
-  cam_get_position(player_top);
+  camera_get_position(player_top);
 
   vec3 player_bottom;
   glm_vec3_copy(player_top, player_bottom);
@@ -350,7 +353,7 @@ void player_hurt(float damage, vec3 dir)
     health = 0;
 
     vec3 cam_pos;
-    cam_get_position(cam_pos);
+    camera_get_position(cam_pos);
     death_feet_height = cam_pos[1] - PLAYER_HEIGHT + (PLAYER_RADIUS + 0.1f);
 
     has_fire_key_been_up_since_death = false;

@@ -122,6 +122,16 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     }
   }
 
+  if (igCollapsingHeader_TreeNodeFlags("Shadow mapping", ImGuiTreeNodeFlags_None))
+  {
+    igSliderFloat("Bias##ShadowMapping", &preferences->shadow_mapping_bias, 0.0f, 25.0f, "%f",
+                  ImGuiSliderFlags_Logarithmic);
+    igSliderFloat("PCF Radius##ShadowMapping", &preferences->shadow_mapping_pcf_radius, 0.0f, 100.0f, "%f",
+                  ImGuiSliderFlags_Logarithmic);
+    igSliderInt("PCF Kernel Size##ShadowMapping", &preferences->shadow_mapping_pcf_kernel_size, 1, 25, "%d",
+                ImGuiSliderFlags_None);
+  }
+
   if (igCollapsingHeader_TreeNodeFlags("View model", ImGuiTreeNodeFlags_None))
   {
     igSliderFloat3("Position", preferences->view_model_position, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);

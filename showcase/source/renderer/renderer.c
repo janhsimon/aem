@@ -6,6 +6,11 @@
 #include "bloom_pass/bloom_upsample_pipeline.h"
 #include "camera.h"
 #include "debug_manager.h"
+#include "debug_texture_pass/debug_texture_framebuffer.h"
+#include "debug_texture_pass/frustum_pipeline.h"
+#include "debug_texture_pass/frustum_renderer.h"
+#include "debug_texture_pass/shadow_composite_pipeline.h"
+#include "directional_light.h"
 #include "enemy/enemy.h"
 #include "forward_pass/depth_pipeline.h"
 #include "forward_pass/forward_framebuffer.h"
@@ -141,6 +146,29 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width_, uin
     }
   }
 
+  // Debug texture pass
+  {
+    if (!load_debug_texture_framebuffer())
+    {
+      return false;
+    }
+
+    if (!load_frustum_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_shadow_composite_pipeline())
+    {
+      return false;
+    }
+
+    if (!load_frustum_renderer())
+    {
+      return false;
+    }
+  }
+
   // Post pass
   {
     if (!load_tonemap_pipeline())
@@ -187,6 +215,12 @@ void free_renderer()
   free_bloom_downsample_pipeline();
   free_bloom_upsample_pipeline();
 
+  // Debug texture pass
+  free_debug_texture_framebuffer();
+  free_frustum_pipeline();
+  free_shadow_composite_pipeline();
+  free_frustum_renderer();
+
   // Post pass
   free_tonemap_pipeline();
   free_debug_pipeline();
@@ -201,8 +235,17 @@ static void render_shadow_pass()
   shadow_pipeline_start_rendering();
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  shadow_pipeline_calc_light_viewproj(preferences->light_dir, screen_aspect, preferences->camera_fov, camera_near,
-                                      camera_far);
+  camera_calc_frustum(screen_aspect, preferences->camera_fov, camera_near, camera_far);
+
+  vec4 frustum_corners[8], frustum_center;
+  camera_get_frustum_corners(frustum_corners);
+  camera_get_frustum_center(frustum_center);
+  directional_light_calc_viewproj(preferences, frustum_corners, frustum_center);
+
+  mat4 light_view_matrix, light_proj_matrix;
+  directional_light_get_view_matrix(light_view_matrix);
+  directional_light_get_proj_matrix(light_proj_matrix);
+  shadow_pipeline_use_view_projection_matrices(light_view_matrix, light_proj_matrix);
 
   // Map
   {
@@ -392,15 +435,17 @@ static void render_forward_pass_late()
   // Set the latest camera position
   {
     vec3 camera_position;
-    cam_get_position(camera_position);
+    camera_get_position(camera_position);
     main_pipeline_use_camera(camera_position);
   }
 
   {
     mat4 light_viewproj;
-    shadow_pipeline_get_light_viewproj(light_viewproj);
+    directional_light_get_viewproj_matrix(light_viewproj);
     main_pipeline_use_light(preferences->light_dir, preferences->light_color, preferences->light_intensity,
                             light_viewproj);
+    main_pipeline_use_shadow_parameters(preferences->shadow_mapping_bias, preferences->shadow_mapping_pcf_radius,
+                                        preferences->shadow_mapping_pcf_kernel_size);
   }
 
   // Main pipeline (opaque)
@@ -494,7 +539,7 @@ static void render_forward_pass_late()
 
     {
       mat4 view_model_proj_matrix;
-      calc_proj_matrix(screen_aspect, preferences->view_model_fov, camera_near, camera_far, view_model_proj_matrix);
+      camera_get_view_model_proj_matrix(view_model_proj_matrix);
       main_pipeline_use_proj_matrix(view_model_proj_matrix);
     }
 
@@ -599,6 +644,44 @@ static void render_bloom_pass()
   glEnable(GL_DEPTH_TEST);
 }
 
+static void render_debug_texture_pass()
+{
+  // Render the camera frustum
+  {
+    start_frustum_rendering();
+
+    debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_CameraFrustum);
+    frustum_pipeline_start_rendering();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    mat4 light_viewproj;
+    directional_light_get_viewproj_matrix(light_viewproj);
+    frustum_pipeline_use_viewproj_matrix(light_viewproj);
+
+    render_frustum(screen_aspect, preferences->camera_fov, camera_near, camera_far);
+  }
+
+  // Composite
+  {
+    debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_ShadowMap);
+    shadow_composite_pipeline_start_rendering();
+
+    glActiveTexture(GL_TEXTURE0);
+
+    glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_texture());
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glBlendFunc(GL_ONE, GL_ONE);
+    glEnable(GL_BLEND);
+
+    glBindTexture(GL_TEXTURE_2D, debug_texture_framebuffer_get_camera_frustum_texture());
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glDisable(GL_BLEND);
+  }
+}
+
 static void render_post_pass()
 {
   glDisable(GL_DEPTH_TEST);
@@ -640,10 +723,10 @@ static void render_post_pass()
   {
     const float aspect = (float)screen_width / (float)screen_height;
 
-    mat4 viewproj_matrix;
-    glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
-
     debug_pipeline_start_rendering();
+
+    mat4 viewproj_matrix;
+    camera_get_viewproj_matrix(viewproj_matrix);
     debug_pipeline_use_viewproj_matrix(viewproj_matrix);
 
     // Lines
@@ -686,8 +769,9 @@ void render_frame(float camera_near_, float camera_far_)
 
   screen_aspect = (float)screen_width / (float)screen_height;
 
-  calc_view_matrix(view_matrix);
-  calc_proj_matrix(screen_aspect, preferences->camera_fov, camera_near, camera_far, proj_matrix);
+  camera_calc_matrices(screen_aspect, preferences->camera_fov, preferences->view_model_fov, camera_near, camera_far);
+  camera_get_view_matrix(view_matrix);
+  camera_get_proj_matrix(proj_matrix);
 
   render_shadow_pass();        // Shadow mapping
   render_forward_pass_early(); // Early-Z and view-space normals
@@ -702,6 +786,11 @@ void render_frame(float camera_near_, float camera_far_)
   if (preferences->bloom_enable)
   {
     render_bloom_pass(); // Bloom
+  }
+
+  // if (debug_wanted)
+  {
+    render_debug_texture_pass(); // Prepare textures for debug visualization
   }
 
   render_post_pass(); // Tonemap

@@ -10,6 +10,9 @@ set(SOURCE
   source/debug_manager.c
   source/debug_manager.h
 
+  source/directional_light.c
+  source/directional_light.h
+
   source/input.c
   source/input.h
 
@@ -95,6 +98,18 @@ set(SOURCE
   source/renderer/bloom_pass/bloom_upsample_pipeline.c
   source/renderer/bloom_pass/bloom_upsample_pipeline.h
 
+  source/renderer/debug_texture_pass/debug_texture_framebuffer.c
+  source/renderer/debug_texture_pass/debug_texture_framebuffer.h
+
+  source/renderer/debug_texture_pass/frustum_pipeline.c
+  source/renderer/debug_texture_pass/frustum_pipeline.h
+
+  source/renderer/debug_texture_pass/frustum_renderer.c
+  source/renderer/debug_texture_pass/frustum_renderer.h
+
+  source/renderer/debug_texture_pass/shadow_composite_pipeline.c
+  source/renderer/debug_texture_pass/shadow_composite_pipeline.h
+
   source/renderer/forward_pass/depth_pipeline.c
   source/renderer/forward_pass/depth_pipeline.h
 
@@ -154,6 +169,7 @@ set(SOURCE
   shaders/main.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
+  shaders/simple.frag.glsl
   shaders/ssao.frag.glsl
   shaders/ssao_blur.frag.glsl
   shaders/tonemap.frag.glsl

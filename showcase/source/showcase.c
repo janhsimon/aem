@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     vec3 player_spawn_position;
     float player_spawn_yaw;
     get_current_map_player_spawn(player_spawn_position, &player_spawn_yaw);
-    cam_set_position(player_spawn_position);
+    camera_set_position(player_spawn_position);
     camera_set_yaw_pitch_roll(glm_rad(player_spawn_yaw), 0.0f, 0.0f);
   }
 

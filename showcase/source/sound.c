@@ -201,7 +201,7 @@ void set_master_volume(float volume)
 
 void update_sound()
 {
-  calc_view_matrix(view_matrix);
+  camera_get_view_matrix(view_matrix);
 }
 
 void play_ak47_fire_sound(vec3 position)

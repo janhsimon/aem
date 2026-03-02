@@ -46,6 +46,11 @@ struct Preferences
   vec3 ambient_color;
   float ambient_intensity;
 
+  // Shadow mapping
+  float shadow_mapping_bias;
+  float shadow_mapping_pcf_radius;
+  int shadow_mapping_pcf_kernel_size;
+
   // View model
   vec3 view_model_position;
   float view_model_scale;

@@ -80,7 +80,7 @@ void hud_damage_indicate(vec3 damage_direction)
 
   // Transform the direction with the inverse camera rotation to get the delta
   mat3 inv_cam_rot;
-  cam_calc_rotation(inv_cam_rot, CameraRotationMode_WithoutRecoil);
+  camera_get_rotation_without_recoil(inv_cam_rot);
   glm_mat3_inv(inv_cam_rot, inv_cam_rot);
   glm_mat3_mulv(inv_cam_rot, damage_direction, damage_direction);
 

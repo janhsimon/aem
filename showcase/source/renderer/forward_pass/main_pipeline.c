@@ -10,7 +10,8 @@ static GLuint shader_program;
 static GLint world_uniform_location, view_uniform_location, proj_uniform_location, render_pass_uniform_location,
   light_dir_uniform_location, camera_pos_uniform_location, light_viewproj_uniform_location,
   ambient_color_uniform_location, light_color_uniform_location, screen_size_uniform_location,
-  apply_ssao_uniform_location;
+  apply_ssao_uniform_location, shadow_map_bias_uniform_location, pcf_radius_uniform_location,
+  pcf_kernel_size_uniform_location;
 
 bool load_main_pipeline()
 {
@@ -50,6 +51,9 @@ bool load_main_pipeline()
       light_color_uniform_location = get_uniform_location(shader_program, "light_color");
       screen_size_uniform_location = get_uniform_location(shader_program, "screen_size");
       apply_ssao_uniform_location = get_uniform_location(shader_program, "apply_ssao");
+      shadow_map_bias_uniform_location = get_uniform_location(shader_program, "shadow_map_bias");
+      pcf_radius_uniform_location = get_uniform_location(shader_program, "pcf_radius");
+      pcf_kernel_size_uniform_location = get_uniform_location(shader_program, "pcf_kernel_size");
 
       const GLint normals_mode_uniform_location = get_uniform_location(shader_program, "normals_mode");
       glUniform1i(normals_mode_uniform_location, 0); // Produce world-space normals
@@ -123,6 +127,13 @@ void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_inten
   glUniform3fv(light_dir_uniform_location, 1, light_dir);
   glUniform4fv(light_color_uniform_location, 1, l);
   glUniformMatrix4fv(light_viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+}
+
+void main_pipeline_use_shadow_parameters(float bias, float pcf_radius, int pcf_kernel_size)
+{
+  glUniform1f(shadow_map_bias_uniform_location, bias);
+  glUniform1f(pcf_radius_uniform_location, pcf_radius);
+  glUniform1i(pcf_kernel_size_uniform_location, pcf_kernel_size);
 }
 
 void main_pipeline_use_ambient_color(vec3 ambient_color, float ambient_intensity)

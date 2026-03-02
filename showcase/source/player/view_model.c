@@ -168,7 +168,7 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
   else
   {
     vec3 cam_pos;
-    cam_get_position(cam_pos);
+    camera_get_position(cam_pos);
 
     if (get_shoot_button_down() && firing_enabled && !is_reloading && shot_cooldown <= 0.0f)
     {
@@ -188,10 +188,10 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
         play_ak47_fire_sound(cam_pos);
 
         vec3 from;
-        cam_get_position(from);
+        camera_get_position(from);
 
         mat3 cam_rot;
-        cam_calc_rotation(cam_rot, CameraRotationMode_WithRecoil);
+        camera_get_rotation_with_recoil(cam_rot);
 
         vec3 ray = { 0.0f, 0.0f, 1.0f };
         glm_mat3_mulv(cam_rot, ray, ray);
@@ -360,12 +360,12 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 {
   // Copy the camera position
   vec3 camera_position;
-  cam_get_position(camera_position);
+  camera_get_position(camera_position);
   glm_translate_make((vec4*)world_matrix, camera_position);
 
   // And insert the camera orientation
   mat3 cam_rot;
-  cam_calc_rotation(cam_rot, CameraRotationMode_WithoutRecoil); // Could also be with recoil
+  camera_get_rotation_without_recoil(cam_rot); // Could also be with recoil
   glm_mat4_ins3(cam_rot, world_matrix);
 
   glm_translate(world_matrix, preferences->view_model_position);
