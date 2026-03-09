@@ -47,9 +47,13 @@ struct Preferences
   float ambient_intensity;
 
   // Shadow mapping
+  bool shadow_mapping_enable;
+  uint32_t shadow_mapping_cascade_texture_sizes[4];
+  float shadow_mapping_cascade_splits[3];
   float shadow_mapping_bias;
   float shadow_mapping_pcf_radius;
   int shadow_mapping_pcf_kernel_size;
+  bool shadow_mapping_visualize_cascades;
 
   // View model
   vec3 view_model_position;

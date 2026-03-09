@@ -124,12 +124,59 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
   if (igCollapsingHeader_TreeNodeFlags("Shadow mapping", ImGuiTreeNodeFlags_None))
   {
+    igCheckbox("Enable##ShadowMapping", &preferences->shadow_mapping_enable);
+
+    if (igTreeNode_Str("Cascade Texture Sizes"))
+    {
+      static const char* resolution_names[] = { "256px", "512px", "1024px", "2048px", "4096px", "8192px", "16384px" };
+
+      for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+      {
+        char name_buffer[128], text_buffer[32];
+        sprintf(name_buffer, "Cascade #%u Texture Size##ShadowMapping", cascade_index + 1);
+        sprintf(text_buffer, "%upx", preferences->shadow_mapping_cascade_texture_sizes[cascade_index]);
+
+        if (igBeginCombo(name_buffer, text_buffer, ImGuiComboFlags_None))
+        {
+          for (int i = 0; i < 7; ++i)
+          {
+            if (igSelectable_Bool(resolution_names[i],
+                                  preferences->shadow_mapping_cascade_texture_sizes[cascade_index] == (256 << i), 0,
+                                  (struct ImVec2){ 0, 0 }))
+            {
+              preferences->shadow_mapping_cascade_texture_sizes[cascade_index] = (256 << i);
+            }
+          }
+
+          igEndCombo();
+        }
+      }
+
+      igTreePop();
+    }
+
+    if (igTreeNode_Str("Cascade Splits"))
+    {
+      igSliderFloat("Cascade Split #1##ShadowMapping", &preferences->shadow_mapping_cascade_splits[0], 0.0f, 1.0f, "%f",
+                    ImGuiSliderFlags_Logarithmic);
+
+      igSliderFloat("Cascade Split #2##ShadowMapping", &preferences->shadow_mapping_cascade_splits[1], 0.0f, 1.0f, "%f",
+                    ImGuiSliderFlags_Logarithmic);
+
+      igSliderFloat("Cascade Split #3##ShadowMapping", &preferences->shadow_mapping_cascade_splits[2], 0.0f, 1.0f, "%f",
+                    ImGuiSliderFlags_Logarithmic);
+
+      igTreePop();
+    }
+
     igSliderFloat("Bias##ShadowMapping", &preferences->shadow_mapping_bias, 0.0f, 25.0f, "%f",
                   ImGuiSliderFlags_Logarithmic);
     igSliderFloat("PCF Radius##ShadowMapping", &preferences->shadow_mapping_pcf_radius, 0.0f, 100.0f, "%f",
                   ImGuiSliderFlags_Logarithmic);
     igSliderInt("PCF Kernel Size##ShadowMapping", &preferences->shadow_mapping_pcf_kernel_size, 1, 25, "%d",
                 ImGuiSliderFlags_None);
+
+    igCheckbox("Visualize Cascades##ShadowMapping", &preferences->shadow_mapping_visualize_cascades);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("View model", ImGuiTreeNodeFlags_None))

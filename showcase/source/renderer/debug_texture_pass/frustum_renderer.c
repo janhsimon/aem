@@ -37,11 +37,11 @@ void start_frustum_rendering()
   glBindVertexArray(vao);
 }
 
-void render_frustum(float aspect, float fov, float near, float far)
+void render_frustum(int cascade_index, float aspect, float fov, float near, float far)
 {
   vec4 frustum_corners[8], frustum_center;
-  camera_get_frustum_corners(frustum_corners);
-  camera_get_frustum_center(frustum_center);
+  camera_get_frustum_cascade_corners(cascade_index, frustum_corners);
+  camera_get_frustum_cascade_center(cascade_index, frustum_center);
 
   uint32_t destination_vertex_index = 0;
 

@@ -1,5 +1,7 @@
 #include "camera.h"
 
+#include "preferences.h"
+
 #include <cglm/cam.h>
 #include <cglm/frustum.h>
 #include <cglm/mat3.h>
@@ -18,6 +20,9 @@ static mat4 view_matrix, proj_matrix, view_model_proj_matrix, viewproj_matrix;
 
 static vec4 frustum_corners[8];
 static vec4 frustum_center;
+
+static vec4 frustum_cascade_corners[4][8];
+static vec4 frustum_cascade_centers[4];
 
 void camera_get_position(vec3 position_)
 {
@@ -207,13 +212,35 @@ void camera_get_viewproj_matrix(mat4 viewproj_matrix_)
   glm_mat4_copy(viewproj_matrix, viewproj_matrix_);
 }
 
-void camera_calc_frustum(float aspect, float fov, float near, float far)
+void camera_calc_frustum(const struct Preferences* preferences, float near, float far)
 {
   mat4 inv_viewproj;
   glm_mat4_inv(viewproj_matrix, inv_viewproj);
 
   glm_frustum_corners(inv_viewproj, frustum_corners);
   glm_frustum_center(frustum_corners, frustum_center);
+
+  float split_dist = 0.0f;
+  for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+  {
+    // From plane
+    glm_frustum_corners_at(frustum_corners, split_dist, far, &frustum_cascade_corners[cascade_index][0]);
+
+    // To plane
+    if (cascade_index < 3)
+    {
+      split_dist = near + (far - near) * preferences->shadow_mapping_cascade_splits[cascade_index];
+    }
+    else
+    {
+      split_dist = near + (far - near);
+    }
+
+    glm_frustum_corners_at(frustum_corners, split_dist, far, &frustum_cascade_corners[cascade_index][4]);
+
+    // Find center of segment
+    glm_frustum_center(frustum_cascade_corners[cascade_index], frustum_cascade_centers[cascade_index]);
+  }
 }
 
 void camera_get_frustum_corners(vec4 frustum_corners_[8])
@@ -227,4 +254,17 @@ void camera_get_frustum_corners(vec4 frustum_corners_[8])
 void camera_get_frustum_center(vec4 frustum_center_)
 {
   glm_vec4_copy(frustum_center, frustum_center_);
+}
+
+void camera_get_frustum_cascade_corners(int cascade_index, vec4 frustum_corners_[8])
+{
+  for (uint32_t i = 0; i < 8; ++i)
+  {
+    glm_vec4_copy(frustum_cascade_corners[cascade_index][i], frustum_corners_[i]);
+  }
+}
+
+void camera_get_frustum_cascade_center(int cascade_index, vec4 frustum_center_)
+{
+  glm_vec4_copy(frustum_cascade_centers[cascade_index], frustum_center_);
 }

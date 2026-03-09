@@ -7,4 +7,4 @@ bool load_frustum_renderer();
 void free_frustum_renderer();
 
 void start_frustum_rendering();
-void render_frustum(float aspect, float fov, float near, float far);
+void render_frustum(int cascade_index, float aspect, float fov, float near, float far);

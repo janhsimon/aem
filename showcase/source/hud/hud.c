@@ -257,6 +257,12 @@ void update_hud(uint32_t screen_width,
               glm_deg(roll));
       ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 160.0f }, color, s, NULL);
     }
+
+    {
+      char s[128];
+      sprintf(s, "Frame time: %d ms\tFPS: %d", (int)(delta_time * 1000.0f), (int)(1.0f / delta_time));
+      ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 180.0f }, color, s, NULL);
+    }
   }
 
   if (debug_mode)
@@ -268,9 +274,34 @@ void update_hud(uint32_t screen_width,
   {
     if (get_show_shadow_map_window())
     {
-      if (begin_texture_window("Shadow map", false, 0, screen_width, screen_height))
+      if (begin_texture_window("Shadow map", true, 0, screen_width, screen_height))
       {
-        add_texture_window_image(debug_texture_framebuffer_get_shadow_map(), 1024, 1024);
+        static int shown_cascade_index = 0;
+
+        if (igBeginMenuBar())
+        {
+          if (igBeginMenu("Cascade", true))
+          {
+            for (int cascade_index = 0; cascade_index < 4; ++cascade_index)
+            {
+              char title[32];
+              const uint32_t texture_size = preferences->shadow_mapping_cascade_texture_sizes[cascade_index];
+              sprintf(title, "Cascade #%d [%upx x %upx]", cascade_index, texture_size, texture_size);
+
+              const bool selected = (shown_cascade_index == cascade_index);
+              if (igMenuItemEx(title, NULL, NULL, selected, true))
+              {
+                shown_cascade_index = cascade_index;
+              }
+            }
+
+            igEndMenu();
+          }
+
+          igEndMenuBar();
+
+          add_texture_window_image(debug_texture_framebuffer_get_shadow_map(shown_cascade_index), 1024, 1024);
+        }
       }
 
       end_texture_window();
@@ -317,7 +348,7 @@ void update_hud(uint32_t screen_width,
               bloom_framebuffer_get_texture_resolution(texture_index, &w, &h);
 
               char title[32];
-              sprintf(title, "Downsample #%d [%u x %u]", texture_index, w, h);
+              sprintf(title, "Downsample #%d [%upx x %upx]", texture_index, w, h);
 
               const bool selected =
                 (shown_texture_index == texture_index) && (shown_texture_phase == BloomFramebufferPhase_Downsample);

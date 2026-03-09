@@ -169,7 +169,7 @@ set(SOURCE
   shaders/main.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
-  shaders/simple.frag.glsl
+  shaders/shadow_vis.frag.glsl
   shaders/ssao.frag.glsl
   shaders/ssao_blur.frag.glsl
   shaders/tonemap.frag.glsl

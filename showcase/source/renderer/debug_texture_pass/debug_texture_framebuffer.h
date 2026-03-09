@@ -11,7 +11,8 @@ enum DebugTextureFramebufferAttachment
 bool load_debug_texture_framebuffer();
 void free_debug_texture_framebuffer();
 
-void debug_texture_framebuffer_start_rendering(enum DebugTextureFramebufferAttachment attachment);
+void debug_texture_framebuffer_start_rendering(enum DebugTextureFramebufferAttachment attachment,
+                                               int shadow_map_cascade_index);
 
 unsigned int debug_texture_framebuffer_get_camera_frustum_texture();
-unsigned int debug_texture_framebuffer_get_shadow_map();
+unsigned int debug_texture_framebuffer_get_shadow_map(int cascade_index);

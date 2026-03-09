@@ -31,9 +31,18 @@ void load_default_preferences(struct Preferences* preferences)
   glm_vec3_copy((vec3){ 0.22f, -0.97f, 0.12f }, preferences->light_dir);
 
   // Shadow mapping
+  preferences->shadow_mapping_enable = true;
+  preferences->shadow_mapping_cascade_texture_sizes[0] = 4096;
+  preferences->shadow_mapping_cascade_texture_sizes[1] = 4096;
+  preferences->shadow_mapping_cascade_texture_sizes[2] = 4096;
+  preferences->shadow_mapping_cascade_texture_sizes[3] = 4096;
+  preferences->shadow_mapping_cascade_splits[0] = 0.1f;
+  preferences->shadow_mapping_cascade_splits[1] = 0.2f;
+  preferences->shadow_mapping_cascade_splits[2] = 0.5f;
   preferences->shadow_mapping_bias = 0.0015f;
   preferences->shadow_mapping_pcf_radius = 2.0f;
   preferences->shadow_mapping_pcf_kernel_size = 2;
+  preferences->shadow_mapping_visualize_cascades = false;
 
   // AK
   // glm_vec3_copy((vec3){ 0.0f, -0.02f, 0.1f }, preferences->view_model_position);

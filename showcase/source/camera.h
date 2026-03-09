@@ -2,6 +2,8 @@
 
 #include <cglm/types.h>
 
+struct Preferences;
+
 void camera_get_position(vec3 position);
 void camera_set_position(vec3 position);
 
@@ -28,6 +30,8 @@ void camera_get_proj_matrix(mat4 view_matrix);
 void camera_get_view_model_proj_matrix(mat4 view_model_proj_matrix);
 void camera_get_viewproj_matrix(mat4 view_matrix);
 
-void camera_calc_frustum(float aspect, float fov, float near, float far);
+void camera_calc_frustum(const struct Preferences* preferences, float near, float far);
 void camera_get_frustum_corners(vec4 frustum_corners[8]);
 void camera_get_frustum_center(vec4 frustum_corners);
+void camera_get_frustum_cascade_corners(int cascade_index, vec4 frustum_corners[8]);
+void camera_get_frustum_cascade_center(int cascade_index, vec4 frustum_center);

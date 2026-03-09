@@ -56,7 +56,7 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width_, uin
 
   // Shadow pass
   {
-    if (!load_shadow_framebuffer())
+    if (!load_shadow_framebuffer(preferences))
     {
       return false;
     }
@@ -231,41 +231,40 @@ static void render_shadow_pass()
 {
   start_model_rendering();
 
-  shadow_framebuffer_start_rendering();
+  directional_light_calc_viewproj(preferences, camera_near, camera_far);
+
   shadow_pipeline_start_rendering();
-  glClear(GL_DEPTH_BUFFER_BIT);
 
-  camera_calc_frustum(screen_aspect, preferences->camera_fov, camera_near, camera_far);
-
-  vec4 frustum_corners[8], frustum_center;
-  camera_get_frustum_corners(frustum_corners);
-  camera_get_frustum_center(frustum_center);
-  directional_light_calc_viewproj(preferences, frustum_corners, frustum_center);
-
-  mat4 light_view_matrix, light_proj_matrix;
-  directional_light_get_view_matrix(light_view_matrix);
-  directional_light_get_proj_matrix(light_proj_matrix);
-  shadow_pipeline_use_view_projection_matrices(light_view_matrix, light_proj_matrix);
-
-  // Map
+  for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
   {
-    shadow_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+    shadow_framebuffer_start_rendering(preferences, cascade_index);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
-    const uint32_t part_count = get_map_part_count();
-    for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+    mat4 light_view_matrix, light_proj_matrix;
+    directional_light_get_view_matrix(cascade_index, light_view_matrix);
+    directional_light_get_proj_matrix(cascade_index, light_proj_matrix);
+    shadow_pipeline_use_view_projection_matrices(light_view_matrix, light_proj_matrix);
+
+    // Map
     {
-      render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+      shadow_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+
+      const uint32_t part_count = get_map_part_count();
+      for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
+      {
+        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+      }
     }
-  }
 
-  // Enemy
-  {
-    mat4 enemy_world_matrix;
-    get_enemy_world_matrix(enemy_world_matrix);
-    shadow_pipeline_use_world_matrix(enemy_world_matrix);
+    // Enemy
+    {
+      mat4 enemy_world_matrix;
+      get_enemy_world_matrix(enemy_world_matrix);
+      shadow_pipeline_use_world_matrix(enemy_world_matrix);
 
-    prepare_enemy_rendering();
-    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+      prepare_enemy_rendering();
+      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+    }
   }
 }
 
@@ -410,15 +409,16 @@ static void render_forward_pass_late()
   glDepthFunc(GL_EQUAL); // Early-Z
 
   // Bind shadow map
+  for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
   {
-    glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_texture());
+    glActiveTexture(GL_TEXTURE4 + cascade_index);
+    glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_cascade(cascade_index));
   }
 
   // Bind SSAO texture
   if (preferences->ssao_enable)
   {
-    glActiveTexture(GL_TEXTURE5);
+    glActiveTexture(GL_TEXTURE8);
     glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
   }
 
@@ -434,16 +434,33 @@ static void render_forward_pass_late()
 
   // Set the latest camera position
   {
-    vec3 camera_position;
+    vec3 camera_position, camera_direction;
     camera_get_position(camera_position);
-    main_pipeline_use_camera(camera_position);
+    camera_get_forward_with_recoil(camera_direction);
+    main_pipeline_use_camera(camera_position, camera_direction);
   }
 
+  main_pipeline_use_light(preferences->light_dir, preferences->light_color, preferences->light_intensity);
+
+  main_pipeline_enable_shadow_mapping(preferences->shadow_mapping_enable,
+                                      preferences->shadow_mapping_visualize_cascades);
+  if (preferences->shadow_mapping_enable)
   {
-    mat4 light_viewproj;
-    directional_light_get_viewproj_matrix(light_viewproj);
-    main_pipeline_use_light(preferences->light_dir, preferences->light_color, preferences->light_intensity,
-                            light_viewproj);
+    mat4 light_viewproj[4];
+    for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+    {
+      directional_light_get_viewproj_matrix(cascade_index, light_viewproj[cascade_index]);
+    }
+
+    float cascade_splits[3];
+    for (uint32_t split_index = 0; split_index < 3; ++split_index)
+    {
+      cascade_splits[split_index] =
+        camera_near + (camera_far - camera_near) * preferences->shadow_mapping_cascade_splits[split_index];
+    }
+
+    main_pipeline_use_shadow_cascades(light_viewproj, cascade_splits);
+
     main_pipeline_use_shadow_parameters(preferences->shadow_mapping_bias, preferences->shadow_mapping_pcf_radius,
                                         preferences->shadow_mapping_pcf_kernel_size);
   }
@@ -451,7 +468,7 @@ static void render_forward_pass_late()
   // Main pipeline (opaque)
   {
     main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
-    main_pipeline_use_ssao(preferences->ssao_enable);
+    main_pipeline_enable_ssao(preferences->ssao_enable);
 
     // Map
     {
@@ -475,7 +492,7 @@ static void render_forward_pass_late()
     }
   }
 
-  main_pipeline_use_ssao(false);
+  main_pipeline_enable_ssao(false);
 
   glDepthFunc(GL_LEQUAL);
   glEnable(GL_BLEND);
@@ -646,39 +663,46 @@ static void render_bloom_pass()
 
 static void render_debug_texture_pass()
 {
-  // Render the camera frustum
+  for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
   {
-    start_frustum_rendering();
+    // Render the camera frustum
+    {
+      start_frustum_rendering();
 
-    debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_CameraFrustum);
-    frustum_pipeline_start_rendering();
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+      debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_CameraFrustum, 0);
+      frustum_pipeline_start_rendering();
+      glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
 
-    mat4 light_viewproj;
-    directional_light_get_viewproj_matrix(light_viewproj);
-    frustum_pipeline_use_viewproj_matrix(light_viewproj);
+      mat4 light_viewproj;
+      directional_light_get_viewproj_matrix(cascade_index, light_viewproj);
+      frustum_pipeline_use_viewproj_matrix(light_viewproj);
 
-    render_frustum(screen_aspect, preferences->camera_fov, camera_near, camera_far);
-  }
+      render_frustum(cascade_index, screen_aspect, preferences->camera_fov, camera_near, camera_far);
+    }
 
-  // Composite
-  {
-    debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_ShadowMap);
-    shadow_composite_pipeline_start_rendering();
+    // Composite
+    {
+      debug_texture_framebuffer_start_rendering(DebugTextureFramebufferAttachment_ShadowMap, cascade_index);
+      shadow_composite_pipeline_start_rendering();
 
-    glActiveTexture(GL_TEXTURE0);
+      shadow_composite_pipeline_use_tint(GLM_VEC3_ONE);
 
-    glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_texture());
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+      glActiveTexture(GL_TEXTURE0);
 
-    glBlendFunc(GL_ONE, GL_ONE);
-    glEnable(GL_BLEND);
+      glBindTexture(GL_TEXTURE_2D, shadow_framebuffer_get_shadow_cascade(cascade_index));
+      glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    glBindTexture(GL_TEXTURE_2D, debug_texture_framebuffer_get_camera_frustum_texture());
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glDisable(GL_BLEND);
+      shadow_composite_pipeline_use_tint(GLM_ZUP);
+
+      glBindTexture(GL_TEXTURE_2D, debug_texture_framebuffer_get_camera_frustum_texture());
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+
+      glDisable(GL_BLEND);
+    }
   }
 }
 
@@ -773,7 +797,11 @@ void render_frame(float camera_near_, float camera_far_)
   camera_get_view_matrix(view_matrix);
   camera_get_proj_matrix(proj_matrix);
 
-  render_shadow_pass();        // Shadow mapping
+  if (preferences->shadow_mapping_enable)
+  {
+    render_shadow_pass(); // Shadow mapping
+  }
+
   render_forward_pass_early(); // Early-Z and view-space normals
 
   if (preferences->ssao_enable)
@@ -788,7 +816,7 @@ void render_frame(float camera_near_, float camera_far_)
     render_bloom_pass(); // Bloom
   }
 
-  // if (debug_wanted)
+  if (get_show_shadow_map_window())
   {
     render_debug_texture_pass(); // Prepare textures for debug visualization
   }

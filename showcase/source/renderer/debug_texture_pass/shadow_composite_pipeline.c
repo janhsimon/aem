@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
+static GLint tint_uniform_location;
 
 bool load_shadow_composite_pipeline()
 {
@@ -21,7 +22,7 @@ bool load_shadow_composite_pipeline()
     return false;
   }
 
-  if (!load_shader("shaders/simple.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!load_shader("shaders/shadow_vis.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
@@ -38,6 +39,8 @@ bool load_shadow_composite_pipeline()
   {
     glUseProgram(shader_program);
 
+    tint_uniform_location = get_uniform_location(shader_program, "tint");
+
     GLuint tex_uniform_location = get_uniform_location(shader_program, "tex");
     glUniform1i(tex_uniform_location, 0);
   }
@@ -53,4 +56,9 @@ void free_shadow_composite_pipeline()
 void shadow_composite_pipeline_start_rendering()
 {
   glUseProgram(shader_program);
+}
+
+void shadow_composite_pipeline_use_tint(vec3 tint)
+{
+  glUniform3fv(tint_uniform_location, 1,(float*)tint);
 }

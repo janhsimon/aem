@@ -6,12 +6,15 @@
 
 #include <glad/gl.h>
 
+#include <stdio.h>
+
 static GLuint shader_program;
 static GLint world_uniform_location, view_uniform_location, proj_uniform_location, render_pass_uniform_location,
-  light_dir_uniform_location, camera_pos_uniform_location, light_viewproj_uniform_location,
-  ambient_color_uniform_location, light_color_uniform_location, screen_size_uniform_location,
-  apply_ssao_uniform_location, shadow_map_bias_uniform_location, pcf_radius_uniform_location,
-  pcf_kernel_size_uniform_location;
+  light_dir_uniform_location, camera_pos_uniform_location, camera_dir_uniform_location,
+  light_viewproj_uniform_location[4], ambient_color_uniform_location, light_color_uniform_location,
+  screen_size_uniform_location, shadow_map_bias_uniform_location, pcf_radius_uniform_location,
+  pcf_kernel_size_uniform_location, cascade_splits_uniform_location[3], enable_shadow_mapping_uniform_location,
+  enable_ssao_uniform_location, visualize_shadow_mapping_cascades_uniform_location;
 
 bool load_main_pipeline()
 {
@@ -46,14 +49,31 @@ bool load_main_pipeline()
       render_pass_uniform_location = get_uniform_location(shader_program, "render_pass");
       light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
       camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
-      light_viewproj_uniform_location = get_uniform_location(shader_program, "light_viewproj");
+      camera_dir_uniform_location = get_uniform_location(shader_program, "camera_dir");
       ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
       light_color_uniform_location = get_uniform_location(shader_program, "light_color");
       screen_size_uniform_location = get_uniform_location(shader_program, "screen_size");
-      apply_ssao_uniform_location = get_uniform_location(shader_program, "apply_ssao");
       shadow_map_bias_uniform_location = get_uniform_location(shader_program, "shadow_map_bias");
       pcf_radius_uniform_location = get_uniform_location(shader_program, "pcf_radius");
       pcf_kernel_size_uniform_location = get_uniform_location(shader_program, "pcf_kernel_size");
+      enable_shadow_mapping_uniform_location = get_uniform_location(shader_program, "enable_shadow_mapping");
+      enable_ssao_uniform_location = get_uniform_location(shader_program, "enable_ssao");
+      visualize_shadow_mapping_cascades_uniform_location =
+        get_uniform_location(shader_program, "visualize_shadow_mapping_cascades");
+
+      for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+      {
+        char buf[64];
+        sprintf(buf, "light_viewproj[%u]", cascade_index);
+        light_viewproj_uniform_location[cascade_index] = get_uniform_location(shader_program, buf);
+      }
+
+      for (uint32_t split_index = 0; split_index < 3; ++split_index)
+      {
+        char buf[64];
+        sprintf(buf, "cascade_splits[%u]", split_index);
+        cascade_splits_uniform_location[split_index] = get_uniform_location(shader_program, buf);
+      }
 
       const GLint normals_mode_uniform_location = get_uniform_location(shader_program, "normals_mode");
       glUniform1i(normals_mode_uniform_location, 0); // Produce world-space normals
@@ -70,11 +90,16 @@ bool load_main_pipeline()
       const GLint pbr_tex_uniform_location = get_uniform_location(shader_program, "pbr_tex");
       glUniform1i(pbr_tex_uniform_location, 3);
 
-      const GLint shadow_tex_uniform_location = get_uniform_location(shader_program, "shadow_tex");
-      glUniform1i(shadow_tex_uniform_location, 4);
+      for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+      {
+        char buf[64];
+        sprintf(buf, "shadow_tex[%u]", cascade_index);
+        const GLint shadow_tex_uniform_location = get_uniform_location(shader_program, buf);
+        glUniform1i(shadow_tex_uniform_location, 4 + cascade_index);
+      }
 
       const GLint ssao_tex_uniform_location = get_uniform_location(shader_program, "ssao_tex");
-      glUniform1i(ssao_tex_uniform_location, 5);
+      glUniform1i(ssao_tex_uniform_location, 8);
     }
   }
 
@@ -111,12 +136,13 @@ void main_pipeline_use_render_mode(enum ForwardPipelineRenderMode mode)
   glUniform1i(render_pass_uniform_location, (GLint)mode);
 }
 
-void main_pipeline_use_camera(vec3 camera_pos)
+void main_pipeline_use_camera(vec3 camera_pos, vec3 camera_dir)
 {
   glUniform3fv(camera_pos_uniform_location, 1, camera_pos);
+  glUniform3fv(camera_dir_uniform_location, 1, camera_dir);
 }
 
-void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity, mat4 viewproj_matrix)
+void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_intensity)
 {
   vec4 l;
   {
@@ -126,7 +152,20 @@ void main_pipeline_use_light(vec3 light_dir, vec3 light_color, float light_inten
 
   glUniform3fv(light_dir_uniform_location, 1, light_dir);
   glUniform4fv(light_color_uniform_location, 1, l);
-  glUniformMatrix4fv(light_viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+}
+
+void main_pipeline_use_shadow_cascades(mat4 viewproj_matrix[4], float cascade_splits[3])
+{
+  for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+  {
+    glUniformMatrix4fv(light_viewproj_uniform_location[cascade_index], 1, GL_FALSE,
+                       (float*)viewproj_matrix[cascade_index]);
+  }
+
+  for (uint32_t split_index = 0; split_index < 3; ++split_index)
+  {
+    glUniform1f(cascade_splits_uniform_location[split_index], cascade_splits[split_index]);
+  }
 }
 
 void main_pipeline_use_shadow_parameters(float bias, float pcf_radius, int pcf_kernel_size)
@@ -150,7 +189,13 @@ void main_pipeline_use_screen_size(vec2 size)
   glUniform2fv(screen_size_uniform_location, 1, size);
 }
 
-void main_pipeline_use_ssao(bool apply_ssao)
+void main_pipeline_enable_shadow_mapping(bool enable_shadow_mapping, bool visualize_shadow_mapping_cascades)
 {
-  glUniform1i(apply_ssao_uniform_location, apply_ssao);
+  glUniform1i(enable_shadow_mapping_uniform_location, enable_shadow_mapping);
+  glUniform1i(visualize_shadow_mapping_cascades_uniform_location, visualize_shadow_mapping_cascades);
+}
+
+void main_pipeline_enable_ssao(bool enable_ssao)
+{
+  glUniform1i(enable_ssao_uniform_location, enable_ssao);
 }

@@ -9,7 +9,10 @@ uniform vec4 ambient_color; // In linear space, RGB, A: intensity
 uniform vec4 light_color; // In linear space, RGB, A: intensity
 uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
-uniform mat4 light_viewproj;
+uniform vec3 camera_dir; // In world space
+uniform mat4 light_viewproj[4];
+
+uniform float cascade_splits[3];
 
 uniform float shadow_map_bias;
 uniform float pcf_radius;
@@ -19,12 +22,15 @@ uniform sampler2D base_color_tex;
 uniform sampler2D normal_tex;
 uniform sampler2D pbr_tex; // Roughness, occlusion, metalness, emissive
 
-uniform sampler2D shadow_tex;
+uniform sampler2D shadow_tex[4];
 uniform sampler2D ssao_tex;
 
 uniform vec2 screen_size;
 
-uniform bool apply_ssao;
+uniform bool enable_shadow_mapping;
+uniform bool enable_ssao;
+
+uniform bool visualize_shadow_mapping_cascades;
 
 in VERT_TO_FRAG {
   vec3 position; // In world space
@@ -87,22 +93,67 @@ void main()
 {
   float shadow = 1.0;
 
-  vec4 fragPosLightSpace = light_viewproj * vec4(i.position, 1.0);
-  vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-  projCoords = projCoords * 0.5 + 0.5;
+  if (enable_shadow_mapping)
+  {
+    // Find the shadow map cascade to use
+    int cascade_index = 3;
+    {
+      float depth = dot(i.position - camera_pos, camera_dir);
+      
+      for (int split_index = 0; split_index < 3; ++split_index)
+      {
+          if (depth < cascade_splits[split_index])
+          {
+              cascade_index = split_index;
+              break;
+          }
+      }
+    }
+
+    if (visualize_shadow_mapping_cascades)
+    {
+      if (cascade_index == 0)
+      {
+        out_color = vec4(1.0, 0.0, 0.0, 1.0);
+      }
+      else if (cascade_index == 1)
+      {
+        out_color = vec4(0.0, 1.0, 0.0, 1.0);
+      }
+      else if (cascade_index == 2)
+      {
+        out_color = vec4(0.0, 0.0, 1.0, 1.0);
+      }
+      else if (cascade_index == 3)
+      {
+        out_color = vec4(1.0, 1.0, 0.0, 1.0);
+      }
+      else
+      {
+        out_color = vec4(1.0, 0.0, 1.0, 1.0);
+      }
+
+      return;
+    }
+
+    vec4 fragPosLightSpace = light_viewproj[cascade_index] * vec4(i.position, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
   
-  if (projCoords.z <= 1.0) {
+    if (projCoords.z <= 1.0) {
     // Get texture coordinate offset (1 pixel in texture space)
-    vec2 texelSize = 1.0 / textureSize(shadow_tex, 0);
+    vec2 texelSize = 1.0 / textureSize(shadow_tex[cascade_index], 0);
     const float radius = 2.0; // try 1.5–3.0
     float visibility = 0.0;
     
     // 5x5 PCF kernel
-    for (int x = -pcf_kernel_size; x <= pcf_kernel_size; ++x) {
-      for (int y = -pcf_kernel_size; y <= pcf_kernel_size; ++y) {
+    for (int x = -pcf_kernel_size; x <= pcf_kernel_size; ++x)
+    {
+      for (int y = -pcf_kernel_size; y <= pcf_kernel_size; ++y)
+      {
         vec2 offset = vec2(x, y) * texelSize * pcf_radius;
 
-        float closestDepth = texture(shadow_tex, projCoords.xy + offset).r;
+        float closestDepth = texture(shadow_tex[cascade_index], projCoords.xy + offset).r;
         float currentDepth = projCoords.z - shadow_map_bias;
         visibility += (currentDepth <= closestDepth ? 1.0 : 0.0) * gaussian(x, y, pcf_kernel_size * 0.5);
       }
@@ -111,6 +162,7 @@ void main()
     // Average result
     float sample_count = pcf_kernel_size * 2 + 1;
     shadow = visibility / (sample_count * sample_count);
+    }
   }
 
   vec4 base_color_sample = texture(base_color_tex, i.uv); // All channels are already in linear space
@@ -170,7 +222,7 @@ void main()
   }
 
   float ao = occlusion;
-  if (apply_ssao)
+  if (enable_ssao)
   {
     vec2 screen_uv = (gl_FragCoord.xy + 0.5) / screen_size;
     float ssao = texture(ssao_tex, screen_uv).r;

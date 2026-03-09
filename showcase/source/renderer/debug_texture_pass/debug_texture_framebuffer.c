@@ -2,12 +2,13 @@
 
 #include <glad/gl.h>
 
+#include <stdint.h>
 #include <stdio.h>
 
-#define SHADOW_MAP_SIZE 8192
-#define CAMERA_FRUSTUM_TEXTURE_SIZE (SHADOW_MAP_SIZE / 16)
+#define SHADOW_MAP_SIZE 2048
+#define CAMERA_FRUSTUM_TEXTURE_SIZE 512
 
-static GLuint framebuffer, camera_frustum_texture, shadow_texture;
+static GLuint framebuffer, camera_frustum_texture, shadow_texture_cascades[4];
 
 bool load_debug_texture_framebuffer()
 {
@@ -17,7 +18,7 @@ bool load_debug_texture_framebuffer()
   {
     glGenTextures(1, &camera_frustum_texture);
     glBindTexture(GL_TEXTURE_2D, camera_frustum_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, CAMERA_FRUSTUM_TEXTURE_SIZE, CAMERA_FRUSTUM_TEXTURE_SIZE, 0, GL_RGB,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, CAMERA_FRUSTUM_TEXTURE_SIZE, CAMERA_FRUSTUM_TEXTURE_SIZE, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -25,11 +26,15 @@ bool load_debug_texture_framebuffer()
 
   // Create shadow texture
   {
-    glGenTextures(1, &shadow_texture);
-    glBindTexture(GL_TEXTURE_2D, shadow_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenTextures(4, shadow_texture_cascades);
+
+    for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
+    {
+      glBindTexture(GL_TEXTURE_2D, shadow_texture_cascades[cascade_index]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
   }
 
   return true;
@@ -38,11 +43,12 @@ bool load_debug_texture_framebuffer()
 void free_debug_texture_framebuffer()
 {
   glDeleteTextures(1, &camera_frustum_texture);
-  glDeleteTextures(1, &shadow_texture);
+  glDeleteTextures(4, shadow_texture_cascades);
   glDeleteFramebuffers(1, &framebuffer);
 }
 
-void debug_texture_framebuffer_start_rendering(enum DebugTextureFramebufferAttachment attachment)
+void debug_texture_framebuffer_start_rendering(enum DebugTextureFramebufferAttachment attachment,
+                                               int shadow_map_cascade_index)
 {
   if (attachment == DebugTextureFramebufferAttachment_CameraFrustum)
   {
@@ -61,7 +67,8 @@ void debug_texture_framebuffer_start_rendering(enum DebugTextureFramebufferAttac
   }
   else if (attachment == DebugTextureFramebufferAttachment_ShadowMap)
   {
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, shadow_texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           shadow_texture_cascades[shadow_map_cascade_index], 0);
   }
 }
 
@@ -70,7 +77,7 @@ unsigned int debug_texture_framebuffer_get_camera_frustum_texture()
   return camera_frustum_texture;
 }
 
-unsigned int debug_texture_framebuffer_get_shadow_map()
+unsigned int debug_texture_framebuffer_get_shadow_map(int cascade_index)
 {
-  return shadow_texture;
+  return shadow_texture_cascades[cascade_index];
 }
