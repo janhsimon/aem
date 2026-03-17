@@ -98,6 +98,8 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
   if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_None))
   {
     igSliderFloat("Field of view##Camera", &preferences->camera_fov, 0.0f, 180.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Near clip distance##Camera", &preferences->camera_near, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Far clip distance##Camera", &preferences->camera_far, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
     igColorEdit3("Background color##Camera", preferences->camera_background_color, ImGuiColorEditFlags_None);
   }
 

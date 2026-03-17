@@ -20,9 +20,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define CAM_NEAR 0.01f
-#define CAM_FAR 35.0f
-
 static bool debug_mode_enabled = false;
 
 static struct Preferences preferences;
@@ -162,7 +159,7 @@ int main(int argc, char* argv[])
 
     // Render
     {
-      render_frame(CAM_NEAR, CAM_FAR);
+      render_frame();
       render_hud();
 
       refresh_window();

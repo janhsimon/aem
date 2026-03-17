@@ -43,7 +43,6 @@
 static struct Preferences* preferences;
 static uint32_t screen_width, screen_height;
 static float screen_aspect;
-static float camera_near, camera_far;
 static mat4 view_matrix, proj_matrix;
 
 bool load_renderer(struct Preferences* preferences_, uint32_t screen_width_, uint32_t screen_height_)
@@ -231,7 +230,7 @@ static void render_shadow_pass()
 {
   start_model_rendering();
 
-  directional_light_calc_viewproj(preferences, camera_near, camera_far);
+  directional_light_calc_viewproj(preferences, preferences->camera_near, preferences->camera_far);
 
   for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
   {
@@ -439,7 +438,8 @@ static void render_forward_pass_late()
     for (uint32_t split_index = 0; split_index < 3; ++split_index)
     {
       cascade_splits[split_index] =
-        camera_near + (camera_far - camera_near) * preferences->shadow_mapping_cascade_splits[split_index];
+        preferences->camera_near +
+        (preferences->camera_far - preferences->camera_near) * preferences->shadow_mapping_cascade_splits[split_index];
     }
   }
 
@@ -690,7 +690,8 @@ static void render_debug_texture_pass()
       directional_light_get_viewproj_matrix(cascade_index, light_viewproj);
       frustum_pipeline_use_viewproj_matrix(light_viewproj);
 
-      render_frustum(cascade_index, screen_aspect, preferences->camera_fov, camera_near, camera_far);
+      render_frustum(cascade_index, screen_aspect, preferences->camera_fov, preferences->camera_near,
+                     preferences->camera_far);
     }
 
     // Composite
@@ -792,7 +793,7 @@ void renderer_on_screen_resize(uint32_t screen_width_, uint32_t screen_height_)
   bloom_framebuffer_on_screen_resize(screen_width, screen_height);
 }
 
-void render_frame(float camera_near_, float camera_far_)
+void render_frame()
 {
   // Ignore when the window gets minimized
   if (screen_width == 0 || screen_height == 0)
@@ -800,12 +801,10 @@ void render_frame(float camera_near_, float camera_far_)
     return;
   }
 
-  camera_near = camera_near_;
-  camera_far = camera_far_;
-
   screen_aspect = (float)screen_width / (float)screen_height;
 
-  camera_calc_matrices(screen_aspect, preferences->camera_fov, preferences->view_model_fov, camera_near, camera_far);
+  camera_calc_matrices(screen_aspect, preferences->camera_fov, preferences->view_model_fov, preferences->camera_near,
+                       preferences->camera_far);
   camera_get_view_matrix(view_matrix);
   camera_get_proj_matrix(proj_matrix);
 

@@ -38,6 +38,7 @@ struct Preferences
   // Camera
   vec3 camera_background_color;
   float camera_fov;
+  float camera_near, camera_far;
 
   // Lighting
   vec3 light_dir;

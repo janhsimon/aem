@@ -22,6 +22,8 @@ void load_default_preferences(struct Preferences* preferences)
   // Camera
   preferences->camera_fov = 75.0f;
   glm_vec3_copy((vec3){ 0.58f, 0.71f, 1.0f }, preferences->camera_background_color);
+  preferences->camera_near = 0.01f;
+  preferences->camera_far = 35.0f;
 
   // Lighting
   glm_vec3_copy((vec3){ 1.0f, 0.75f, 0.75f }, preferences->ambient_color);
