@@ -92,7 +92,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
   if (igCollapsingHeader_TreeNodeFlags("Audio", ImGuiTreeNodeFlags_None))
   {
-    igSliderFloat("Master Volume", &preferences->master_volume, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Master volume", &preferences->master_volume, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Camera", ImGuiTreeNodeFlags_None))
@@ -101,6 +101,21 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igSliderFloat("Near clip distance##Camera", &preferences->camera_near, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Far clip distance##Camera", &preferences->camera_far, 0.0f, 1000.0f, "%f", ImGuiSliderFlags_None);
     igColorEdit3("Background color##Camera", preferences->camera_background_color, ImGuiColorEditFlags_None);
+  }
+
+  if (igCollapsingHeader_TreeNodeFlags("Player", ImGuiTreeNodeFlags_None))
+  {
+    igSliderFloat("Run speed##Player", &preferences->player_run_speed, 0.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Walk speed##Player", &preferences->player_walk_speed, 0.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Acceleration##Player", &preferences->player_accel, 0.0f, 2.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Friction##Player", &preferences->player_friction, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Jump strength##Player", &preferences->player_jump_strength, 0.0f, 250.0f, "%f",
+                  ImGuiSliderFlags_None);
+  }
+
+  if (igCollapsingHeader_TreeNodeFlags("Physics", ImGuiTreeNodeFlags_None))
+  {
+    igSliderFloat("Gravity##Physics", &preferences->physics_gravity, 0.0f, 200.0f, "%f", ImGuiSliderFlags_None);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Lighting", ImGuiTreeNodeFlags_None))

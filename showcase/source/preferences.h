@@ -40,6 +40,14 @@ struct Preferences
   float camera_fov;
   float camera_near, camera_far;
 
+  // Player
+  float player_run_speed, player_walk_speed;
+  float player_accel, player_friction;
+  float player_jump_strength;
+
+  // Physics
+  float physics_gravity;
+
   // Lighting
   vec3 light_dir;
   vec3 light_color;

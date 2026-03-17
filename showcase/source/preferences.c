@@ -25,6 +25,16 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->camera_near = 0.01f;
   preferences->camera_far = 35.0f;
 
+  // Player
+  preferences->player_run_speed = 3.548f;
+  preferences->player_walk_speed = 1.467f;
+  preferences->player_accel = 0.1548f;
+  preferences->player_friction = 15.0f;
+  preferences->player_jump_strength = 25.0f;
+
+  // Physics
+  preferences->physics_gravity = 80.0f;
+
   // Lighting
   glm_vec3_copy((vec3){ 1.0f, 0.75f, 0.75f }, preferences->ambient_color);
   preferences->ambient_intensity = 0.4f;

@@ -12,16 +12,8 @@
 #include <cglm/mat3.h>
 #include <cglm/vec3.h>
 
-#define GRAVITY 40.0f
-
 #define PLAYER_RADIUS 0.25f
 #define PLAYER_HEIGHT 1.8f
-
-#define PLAYER_ACCEL 20.0f
-#define PLAYER_DECEL 20.0f
-#define PLAYER_MOVE_SPEED 5.0f
-
-#define PLAYER_JUMP_STRENGTH 10.0f
 
 #define PLAYER_MIN_RESPAWN_COOLDOWN 3.0f // How long to wait after death until the player can respawn, in seconds
 
@@ -119,58 +111,38 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     {
       camera_get_position(start_cam_pos);
 
-      vec3 move;
-      get_move_vector(move, moving);
+      vec3 wish_dir;
+      get_move_vector(wish_dir, moving);
 
-      if (*moving)
+      mat3 cam_rotation;
+      camera_get_rotation_without_recoil(cam_rotation);
+      glm_mat3_mulv(cam_rotation, wish_dir, wish_dir); // Transform move from local to camera space
+
+      glm_normalize(wish_dir);
+
+      // Apply friction first
+      const float speed = glm_vec3_norm(player_velocity);
+      if (speed > 0.0f)
       {
-        mat3 cam_rotation;
-        camera_get_rotation_without_recoil(cam_rotation);
-        glm_mat3_mulv(cam_rotation, move, move); // Transform move from local to camera space
-
-        if (!preferences->no_clip)
-        {
-          move[1] = 0.0f; // Flatten
-        }
-
-        glm_vec3_normalize(move);
-        glm_vec3_scale(move, PLAYER_ACCEL * delta_time, move);
-        glm_vec3_add(move, player_velocity, player_velocity);
-      }
-      else
-      {
-        const float original_y = player_velocity[1];
-        glm_vec3_scale(player_velocity, 1.0f - (PLAYER_DECEL * delta_time), player_velocity);
-
-        if (!preferences->no_clip)
-        {
-          player_velocity[1] = original_y;
-        }
+        const float drop = speed * preferences->player_friction * delta_time;
+        const float new_speed = glm_max(speed - drop, 0.0f);
+        glm_vec3_scale(player_velocity, new_speed / speed, player_velocity);
       }
 
-      // Limit max speed
+      // Then apply acceleration
+      if (glm_vec3_norm(wish_dir) > 0.0f)
       {
-        const float orig_y = player_velocity[1];
+        const float wish_speed = get_walk_key_down() ? preferences->player_walk_speed : preferences->player_run_speed;
+        const float current_speed = glm_vec3_dot(player_velocity, wish_dir);
+        const float add_speed = wish_speed - current_speed;
 
-        if (!preferences->no_clip)
+        if (add_speed > 0.0f)
         {
-          player_velocity[1] = 0.0f;
-        }
+          const float accel_speed = glm_min(preferences->player_accel * delta_time * wish_speed, add_speed);
 
-        float speed_limit = PLAYER_MOVE_SPEED * delta_time;
-        if (preferences->no_clip)
-        {
-          speed_limit *= 2.0f; // Go faster in noclip
-        }
-
-        if (glm_vec3_norm(player_velocity) > speed_limit)
-        {
-          glm_vec3_scale_as(player_velocity, speed_limit, player_velocity);
-        }
-
-        if (!preferences->no_clip)
-        {
-          player_velocity[1] = orig_y;
+          vec3 accel;
+          glm_vec3_scale(wish_dir, accel_speed, accel);
+          glm_vec3_add(player_velocity, accel, player_velocity);
         }
       }
     }
@@ -206,10 +178,10 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
         if (player_grounded && get_jump_key_down())
         {
-          vy = PLAYER_JUMP_STRENGTH;
+          vy = preferences->player_jump_strength;
         }
 
-        vy -= GRAVITY * delta_time;
+        vy -= preferences->physics_gravity * delta_time;
 
         vec3 vertical_move = { 0.0f, vy * delta_time, 0.0f };
 
@@ -364,12 +336,13 @@ void player_hurt(float damage, vec3 dir)
     const float visual_damage = min(damage, 25.0f);
     camera_add_recoil_yaw_pitch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
                                 ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
+
+    // And stop the player's horizontal movement
+    player_velocity[0] = player_velocity[2] = 0.0f;
   }
 
   // Pain indicator
-  {
-    hud_damage_indicate(dir);
-  }
+  hud_damage_indicate(dir);
 }
 
 float player_get_min_respawn_cooldown()

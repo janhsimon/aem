@@ -238,8 +238,12 @@ void update_hud(uint32_t screen_width,
       vec3 player_velocity;
       get_player_velocity(player_velocity);
 
+      vec2 run = { player_velocity[0], player_velocity[2] };
+      const float run_speed = glm_vec2_norm(run) * 1000.0f;
+
       char s[128];
-      sprintf(s, "Player velocity: %.2f, %.2f, %.2f", player_velocity[0], player_velocity[1], player_velocity[2]);
+      sprintf(s, "Player velocity: %.2f, %.2f, %.2f (run speed: %.2f)", player_velocity[0], player_velocity[1],
+              player_velocity[2], run_speed);
       ImDrawList_AddText_Vec2(draw_list, (ImVec2){ 100.0f, 120.0f }, color, s, NULL);
     }
 
