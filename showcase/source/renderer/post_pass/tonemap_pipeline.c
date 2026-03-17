@@ -7,7 +7,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint saturation_uniform_location, apply_bloom_uniform_location;
+
+static struct
+{
+  GLint saturation, apply_bloom;
+} uniforms;
 
 bool load_tonemap_pipeline()
 {
@@ -32,8 +36,8 @@ bool load_tonemap_pipeline()
   {
     glUseProgram(shader_program);
 
-    saturation_uniform_location = get_uniform_location(shader_program, "saturation");
-    apply_bloom_uniform_location = get_uniform_location(shader_program, "apply_bloom");
+    uniforms.saturation = get_uniform_location(shader_program, "saturation");
+    uniforms.apply_bloom = get_uniform_location(shader_program, "apply_bloom");
 
     const GLint hdr_tex_uniform_location = get_uniform_location(shader_program, "hdr_tex");
     glUniform1i(hdr_tex_uniform_location, 0);
@@ -60,10 +64,10 @@ void tonemap_pipeline_start_rendering()
 
 void tonemap_pipeline_use_saturation(float saturation)
 {
-  glUniform1f(saturation_uniform_location, saturation);
+  glUniform1f(uniforms.saturation, saturation);
 }
 
 void tonemap_pipeline_use_bloom(bool apply_bloom)
 {
-  glUniform1i(apply_bloom_uniform_location, apply_bloom);
+  glUniform1i(uniforms.apply_bloom, apply_bloom);
 }

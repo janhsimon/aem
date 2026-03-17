@@ -7,8 +7,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint view_uniform_location, proj_uniform_location, brightness_uniform_location, color_uniform_location,
-  thickness_uniform_location;
+
+static struct
+{
+  GLint view, proj, brightness, color, thickness;
+} uniforms;
 
 bool load_tracer_pipeline()
 {
@@ -35,11 +38,11 @@ bool load_tracer_pipeline()
 
     // Retrieve uniform locations
     glUseProgram(shader_program);
-    view_uniform_location = get_uniform_location(shader_program, "view");
-    proj_uniform_location = get_uniform_location(shader_program, "proj");
-    brightness_uniform_location = get_uniform_location(shader_program, "brightness");
-    color_uniform_location = get_uniform_location(shader_program, "color");
-    thickness_uniform_location = get_uniform_location(shader_program, "thickness");
+    uniforms.view = get_uniform_location(shader_program, "view");
+    uniforms.proj = get_uniform_location(shader_program, "proj");
+    uniforms.brightness = get_uniform_location(shader_program, "brightness");
+    uniforms.color = get_uniform_location(shader_program, "color");
+    uniforms.thickness = get_uniform_location(shader_program, "thickness");
   }
 
   return true;
@@ -57,13 +60,13 @@ void tracer_pipeline_start_rendering()
 
 void tracer_pipeline_use_viewproj_matrix(mat4 view_matrix, mat4 proj_matrix)
 {
-  glUniformMatrix4fv(view_uniform_location, 1, GL_FALSE, (float*)view_matrix);
-  glUniformMatrix4fv(proj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
+  glUniformMatrix4fv(uniforms.view, 1, GL_FALSE, (float*)view_matrix);
+  glUniformMatrix4fv(uniforms.proj, 1, GL_FALSE, (float*)proj_matrix);
 }
 
 void tracer_pipeline_use_parameters(float brightness, vec4 color, float thickness)
 {
-  glUniform1f(brightness_uniform_location, brightness);
-  glUniform4fv(color_uniform_location, 1, (float*)color);
-  glUniform1f(thickness_uniform_location, thickness);
+  glUniform1f(uniforms.brightness, brightness);
+  glUniform4fv(uniforms.color, 1, (float*)color);
+  glUniform1f(uniforms.thickness, thickness);
 }

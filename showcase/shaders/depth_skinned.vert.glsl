@@ -1,13 +1,9 @@
 #version 330 core
 
-const int NORMALS_MODE_WORLD_SPACE = 0;
-const int NORMALS_MODE_VIEW_SPACE = 1;
-
-uniform int normals_mode;
-
 uniform mat4 world;
 uniform mat4 view;
 uniform mat4 proj;
+
 uniform samplerBuffer joint_transform_tex;
 
 layout(location = 0) in vec3 in_position;
@@ -21,7 +17,7 @@ layout(location = 6) in vec4 in_joint_weights;
 out VERT_TO_FRAG
 {
   vec3 position; // In world space
-  vec3 normal;
+  vec3 normal;  // In view space
   vec3 tangent;
   vec3 bitangent;
   vec2 uv;
@@ -48,14 +44,7 @@ void main()
   }
 
   o.position = (world * joint_transform * vec4(in_position, 1)).xyz;
-
-  if (normals_mode == NORMALS_MODE_WORLD_SPACE) {
-    o.normal = normalize((world * joint_transform * vec4(in_normal, 0)).xyz);
-  }
-  else {
-    o.normal = normalize((view * world * joint_transform * vec4(in_normal, 0)).xyz);
-
-  }
+  o.normal = normalize((view * world * joint_transform * vec4(in_normal, 0)).xyz);
   o.tangent = normalize((world * joint_transform * vec4(in_tangent, 0)).xyz);
   o.bitangent = normalize((world * joint_transform * vec4(in_bitangent, 0)).xyz);
 

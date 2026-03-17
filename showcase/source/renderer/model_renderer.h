@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+
 struct ModelRenderInfo;
 
 enum ModelRenderMode
@@ -15,4 +17,4 @@ void load_model_renderer();
 void free_model_renderer();
 
 void start_model_rendering();
-void render_model(struct ModelRenderInfo* model_render_info, enum ModelRenderMode mode);
+void render_model(struct ModelRenderInfo* model_render_info, enum ModelRenderMode mode, bool bind_textures);

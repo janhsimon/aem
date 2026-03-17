@@ -11,7 +11,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint viewproj_uniform_location;
+
+static struct
+{
+  GLint viewproj;
+} uniforms;
 
 bool load_frustum_pipeline()
 {
@@ -46,7 +50,7 @@ bool load_frustum_pipeline()
       glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
     }
 
-    viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+    uniforms.viewproj = get_uniform_location(shader_program, "viewproj");
 
     GLuint color_uniform_location = get_uniform_location(shader_program, "color");
     glUniform4f(color_uniform_location, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -70,5 +74,5 @@ void frustum_pipeline_start_rendering()
 
 void frustum_pipeline_use_viewproj_matrix(mat4 viewproj)
 {
-  glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj);
+  glUniformMatrix4fv(uniforms.viewproj, 1, GL_FALSE, (float*)viewproj);
 }

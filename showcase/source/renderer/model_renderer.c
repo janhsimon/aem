@@ -112,9 +112,68 @@ void start_model_rendering()
   glBindVertexArray(vertex_array);
 }
 
-void render_model(struct ModelRenderInfo* mri, enum ModelRenderMode mode)
+void render_model(struct ModelRenderInfo* mri, enum ModelRenderMode mode, bool bind_textures)
 {
   const struct AEMModel* model = mri->model;
+
+  // Batch draw calls together by material type for better performance
+  if (!bind_textures)
+  {
+    enum AEMMaterialType batch_material_type;
+    uint32_t mesh_index = 0;
+    uint32_t batch_first_index = 0, batch_index_count = 0;
+
+    // Start the first batch for the first material
+    {
+      const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
+
+      batch_material_type = aem_get_model_material(model, mesh->material_index)->type;
+      batch_first_index = mesh->first_index;
+      batch_index_count = mesh->index_count;
+    }
+
+    const uint32_t mesh_count = aem_get_model_mesh_count(model);
+    for (mesh_index = 1; mesh_index < mesh_count; ++mesh_index)
+    {
+      const struct AEMMesh* mesh = aem_get_model_mesh(model, mesh_index);
+      const struct AEMMaterial* material = aem_get_model_material(model, mesh->material_index);
+
+      if (material->type == batch_material_type)
+      {
+        // Add the indices of this mesh to this batched draw call
+        batch_index_count += mesh->index_count;
+      }
+      else
+      {
+        // Perform the batched draw call
+        if (mode == ModelRenderMode_AllMeshes ||
+            (mode == ModelRenderMode_OpaqueMeshesOnly && batch_material_type == AEMMaterialType_Opaque) ||
+            (mode == ModelRenderMode_TransparentMeshesOnly && batch_material_type == AEMMaterialType_Transparent))
+        {
+          glDrawElementsBaseVertex(GL_TRIANGLES, batch_index_count, GL_UNSIGNED_INT,
+                                   (void*)(uintptr_t)((mri->first_index + batch_first_index) * AEM_INDEX_SIZE),
+                                   mri->first_vertex);
+        }
+
+        // Start a new batch for the new material
+        batch_material_type = material->type;
+        batch_first_index = mesh->first_index;
+        batch_index_count = mesh->index_count;
+      }
+    }
+
+    // Perform the last batched draw call
+    if (mode == ModelRenderMode_AllMeshes ||
+        (mode == ModelRenderMode_OpaqueMeshesOnly && batch_material_type == AEMMaterialType_Opaque) ||
+        (mode == ModelRenderMode_TransparentMeshesOnly && batch_material_type == AEMMaterialType_Transparent))
+    {
+      glDrawElementsBaseVertex(GL_TRIANGLES, batch_index_count, GL_UNSIGNED_INT,
+                               (void*)(uintptr_t)((mri->first_index + batch_first_index) * AEM_INDEX_SIZE),
+                               mri->first_vertex);
+    }
+
+    return;
+  }
 
   const uint32_t mesh_count = aem_get_model_mesh_count(model);
   for (uint32_t mesh_index = 0; mesh_index < mesh_count; ++mesh_index)

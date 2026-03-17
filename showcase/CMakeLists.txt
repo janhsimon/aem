@@ -116,9 +116,6 @@ set(SOURCE
   source/renderer/forward_pass/forward_framebuffer.c
   source/renderer/forward_pass/forward_framebuffer.h
 
-  source/renderer/forward_pass/main_pipeline.c
-  source/renderer/forward_pass/main_pipeline.h
-
   source/renderer/forward_pass/particle_pipeline.c
   source/renderer/forward_pass/particle_pipeline.h
 
@@ -130,6 +127,9 @@ set(SOURCE
 
   source/renderer/forward_pass/tracer_renderer.c
   source/renderer/forward_pass/tracer_renderer.h
+
+  source/renderer/forward_pass/world_pipeline.c
+  source/renderer/forward_pass/world_pipeline.h
 
   source/renderer/post_pass/debug_pipeline.c
   source/renderer/post_pass/debug_pipeline.h
@@ -155,18 +155,22 @@ set(SOURCE
   source/renderer/ssao_pass/ssao_pipeline.c
   source/renderer/ssao_pass/ssao_pipeline.h
 
+  shaders/depth_skinned.vert.glsl
+  shaders/depth_static.vert.glsl
   shaders/fullscreen.vert.glsl
   shaders/particle.vert.glsl
+  shaders/shadow_skinned.vert.glsl
+  shaders/shadow_static.vert.glsl
   shaders/simple.vert.glsl
-  shaders/skinned.vert.glsl
   shaders/tracer.vert.glsl
+  shaders/world_skinned.vert.glsl
+  shaders/world_static.vert.glsl
 
   shaders/bloom_downsample.frag.glsl
   shaders/bloom_prefilter.frag.glsl
   shaders/bloom_upsample.frag.glsl
   shaders/debug.frag.glsl
   shaders/depth.frag.glsl
-  shaders/main.frag.glsl
   shaders/null.frag.glsl
   shaders/particle.frag.glsl
   shaders/shadow_vis.frag.glsl
@@ -174,6 +178,7 @@ set(SOURCE
   shaders/ssao_blur.frag.glsl
   shaders/tonemap.frag.glsl
   shaders/tracer.frag.glsl
+  shaders/world.frag.glsl
 )
 
 set(DEPENDENCIES

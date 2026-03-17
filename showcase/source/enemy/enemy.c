@@ -317,14 +317,15 @@ void update_enemy(float delta_time)
   // Always update animations and hitboxes
   aem_update_animation(render_info->model, mixer, delta_time, **joint_transforms);
   update_hitboxes();
+
+  // Update the joint transform buffer and texture
+  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
+               GL_DYNAMIC_DRAW);
 }
 
 void prepare_enemy_rendering()
 {
-  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
-               GL_DYNAMIC_DRAW);
-
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);

@@ -14,11 +14,11 @@
 #include "enemy/enemy.h"
 #include "forward_pass/depth_pipeline.h"
 #include "forward_pass/forward_framebuffer.h"
-#include "forward_pass/main_pipeline.h"
 #include "forward_pass/particle_pipeline.h"
 #include "forward_pass/particle_renderer.h"
 #include "forward_pass/tracer_pipeline.h"
 #include "forward_pass/tracer_renderer.h"
+#include "forward_pass/world_pipeline.h"
 #include "map.h"
 #include "model_renderer.h"
 #include "particle_manager.h"
@@ -97,7 +97,7 @@ bool load_renderer(struct Preferences* preferences_, uint32_t screen_width_, uin
       return false;
     }
 
-    if (!load_main_pipeline())
+    if (!load_world_pipeline())
     {
       return false;
     }
@@ -203,7 +203,7 @@ void free_renderer()
   // Forward pass
   free_forward_framebuffer();
   free_depth_pipeline();
-  free_main_pipeline();
+  free_world_pipeline();
   free_particle_pipeline();
   free_tracer_pipeline();
   free_particle_renderer();
@@ -233,8 +233,6 @@ static void render_shadow_pass()
 
   directional_light_calc_viewproj(preferences, camera_near, camera_far);
 
-  shadow_pipeline_start_rendering();
-
   for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
   {
     shadow_framebuffer_start_rendering(preferences, cascade_index);
@@ -243,27 +241,30 @@ static void render_shadow_pass()
     mat4 light_view_matrix, light_proj_matrix;
     directional_light_get_view_matrix(cascade_index, light_view_matrix);
     directional_light_get_proj_matrix(cascade_index, light_proj_matrix);
-    shadow_pipeline_use_view_projection_matrices(light_view_matrix, light_proj_matrix);
 
-    // Map
+    // Map (static)
     {
-      shadow_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+      shadow_pipeline_start_rendering(ShadowPipelineType_Static);
+      shadow_pipeline_use_matrices(ShadowPipelineType_Static, GLM_MAT4_IDENTITY, light_view_matrix, light_proj_matrix);
 
       const uint32_t part_count = get_map_part_count();
       for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
       {
-        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly, false);
       }
     }
 
-    // Enemy
+    // Enemy (skinned)
     {
       mat4 enemy_world_matrix;
       get_enemy_world_matrix(enemy_world_matrix);
-      shadow_pipeline_use_world_matrix(enemy_world_matrix);
+
+      shadow_pipeline_start_rendering(ShadowPipelineType_Skinned);
+      shadow_pipeline_use_matrices(ShadowPipelineType_Skinned, enemy_world_matrix, light_view_matrix,
+                                   light_proj_matrix);
 
       prepare_enemy_rendering();
-      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
     }
   }
 }
@@ -274,33 +275,31 @@ static void render_forward_pass_early()
 
   forward_framebuffer_start_rendering(ForwardFramebufferAttachment_ViewspaceNormalsTexture);
 
-  depth_pipeline_start_rendering();
-
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  depth_pipeline_use_view_matrix(view_matrix);
-  depth_pipeline_use_proj_matrix(proj_matrix);
-
-  // Map
+  // Map (static)
   {
-    depth_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+    depth_pipeline_start_rendering(DepthPipelineType_Static);
+    depth_pipeline_use_matrices(DepthPipelineType_Static, GLM_MAT4_IDENTITY, view_matrix, proj_matrix);
 
     const uint32_t part_count = get_map_part_count();
     for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
     {
-      render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+      render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly, false);
     }
   }
 
-  // Enemy
+  // Enemy (skinned)
   {
     mat4 enemy_world_matrix;
     get_enemy_world_matrix(enemy_world_matrix);
-    depth_pipeline_use_world_matrix(enemy_world_matrix);
+
+    depth_pipeline_start_rendering(DepthPipelineType_Skinned);
+    depth_pipeline_use_matrices(DepthPipelineType_Skinned, enemy_world_matrix, view_matrix, proj_matrix);
 
     prepare_enemy_rendering();
-    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
   }
 }
 
@@ -399,7 +398,6 @@ static void render_forward_pass_late()
 
   forward_framebuffer_start_rendering(ForwardFramebufferAttachment_HDRTexture);
 
-  main_pipeline_start_rendering();
   glClearColor(preferences->camera_background_color[0], preferences->camera_background_color[1],
                preferences->camera_background_color[2], 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
@@ -422,94 +420,112 @@ static void render_forward_pass_late()
     glBindTexture(GL_TEXTURE_2D, ssao_framebuffer_get_texture(0));
   }
 
-  main_pipeline_use_ambient_color(preferences->ambient_color, preferences->ambient_intensity);
-  main_pipeline_use_view_matrix(view_matrix);
-  main_pipeline_use_proj_matrix(proj_matrix);
-
-  // Screen size
+  // Calculate uniform values to use this frame
+  vec2 screen_size;
+  vec3 camera_position, camera_direction;
+  mat4 light_viewproj[4];
+  float cascade_splits[3];
   {
-    vec2 screen_size = { screen_width, screen_height };
-    main_pipeline_use_screen_size(screen_size);
-  }
+    glm_vec2_copy((vec2){ screen_width, screen_height }, screen_size);
 
-  // Set the latest camera position
-  {
-    vec3 camera_position, camera_direction;
     camera_get_position(camera_position);
     camera_get_forward_with_recoil(camera_direction);
-    main_pipeline_use_camera(camera_position, camera_direction);
-  }
 
-  main_pipeline_use_light(preferences->light_dir, preferences->light_color, preferences->light_intensity);
-
-  main_pipeline_enable_shadow_mapping(preferences->shadow_mapping_enable,
-                                      preferences->shadow_mapping_visualize_cascades);
-  if (preferences->shadow_mapping_enable)
-  {
-    mat4 light_viewproj[4];
     for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
     {
       directional_light_get_viewproj_matrix(cascade_index, light_viewproj[cascade_index]);
     }
 
-    float cascade_splits[3];
     for (uint32_t split_index = 0; split_index < 3; ++split_index)
     {
       cascade_splits[split_index] =
         camera_near + (camera_far - camera_near) * preferences->shadow_mapping_cascade_splits[split_index];
     }
-
-    main_pipeline_use_shadow_cascades(light_viewproj, cascade_splits);
-
-    main_pipeline_use_shadow_parameters(preferences->shadow_mapping_bias, preferences->shadow_mapping_pcf_radius,
-                                        preferences->shadow_mapping_pcf_kernel_size);
   }
 
-  // Main pipeline (opaque)
+  // World pipeline (opaque)
   {
-    main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
-    main_pipeline_enable_ssao(preferences->ssao_enable);
-
-    // Map
+    // Map (static)
     {
-      main_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+      world_pipeline_start_rendering(WorldPipelineType_Static);
+      world_pipeline_use_ambient_color(WorldPipelineType_Static, preferences->ambient_color,
+                                       preferences->ambient_intensity);
+      world_pipeline_use_screen_size(WorldPipelineType_Static, screen_size);
+      world_pipeline_use_camera(WorldPipelineType_Static, camera_position, camera_direction);
+      world_pipeline_use_light(WorldPipelineType_Static, preferences->light_dir, preferences->light_color,
+                               preferences->light_intensity);
+      world_pipeline_enable_shadow_mapping(WorldPipelineType_Static, preferences->shadow_mapping_enable,
+                                           preferences->shadow_mapping_visualize_cascades);
+      world_pipeline_use_render_mode(WorldPipelineType_Static, WorldPipelineRenderMode_Opaque);
+      world_pipeline_enable_ssao(WorldPipelineType_Static, preferences->ssao_enable);
+
+      if (preferences->shadow_mapping_enable)
+      {
+        world_pipeline_use_shadow_cascades(WorldPipelineType_Static, light_viewproj, cascade_splits);
+        world_pipeline_use_shadow_parameters(WorldPipelineType_Static, preferences->shadow_mapping_bias,
+                                             preferences->shadow_mapping_pcf_radius,
+                                             preferences->shadow_mapping_pcf_kernel_size);
+      }
+
+      world_pipeline_use_matrices(WorldPipelineType_Static, GLM_MAT4_IDENTITY, view_matrix, proj_matrix);
 
       const uint32_t part_count = get_map_part_count();
       for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
       {
-        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly);
+        render_model(get_map_part(map_part_index), ModelRenderMode_OpaqueMeshesOnly, true);
       }
     }
 
-    // Enemy
+    // Enemy (skinned)
     {
+      world_pipeline_start_rendering(WorldPipelineType_Skinned);
+      world_pipeline_use_ambient_color(WorldPipelineType_Skinned, preferences->ambient_color,
+                                       preferences->ambient_intensity);
+      world_pipeline_use_screen_size(WorldPipelineType_Skinned, screen_size);
+      world_pipeline_use_camera(WorldPipelineType_Skinned, camera_position, camera_direction);
+      world_pipeline_use_light(WorldPipelineType_Skinned, preferences->light_dir, preferences->light_color,
+                               preferences->light_intensity);
+      world_pipeline_enable_shadow_mapping(WorldPipelineType_Skinned, preferences->shadow_mapping_enable,
+                                           preferences->shadow_mapping_visualize_cascades);
+      world_pipeline_use_render_mode(WorldPipelineType_Skinned, WorldPipelineRenderMode_Opaque);
+      world_pipeline_enable_ssao(WorldPipelineType_Skinned, preferences->ssao_enable);
+
+      if (preferences->shadow_mapping_enable)
+      {
+        world_pipeline_use_shadow_cascades(WorldPipelineType_Skinned, light_viewproj, cascade_splits);
+        world_pipeline_use_shadow_parameters(WorldPipelineType_Skinned, preferences->shadow_mapping_bias,
+                                             preferences->shadow_mapping_pcf_radius,
+                                             preferences->shadow_mapping_pcf_kernel_size);
+      }
+
       mat4 enemy_world_matrix;
       get_enemy_world_matrix(enemy_world_matrix);
-      main_pipeline_use_world_matrix(enemy_world_matrix);
+      world_pipeline_use_matrices(WorldPipelineType_Skinned, enemy_world_matrix, view_matrix, proj_matrix);
 
       prepare_enemy_rendering();
-      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, true);
     }
   }
 
-  main_pipeline_enable_ssao(false);
+  world_pipeline_start_rendering(WorldPipelineType_Static);
+  world_pipeline_enable_ssao(WorldPipelineType_Static, false);
 
   glDepthFunc(GL_LEQUAL);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // Main pipeline (transparent)
+  // World pipeline (transparent)
   {
-    main_pipeline_use_render_mode(MainPipelineRenderMode_Transparent);
+    world_pipeline_use_render_mode(WorldPipelineType_Static, WorldPipelineRenderMode_Transparent);
 
     // Map
     {
-      main_pipeline_use_world_matrix(GLM_MAT4_IDENTITY);
+      world_pipeline_use_matrices(WorldPipelineType_Static, GLM_MAT4_IDENTITY, view_matrix, proj_matrix);
 
       const uint32_t part_count = get_map_part_count();
       for (uint32_t map_part_index = 0; map_part_index < part_count; ++map_part_index)
       {
-        render_model(get_map_part(map_part_index), ModelRenderMode_TransparentMeshesOnly);
+        render_model(get_map_part(map_part_index), ModelRenderMode_TransparentMeshesOnly, true);
       }
     }
   }
@@ -540,30 +556,26 @@ static void render_forward_pass_late()
   glDisable(GL_BLEND);
   glDepthMask(GL_TRUE);
 
-  // Main pipeline (view model)
+  // World pipeline (view model)
   if (get_player_health() > 0.0f)
   {
     start_model_rendering();
-    main_pipeline_start_rendering();
+    world_pipeline_start_rendering(WorldPipelineType_Skinned);
 
     glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
 
     {
-      mat4 view_model_world_matrix;
+      mat4 view_model_world_matrix, view_model_proj_matrix;
       view_model_get_world_matrix(preferences, view_model_world_matrix);
-      main_pipeline_use_world_matrix(view_model_world_matrix);
-    }
-
-    {
-      mat4 view_model_proj_matrix;
       camera_get_view_model_proj_matrix(view_model_proj_matrix);
-      main_pipeline_use_proj_matrix(view_model_proj_matrix);
+      world_pipeline_use_matrices(WorldPipelineType_Skinned, view_model_world_matrix, view_matrix,
+                                  view_model_proj_matrix);
     }
 
-    main_pipeline_use_render_mode(MainPipelineRenderMode_Opaque);
+    world_pipeline_use_render_mode(WorldPipelineType_Skinned, WorldPipelineRenderMode_Opaque);
 
     prepare_view_model_rendering();
-    render_model(get_view_model_render_info(), ModelRenderMode_OpaqueMeshesOnly);
+    render_model(get_view_model_render_info(), ModelRenderMode_OpaqueMeshesOnly, true);
   }
 }
 

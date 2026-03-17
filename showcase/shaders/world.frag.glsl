@@ -10,7 +10,7 @@ uniform vec4 light_color; // In linear space, RGB, A: intensity
 uniform vec3 light_dir;
 uniform vec3 camera_pos; // In world space
 uniform vec3 camera_dir; // In world space
-uniform mat4 light_viewproj[4];
+uniform mat4 light_viewprojs[4];
 
 uniform float cascade_splits[3];
 
@@ -136,7 +136,7 @@ void main()
       return;
     }
 
-    vec4 fragPosLightSpace = light_viewproj[cascade_index] * vec4(i.position, 1.0);
+    vec4 fragPosLightSpace = light_viewprojs[cascade_index] * vec4(i.position, 1.0);
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
   

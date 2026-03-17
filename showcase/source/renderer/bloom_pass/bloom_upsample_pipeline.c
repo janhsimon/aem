@@ -9,7 +9,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint low_resolution_uniform_location, bloom_intensity_uniform_location;
+
+static struct
+{
+  GLint low_resolution, bloom_intensity;
+} uniforms;
 
 bool load_bloom_upsample_pipeline()
 {
@@ -34,8 +38,8 @@ bool load_bloom_upsample_pipeline()
   {
     glUseProgram(shader_program);
 
-    bloom_intensity_uniform_location = get_uniform_location(shader_program, "bloom_intensity");
-    low_resolution_uniform_location = get_uniform_location(shader_program, "low_resolution");
+    uniforms.low_resolution = get_uniform_location(shader_program, "low_resolution");
+    uniforms.bloom_intensity = get_uniform_location(shader_program, "bloom_intensity");
 
     const GLint low_tex_uniform_location = get_uniform_location(shader_program, "low_tex");
     glUniform1i(low_tex_uniform_location, 0);
@@ -62,10 +66,10 @@ void bloom_upsample_pipeline_start_rendering()
 
 void bloom_upsample_pipeline_use_low_resolution(vec2 resolution)
 {
-  glUniform2fv(low_resolution_uniform_location, 1, resolution);
+  glUniform2fv(uniforms.low_resolution, 1, resolution);
 }
 
 void bloom_upsample_pipeline_use_intensity(float intensity)
 {
-  glUniform1f(bloom_intensity_uniform_location, intensity);
+  glUniform1f(uniforms.bloom_intensity, intensity);
 }

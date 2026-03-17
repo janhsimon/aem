@@ -11,7 +11,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint tint_uniform_location;
+
+static struct
+{
+  GLint tint;
+} uniforms;
 
 bool load_shadow_composite_pipeline()
 {
@@ -39,7 +43,7 @@ bool load_shadow_composite_pipeline()
   {
     glUseProgram(shader_program);
 
-    tint_uniform_location = get_uniform_location(shader_program, "tint");
+    uniforms.tint = get_uniform_location(shader_program, "tint");
 
     GLuint tex_uniform_location = get_uniform_location(shader_program, "tex");
     glUniform1i(tex_uniform_location, 0);
@@ -60,5 +64,5 @@ void shadow_composite_pipeline_start_rendering()
 
 void shadow_composite_pipeline_use_tint(vec3 tint)
 {
-  glUniform3fv(tint_uniform_location, 1,(float*)tint);
+  glUniform3fv(uniforms.tint, 1, (float*)tint);
 }

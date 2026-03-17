@@ -9,9 +9,13 @@
 #include <stdio.h>
 
 static GLuint shader_program;
-static GLint proj_uniform_location, inv_proj_uniform_location, radius_uniform_location, bias_uniform_location,
-  strength_uniform_location, screen_size_uniform_location;
+
 static GLuint noise_texture;
+
+static struct
+{
+  GLint proj, inv_proj, radius, bias, strength, screen_size;
+} uniforms;
 
 static inline float randf(float min, float max)
 {
@@ -45,12 +49,12 @@ bool load_ssao_pipeline()
     {
       glUseProgram(shader_program);
 
-      proj_uniform_location = get_uniform_location(shader_program, "proj");
-      inv_proj_uniform_location = get_uniform_location(shader_program, "inv_proj");
-      radius_uniform_location = get_uniform_location(shader_program, "radius");
-      bias_uniform_location = get_uniform_location(shader_program, "bias");
-      strength_uniform_location = get_uniform_location(shader_program, "strength");
-      screen_size_uniform_location = get_uniform_location(shader_program, "screen_size");
+      uniforms.proj = get_uniform_location(shader_program, "proj");
+      uniforms.inv_proj = get_uniform_location(shader_program, "inv_proj");
+      uniforms.radius = get_uniform_location(shader_program, "radius");
+      uniforms.bias = get_uniform_location(shader_program, "bias");
+      uniforms.strength = get_uniform_location(shader_program, "strength");
+      uniforms.screen_size = get_uniform_location(shader_program, "screen_size");
 
       const GLint normals_tex_uniform_location = get_uniform_location(shader_program, "normals_tex");
       glUniform1i(normals_tex_uniform_location, 0);
@@ -128,21 +132,21 @@ void ssao_pipeline_start_rendering()
 
 void ssao_pipeline_use_proj_matrix(mat4 proj_matrix)
 {
-  glUniformMatrix4fv(proj_uniform_location, 1, GL_FALSE, (float*)proj_matrix);
+  glUniformMatrix4fv(uniforms.proj, 1, GL_FALSE, (float*)proj_matrix);
 
   mat4 inv;
   glm_mat4_inv(proj_matrix, inv);
-  glUniformMatrix4fv(inv_proj_uniform_location, 1, GL_FALSE, (float*)inv);
+  glUniformMatrix4fv(uniforms.inv_proj, 1, GL_FALSE, (float*)inv);
 }
 
 void ssao_pipeline_use_parameters(float radius, float bias, float strength)
 {
-  glUniform1f(radius_uniform_location, radius);
-  glUniform1f(bias_uniform_location, bias);
-  glUniform1f(strength_uniform_location, strength);
+  glUniform1f(uniforms.radius, radius);
+  glUniform1f(uniforms.bias, bias);
+  glUniform1f(uniforms.strength, strength);
 }
 
 void ssao_pipeline_use_screen_size(vec2 size)
 {
-  glUniform2fv(screen_size_uniform_location, 1, size);
+  glUniform2fv(uniforms.screen_size, 1, size);
 }

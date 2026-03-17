@@ -349,6 +349,11 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
   }
 
   prev_moving = moving;
+
+  // Update the joint transform buffer and texture
+  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
+               GL_DYNAMIC_DRAW);
 }
 
 struct ModelRenderInfo* get_view_model_render_info()
@@ -375,10 +380,6 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 
 void prepare_view_model_rendering()
 {
-  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
-               GL_DYNAMIC_DRAW);
-
   // Joint transform texture
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);

@@ -7,7 +7,11 @@
 #include <stdlib.h>
 
 static GLuint shader_program;
-static GLint threshold_uniform_location, soft_knee_uniform_location;
+
+static struct
+{
+  GLint threshold, soft_knee;
+} uniforms;
 
 bool load_bloom_prefilter_pipeline()
 {
@@ -32,8 +36,8 @@ bool load_bloom_prefilter_pipeline()
   {
     glUseProgram(shader_program);
 
-    threshold_uniform_location = get_uniform_location(shader_program, "threshold");
-    soft_knee_uniform_location = get_uniform_location(shader_program, "soft_knee");
+    uniforms.threshold = get_uniform_location(shader_program, "threshold");
+    uniforms.soft_knee = get_uniform_location(shader_program, "soft_knee");
 
     const GLint hdr_tex_uniform_location = get_uniform_location(shader_program, "hdr_tex");
     glUniform1i(hdr_tex_uniform_location, 0);
@@ -57,6 +61,6 @@ void bloom_prefilter_pipeline_start_rendering()
 
 void bloom_prefilter_pipeline_use_parameters(float threshold, float soft_knee)
 {
-  glUniform1f(threshold_uniform_location, threshold);
-  glUniform1f(soft_knee_uniform_location, soft_knee);
+  glUniform1f(uniforms.threshold, threshold);
+  glUniform1f(uniforms.soft_knee, soft_knee);
 }
