@@ -111,6 +111,13 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igSliderFloat("Friction##Player", &preferences->player_friction, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Jump strength##Player", &preferences->player_jump_strength, 0.0f, 250.0f, "%f",
                   ImGuiSliderFlags_None);
+    igSliderFloat("No clip speed factor##Player", &preferences->player_no_clip_speed_factor, 0.0f, 10.0f, "%f",
+                  ImGuiSliderFlags_None);
+  }
+
+  if (igCollapsingHeader_TreeNodeFlags("Input", ImGuiTreeNodeFlags_None))
+  {
+    igSliderFloat("Mouse sensitivity##Input", &preferences->input_mouse_sensitivity, 0.01f, 100.0f, "%f", ImGuiSliderFlags_None);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Physics", ImGuiTreeNodeFlags_None))

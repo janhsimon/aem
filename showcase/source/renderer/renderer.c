@@ -300,6 +300,23 @@ static void render_forward_pass_early()
     prepare_enemy_rendering();
     render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
   }
+
+  //// View model (skinned)
+  //{
+  //  glDepthMask(GL_FALSE);
+  //  glDepthFunc(GL_LEQUAL); // or GL_ALWAYS for guaranteed front
+
+  //  mat4 view_model_world_matrix, view_model_proj_matrix;
+  //  view_model_get_world_matrix(preferences, view_model_world_matrix);
+  //  camera_get_view_model_proj_matrix(view_model_proj_matrix);
+  //  depth_pipeline_use_matrices(DepthPipelineType_Skinned, view_model_world_matrix, view_matrix,
+  //                              view_model_proj_matrix);
+
+  //  prepare_view_model_rendering();
+  //  render_model(get_view_model_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
+
+  //  glDepthMask(GL_TRUE);
+  //}
 }
 
 static void render_ssao_pass()
@@ -561,6 +578,8 @@ static void render_forward_pass_late()
   {
     start_model_rendering();
     world_pipeline_start_rendering(WorldPipelineType_Skinned);
+
+    world_pipeline_enable_ssao(WorldPipelineType_Skinned, false);
 
     glClear(GL_DEPTH_BUFFER_BIT); // Clear depth so view model never clips into level
 

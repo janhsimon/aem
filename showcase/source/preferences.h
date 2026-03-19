@@ -44,6 +44,10 @@ struct Preferences
   float player_run_speed, player_walk_speed;
   float player_accel, player_friction;
   float player_jump_strength;
+  float player_no_clip_speed_factor;
+
+  // Input
+  float input_mouse_sensitivity;
 
   // Physics
   float physics_gravity;

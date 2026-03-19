@@ -100,7 +100,8 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     {
       double delta_x, delta_y;
       get_mouse_delta(&delta_x, &delta_y);
-      camera_add_yaw_pitch_roll(delta_x * 0.001f, delta_y * 0.001f, 0.0f);
+      camera_add_yaw_pitch_roll(delta_x * 0.001f * preferences->input_mouse_sensitivity,
+                                delta_y * 0.001f * preferences->input_mouse_sensitivity, 0.0f);
     }
 
     camera_calc_forward();
@@ -120,20 +121,30 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
       glm_normalize(wish_dir);
 
+      vec3 current_dir;
+      glm_vec3_copy(player_velocity, current_dir);
+      if (!preferences->no_clip)
+      {
+        current_dir[1] = 0.0f;
+      }
+
       // Apply friction first
-      const float speed = glm_vec3_norm(player_velocity);
+      const float speed = glm_vec3_norm(current_dir);
       if (speed > 0.0f)
       {
         const float drop = speed * preferences->player_friction * delta_time;
         const float new_speed = glm_max(speed - drop, 0.0f);
-        glm_vec3_scale(player_velocity, new_speed / speed, player_velocity);
+        glm_vec3_scale(current_dir, new_speed / speed, current_dir);
       }
 
       // Then apply acceleration
       if (glm_vec3_norm(wish_dir) > 0.0f)
       {
-        const float wish_speed = get_walk_key_down() ? preferences->player_walk_speed : preferences->player_run_speed;
-        const float current_speed = glm_vec3_dot(player_velocity, wish_dir);
+        const float wish_speed =
+          (get_walk_key_down() ? preferences->player_walk_speed : preferences->player_run_speed) *
+          (preferences->no_clip ? preferences->player_no_clip_speed_factor : 1.0f);
+
+        const float current_speed = glm_vec3_dot(current_dir, wish_dir);
         const float add_speed = wish_speed - current_speed;
 
         if (add_speed > 0.0f)
@@ -142,8 +153,16 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
           vec3 accel;
           glm_vec3_scale(wish_dir, accel_speed, accel);
-          glm_vec3_add(player_velocity, accel, player_velocity);
+          glm_vec3_add(current_dir, accel, current_dir);
         }
+      }
+
+      player_velocity[0] = current_dir[0];
+      player_velocity[2] = current_dir[2];
+
+      if (preferences->no_clip)
+      {
+        player_velocity[1] = current_dir[1];
       }
     }
 
