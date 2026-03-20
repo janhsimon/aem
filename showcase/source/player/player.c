@@ -166,74 +166,21 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       }
     }
 
+    // Jumping
+    if (player_grounded && get_jump_key_down())
+    {
+      player_velocity[1] = preferences->player_jump_strength;
+    }
+
     // Collision
     if (!preferences->no_clip)
     {
-      // Phase 1: Horizontal movement versus walls
-      vec3 pos;
-      {
-        camera_get_position(pos);
+      vec3 eye;
+      camera_get_position(eye);
 
-        vec3 horizontal_move = { player_velocity[0], 0.0f, player_velocity[2] };
+      simulate_capsule(preferences, eye, player_velocity, &player_grounded, PLAYER_HEIGHT, PLAYER_RADIUS, delta_time);
 
-        const float magnitude = glm_vec3_norm(horizontal_move);
-        const int step_count = (magnitude / PLAYER_RADIUS) + 1;
-        const float step_length = magnitude / step_count;
-
-        vec3 step_vector;
-        glm_vec3_scale_as(horizontal_move, step_length, step_vector);
-
-        for (int step = 0; step < step_count; ++step)
-        {
-          glm_vec3_add(pos, step_vector, pos);
-          vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
-          collide_capsule(base, pos, PLAYER_RADIUS, CollisionPhase_Walls); // Resolve walls only, no floors
-        }
-      }
-
-      // Phase 2: Vertical movement versus floors
-      {
-        float vy = player_velocity[1];
-
-        if (player_grounded && get_jump_key_down())
-        {
-          vy = preferences->player_jump_strength;
-        }
-
-        vy -= preferences->physics_gravity * delta_time;
-
-        vec3 vertical_move = { 0.0f, vy * delta_time, 0.0f };
-
-        const float magnitude = glm_vec3_norm(vertical_move);
-        const int step_count = (magnitude / PLAYER_RADIUS) + 1;
-        const float step_length = magnitude / step_count;
-
-        vec3 step_vector;
-        glm_vec3_scale_as(vertical_move, step_length, step_vector);
-
-        for (int step = 0; step < step_count; ++step)
-        {
-          glm_vec3_add(pos, step_vector, pos);
-          vec3 base = { pos[0], pos[1] - PLAYER_HEIGHT + PLAYER_RADIUS * 2, pos[2] };
-          player_grounded =
-            collide_capsule(base, pos, PLAYER_RADIUS, CollisionPhase_Floors); // Resolve floors only, no walls
-
-          // Ground behavior
-          if (player_grounded)
-          {
-            if (vy < 0.0f)
-            {
-              vy = 0.0f;
-            }
-
-            break;
-          }
-        }
-
-        player_velocity[1] = vy;
-      }
-
-      camera_set_position(pos);
+      camera_set_position(eye);
     }
     else
     {

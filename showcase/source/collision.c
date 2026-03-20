@@ -1,6 +1,7 @@
 #include "collision.h"
 
 #include "map.h"
+#include "preferences.h"
 
 #include <cglm/ray.h>
 #include <cglm/vec3.h>
@@ -350,4 +351,64 @@ bool collide_ray(vec3 from, vec3 to, vec3 hit, vec3 normal)
   }
 
   return true;
+}
+
+void simulate_capsule(const struct Preferences* preferences,
+                      vec3 eye,
+                      vec3 velocity,
+                      bool* grounded,
+                      float collider_height,
+                      float collider_radius,
+                      float delta_time)
+{
+  // Phase 1: Horizontal movement versus walls
+  {
+    vec3 horizontal_move = { velocity[0], 0.0f, velocity[2] };
+
+    const float magnitude = glm_vec3_norm(horizontal_move);
+    const int step_count = (magnitude / collider_radius) + 1;
+    const float step_length = magnitude / step_count;
+
+    vec3 step_vector;
+    glm_vec3_scale_as(horizontal_move, step_length, step_vector);
+
+    for (int step = 0; step < step_count; ++step)
+    {
+      glm_vec3_add(eye, step_vector, eye);
+      vec3 base = { eye[0], eye[1] - collider_height + collider_radius * 2.0f, eye[2] };
+      collide_capsule(base, eye, collider_radius, CollisionPhase_Walls); // Resolve walls only, no floors
+    }
+  }
+
+  // Phase 2: Vertical movement versus floors
+  {
+    velocity[1] -= preferences->physics_gravity * delta_time;
+
+    vec3 vertical_move = { 0.0f, velocity[1] * delta_time, 0.0f };
+
+    const float magnitude = glm_vec3_norm(vertical_move);
+    const int step_count = (magnitude / collider_radius) + 1;
+    const float step_length = magnitude / step_count;
+
+    vec3 step_vector;
+    glm_vec3_scale_as(vertical_move, step_length, step_vector);
+
+    for (int step = 0; step < step_count; ++step)
+    {
+      glm_vec3_add(eye, step_vector, eye);
+      vec3 base = { eye[0], eye[1] - collider_height + collider_radius * 2, eye[2] };
+      *grounded = collide_capsule(base, eye, collider_radius, CollisionPhase_Floors); // Resolve floors only, no walls
+
+      // Ground behavior
+      if (*grounded)
+      {
+        if (velocity[1] < 0.0f)
+        {
+          velocity[1] = 0.0f;
+        }
+
+        break;
+      }
+    }
+  }
 }

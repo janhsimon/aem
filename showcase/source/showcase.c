@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 static bool debug_mode_enabled = false;
 
@@ -26,6 +27,9 @@ static struct Preferences preferences;
 
 int main(int argc, char* argv[])
 {
+  // Random seed
+  srand(time(NULL));
+
   load_default_preferences(&preferences);
 
 #ifndef NDEBUG

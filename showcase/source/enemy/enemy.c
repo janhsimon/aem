@@ -69,10 +69,15 @@ static vec3 hitbox_lower_torso_bottom, hitbox_lower_torso_top;
 
 static float health;
 
+static bool enemy_grounded = false;
+static float enemy_velocity_y = 0.0f;
+
 static void respawn_enemy(bool play_sound)
 {
   // Reset health
   health = 100.0f;
+
+  enemy_grounded = false;
 
   // Reset position and angle
   vec3 spawn_position;
@@ -257,7 +262,7 @@ void update_enemy(float delta_time)
   switch (state)
   {
   case EnemyState_Walk:
-    update_enemy_state_walk(transform[3], transform[2], player_visible, delta_time, desired_velocity,
+    update_enemy_state_walk(transform[3], transform[2], enemy_grounded, player_visible, delta_time, desired_velocity,
                             &desired_angle_delta);
     break;
   case EnemyState_Aim:
@@ -278,34 +283,30 @@ void update_enemy(float delta_time)
   // Turn
   glm_rotate_y(transform, glm_rad(desired_angle_delta), transform);
 
-  // Move
-  vec3 old_pos, velocity;
-  glm_vec3_copy(transform[3], old_pos);
-  glm_translate_x(transform, desired_velocity[0]); // Untested as strafing is not implemented yet
-  glm_translate_z(transform, desired_velocity[1]);
-  glm_vec3_sub(transform[3], old_pos, velocity);
-
-  // Simple collision
+  // Calculate velocity
+  vec3 velocity;
   {
-    const float magnitude = glm_vec3_norm(velocity);
-    const int step_count = (magnitude / ENEMY_COLLIDER_RADIUS) + 1;
-    const float step_length = magnitude / step_count;
+    vec3 old_pos;
+    glm_vec3_copy(transform[3], old_pos);
+    glm_translate_x(transform, desired_velocity[0]); // Untested as strafing is not implemented yet
+    glm_translate_z(transform, desired_velocity[1]);
+    glm_vec3_sub(transform[3], old_pos, velocity);
+    velocity[1] = enemy_velocity_y;
+  }
 
-    vec3 step_vector;
-    glm_vec3_scale_as(velocity, step_length, step_vector);
+  // Simulate capsule
+  {
+    vec3 eye;
+    glm_vec3_copy(transform[3], eye);
+    eye[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to eye height
 
-    old_pos[1] += ENEMY_COLLIDER_RADIUS; // From feet to capsule bottom center
+    simulate_capsule(preferences, eye, velocity, &enemy_grounded, ENEMY_COLLIDER_HEIGHT, ENEMY_COLLIDER_RADIUS,
+                     delta_time);
 
-    for (int step = 0; step < step_count; ++step)
-    {
-      glm_vec3_add(old_pos, step_vector, old_pos);
+    enemy_velocity_y = velocity[1];
 
-      vec3 top = { old_pos[0], old_pos[1] + ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS * 2, old_pos[2] };
-      collide_capsule(top, old_pos, ENEMY_COLLIDER_RADIUS, CollisionPhase_Walls);
-    }
-
-    old_pos[1] -= ENEMY_COLLIDER_RADIUS; // From capsule bottom center to feet
-    glm_vec3_copy(old_pos, transform[3]);
+    eye[1] -= ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From eye to feet height
+    glm_vec3_copy(eye, transform[3]);
   }
 
   // Respawn

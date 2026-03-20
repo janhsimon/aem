@@ -12,7 +12,7 @@
 
 #include <cglm/vec3.h>
 
-#define ENEMY_MOVE_SPEED 0.1f
+#define ENEMY_MOVE_SPEED 0.05f
 #define ENEMY_TURN_RATE 5.0f
 
 #define ENEMY_MIN_AIM_DELAY 0.4f // In seconds
@@ -65,13 +65,14 @@ void enter_enemy_state_walk(bool instant)
 
 void update_enemy_state_walk(vec3 enemy_position,
                              vec3 enemy_forward,
+                             bool enemy_grounded,
                              bool player_visible,
                              float delta_time,
                              vec2 out_velocity,
                              float* out_angle_delta)
 {
   // Simple forward motion
-  if (preferences->ai_walking)
+  if (enemy_grounded && preferences->ai_walking)
   {
     out_velocity[0] = 0.0f;
     out_velocity[1] = ENEMY_MOVE_SPEED * delta_time;
@@ -81,6 +82,11 @@ void update_enemy_state_walk(vec3 enemy_position,
   if (preferences->ai_turning)
   {
     *out_angle_delta = calc_angle_delta_towards_player(enemy_position, enemy_forward) * delta_time * ENEMY_TURN_RATE;
+  }
+
+  if (!enemy_grounded)
+  {
+    return;
   }
 
   // Footstep sounds
