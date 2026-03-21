@@ -3,6 +3,7 @@
 #include "collision.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
+#include "map.h"
 #include "player/player.h"
 #include "preferences.h"
 #include "sound.h"
@@ -28,6 +29,69 @@ static struct AEMAnimationMixer* mixer = NULL;
 static struct AEMAnimationChannel* channel = NULL;
 static float walk_animation_duration = 0.0f;
 static float aim_delay = 0.0f;
+static int current_nav_node_index = -1;
+
+static float calc_angle_delta_towards_point(vec3 enemy_position, vec3 enemy_forward, vec3 point)
+{
+  const float current_yaw = atan2f(enemy_forward[0], enemy_forward[2]);
+
+  float target_yaw = 0.0f;
+  {
+    vec3 dir;
+    glm_vec3_sub(point, enemy_position, dir);
+
+    // Ignore vertical difference
+    dir[1] = 0.0f;
+
+    // Prevent division by zero
+    if (glm_vec3_norm2(dir) > 0.0001f)
+    {
+      glm_vec3_normalize(dir);
+      target_yaw = atan2f(dir[0], dir[2]);
+    }
+  }
+
+  float delta = target_yaw - current_yaw;
+  while (delta > GLM_PI)
+  {
+    delta -= GLM_PI * 2.0f;
+  }
+
+  while (delta < -GLM_PI)
+  {
+    delta += GLM_PI * 2.0f;
+  }
+
+  return glm_deg(delta);
+}
+
+static void pick_new_nav_node(const bool* visible_nav_nodes)
+{
+  const uint32_t nav_node_count = get_current_map_nav_node_count();
+
+  uint32_t visible_nav_node_count = 0;
+  for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
+  {
+    if (visible_nav_nodes[nav_node_index] && nav_node_index != current_nav_node_index)
+    {
+      ++visible_nav_node_count;
+    }
+  }
+
+  uint32_t index = rand() % visible_nav_node_count;
+
+  for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
+  {
+    if (visible_nav_nodes[nav_node_index] && nav_node_index != current_nav_node_index)
+    {
+      if ((index--) == 0)
+      {
+        current_nav_node_index = nav_node_index;
+        break;
+      }
+    }
+  }
+}
 
 void load_enemy_state_walk(const struct Preferences* preferences_,
                            enum EnemyState* state_,
@@ -67,22 +131,47 @@ void update_enemy_state_walk(vec3 enemy_position,
                              vec3 enemy_forward,
                              bool enemy_grounded,
                              bool player_visible,
+                             const bool* visible_nav_nodes,
                              float delta_time,
                              vec2 out_velocity,
                              float* out_angle_delta)
 {
-  // Simple forward motion
   if (enemy_grounded && preferences->ai_walking)
   {
     out_velocity[0] = 0.0f;
     out_velocity[1] = ENEMY_MOVE_SPEED * delta_time;
   }
 
+  if (current_nav_node_index < 0)
+  {
+    pick_new_nav_node(visible_nav_nodes);
+  }
+
+  vec3 current_nav_node_position;
+  get_current_map_nav_node(current_nav_node_index, current_nav_node_position);
+  current_nav_node_position[1] = enemy_position[1];
+
+  {
+    vec3 path;
+    glm_vec3_sub(current_nav_node_position, enemy_position, path);
+    if (glm_vec3_norm(path) < 0.5f)
+    {
+      pick_new_nav_node(visible_nav_nodes);
+    }
+  }
+
+  *out_angle_delta = calc_angle_delta_towards_point(enemy_position, enemy_forward, current_nav_node_position) *
+                     delta_time * ENEMY_TURN_RATE;
+
+  /*
+  // Simple forward motion
+
   // Turn to the player
   if (preferences->ai_turning)
   {
     *out_angle_delta = calc_angle_delta_towards_player(enemy_position, enemy_forward) * delta_time * ENEMY_TURN_RATE;
   }
+  */
 
   if (!enemy_grounded)
   {

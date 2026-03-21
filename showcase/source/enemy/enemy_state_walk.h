@@ -13,6 +13,7 @@ void update_enemy_state_walk(vec3 enemy_position,
                              vec3 enemy_forward,
                              bool enemy_grounded,
                              bool player_visible,
+                             const bool* visible_nav_nodes,
                              float delta_time,
                              vec2 out_velocity,
                              float* out_angle_delta);

@@ -215,7 +215,7 @@ static bool calc_player_visible()
       glm_vec3_normalize(enemy_to_player);
     }
 
-    if (glm_vec3_dot(enemy_dir, enemy_to_player) <= 0.65f)
+    if (glm_vec3_dot(enemy_dir, enemy_to_player) <= 0.5f)
     {
       return false;
     }
@@ -250,6 +250,28 @@ static bool calc_player_visible()
   return true;
 }
 
+static bool calc_point_visible(vec3 point)
+{
+  vec3 ray_from, ray_to;
+  glm_vec3_copy(transform[3], ray_from);
+  ray_from[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to head
+  glm_vec3_copy(point, ray_to);
+
+  vec3 ray;
+  glm_vec3_sub(ray_to, ray_from, ray);
+
+  const float old_dist = glm_vec3_norm(ray);
+
+  vec3 n;
+  collide_ray(ray_from, ray_to, ray_to, n);
+
+  glm_vec3_sub(ray_to, ray_from, ray);
+
+  const float new_dist = glm_vec3_norm(ray);
+
+  return new_dist >= old_dist;
+}
+
 void update_enemy(float delta_time)
 {
   vec2 desired_velocity = GLM_VEC2_ZERO_INIT;
@@ -259,10 +281,28 @@ void update_enemy(float delta_time)
   // Determine if the player is visible from the perspective of the enemy
   const bool player_visible = calc_player_visible();
 
+  // Determine which nav nodes are visible from the perspective of the enemy
+  static bool* visible_nav_nodes = NULL;
+  {
+    const uint32_t nav_node_count = get_current_map_nav_node_count();
+    if (!visible_nav_nodes)
+    {
+      visible_nav_nodes = malloc(sizeof(bool) * nav_node_count);
+      assert(visible_nav_nodes);
+    }
+
+    for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
+    {
+      vec3 position;
+      get_current_map_nav_node(nav_node_index, position);
+      visible_nav_nodes[nav_node_index] = calc_point_visible(position);
+    }
+  }
+
   switch (state)
   {
   case EnemyState_Walk:
-    update_enemy_state_walk(transform[3], transform[2], enemy_grounded, player_visible, delta_time, desired_velocity,
+    update_enemy_state_walk(transform[3], transform[2], enemy_grounded, player_visible, visible_nav_nodes, delta_time, desired_velocity,
                             &desired_angle_delta);
     break;
   case EnemyState_Aim:

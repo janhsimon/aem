@@ -25,3 +25,6 @@ void get_map_collision_triangle(uint32_t first_index, vec3 v0, vec3 v1, vec3 v2)
 
 void get_current_map_player_spawn(vec3 position, float* yaw);
 void get_current_map_random_enemy_spawn(vec3 position, float* yaw);
+
+uint32_t get_current_map_nav_node_count();
+void get_current_map_nav_node(uint32_t nav_node_index, vec3 position);

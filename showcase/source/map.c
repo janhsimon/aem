@@ -172,3 +172,31 @@ void get_current_map_random_enemy_spawn(vec3 position, float* yaw)
     }
   }
 }
+
+uint32_t get_current_map_nav_node_count()
+{
+  return 14;
+}
+
+void get_current_map_nav_node(uint32_t nav_node_index, vec3 position)
+{
+  if (nav_node_index >= 0 && nav_node_index <= 5)
+  {
+    glm_vec3_copy((vec3){ -10.0f + nav_node_index * 4.0f, 0.1f, -5.0f }, position);
+  }
+  // Right row
+  else if (nav_node_index >= 6 && nav_node_index <= 11)
+  {
+    glm_vec3_copy((vec3){ -10.0f + (nav_node_index - 6) * 4.0f, 0.1f, 5.0f }, position);
+  }
+  // Low end
+  else if (nav_node_index == 12)
+  {
+    glm_vec3_copy((vec3){ 17.0f, 0.1f, -1.0f }, position);
+  }
+  // Car end
+  else
+  {
+    glm_vec3_copy((vec3){ -13.4f, 0.1f, 0.0f }, position);
+  }
+}
