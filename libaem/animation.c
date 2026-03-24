@@ -240,6 +240,28 @@ void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
   }
 }
 
+uint32_t aem_get_free_animation_mixer_channel_index(const struct AEMAnimationMixer* mixer)
+{
+  float min_weight = 1.0f;
+  uint32_t least_significant_channel_index = 0;
+  for (uint32_t channel_index = 0; channel_index < mixer->channel_count; ++channel_index)
+  {
+    struct AEMAnimationChannel* channel = &mixer->channels[channel_index];
+    if (channel->weight <= 0.0f)
+    {
+      return channel_index;
+    }
+
+    if (channel->weight < min_weight)
+    {
+      least_significant_channel_index = channel_index;
+      min_weight = channel->weight;
+    }
+  }
+
+  return least_significant_channel_index;
+}
+
 void aem_cut_to_animation_mixer_channel(struct AEMAnimationMixer* mixer, uint32_t channel_index_)
 {
   mixer->is_blending = false;
