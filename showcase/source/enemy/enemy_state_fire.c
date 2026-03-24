@@ -4,7 +4,7 @@
 #include "collision.h"
 #include "debug_manager.h"
 #include "enemy_state.h"
-#include "enemy_state_walk.h"
+#include "enemy_state_roam.h"
 #include "particle_manager.h"
 #include "player/player.h"
 #include "preferences.h"
@@ -14,22 +14,9 @@
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
 
+#include <cglm/affine.h>
 #include <cglm/mat4.h>
 #include <cglm/vec3.h>
-
-#define ENEMY_TURN_RATE 25.0f
-
-#define ENEMY_FIRE_ANIMATION_CHANNEL_INDEX 2
-
-#define ENEMY_FIRE_ANIMATION_INDEX 4
-
-#define ENEMY_GUN_MUZZLE_JOINT_INDEX 23
-
-#define ENEMY_FIRE_MIN_BULLETS 4
-#define ENEMY_FIRE_MAX_BULLETS 10
-
-#define ENEMY_ACCURACY_HORIZONTAL 0.4f
-#define ENEMY_ACCURACY_VERTICAL 0.2f
 
 static const struct Preferences* preferences = NULL;
 static enum EnemyState* state = NULL;
@@ -41,10 +28,25 @@ static float fire_animation_duration = 0.0f;
 static bool has_fired_first_shot = false;
 static int shots_to_fire = 0;
 
-static void fire(mat4 enemy_transform)
+#define ENEMY_GUN_MUZZLE_JOINT_INDEX 23
+
+static void fire(vec3 enemy_position, vec3 enemy_direction, float enemy_scale)
 {
+  // Reconstruct enemy transform
+  mat4 enemy_transform = GLM_MAT4_IDENTITY_INIT;
+  {
+    vec3 right;
+    glm_vec3_cross(GLM_YUP, enemy_direction, right);
+
+    glm_vec3_copy(right, enemy_transform[0]);
+    glm_vec3_copy(enemy_direction, enemy_transform[2]);
+    glm_vec3_copy(enemy_position, enemy_transform[3]);
+
+    glm_scale_uni(enemy_transform, enemy_scale);
+  }
+
   vec3 pos;
-  glm_vec3_copy(enemy_transform[3], pos);
+  glm_vec3_copy(enemy_position, pos);
   play_ak47_fire_sound(pos);
 
   mat4 tracer_start;
@@ -100,7 +102,6 @@ void load_enemy_state_fire(const struct Preferences* preferences_,
   model = model_;
   mixer = mixer_;
 
-  channel = aem_get_animation_mixer_channel(mixer, ENEMY_FIRE_ANIMATION_CHANNEL_INDEX);
   fire_animation_duration = aem_get_model_animation_duration(model, ENEMY_FIRE_ANIMATION_INDEX);
 }
 
@@ -108,26 +109,24 @@ void enter_enemy_state_fire()
 {
   *state = EnemyState_Fire;
 
+  const uint32_t channel_index = aem_get_free_animation_mixer_channel_index(mixer);
+  channel = aem_get_animation_mixer_channel(mixer, channel_index);
   channel->animation_index = ENEMY_FIRE_ANIMATION_INDEX;
   channel->time = 0.0f;
   channel->playback_speed = 1.0f;
   channel->is_playing = true;
   channel->is_looping = false;
-  aem_blend_to_animation_mixer_channel(mixer, ENEMY_FIRE_ANIMATION_CHANNEL_INDEX);
+  aem_blend_to_animation_mixer_channel(mixer, channel_index);
 
   has_fired_first_shot = false;
   shots_to_fire = (rand() % (ENEMY_FIRE_MAX_BULLETS - ENEMY_FIRE_MIN_BULLETS)) + ENEMY_FIRE_MIN_BULLETS;
 }
 
-void update_enemy_state_fire(mat4 enemy_transform,
-                             bool player_visible,
-                             float delta_time,
-                             vec2 out_velocity,
-                             float* out_angle_delta)
+void update_enemy_state_fire(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time)
 {
   if (!has_fired_first_shot)
   {
-    fire(enemy_transform);
+    fire(enemy.position, enemy.direction, enemy.scale);
     has_fired_first_shot = true;
     --shots_to_fire;
   }
@@ -135,28 +134,28 @@ void update_enemy_state_fire(mat4 enemy_transform,
   // Keep turning towards the player
   if (preferences->ai_turning)
   {
-    *out_angle_delta =
-      calc_angle_delta_towards_player(enemy_transform[3], enemy_transform[2]) * delta_time * ENEMY_TURN_RATE;
+    output->angle_delta =
+      calc_angle_delta_towards_player(enemy.position, enemy.direction) * delta_time * ENEMY_FIRE_TURN_RATE;
   }
 
-  // Transition to walking state if the player went out of sight
-  if (!player_visible)
+  // Transition to roaming state if the player went out of sight
+  if (!enemy.player_visible)
   {
-    // Go back to walking around
-    enter_enemy_state_walk(false);
+    // Go back to roaming around
+    enter_enemy_state_roam(false);
   }
 
-  // Repeat firing or transition to walking state
+  // Repeat firing or transition to roaming state
   if (shots_to_fire > 0 && channel->time >= fire_animation_duration * 0.2f)
   {
     // Fire again
     channel->time = 0.0f;
-    fire(enemy_transform);
+    fire(enemy.position, enemy.direction, enemy.scale);
     --shots_to_fire;
   }
   else if (channel->time >= fire_animation_duration * 0.9f)
   {
-    // Go back to walking around
-    enter_enemy_state_walk(false);
+    // Go back to roaming around
+    enter_enemy_state_roam(false);
   }
 }

@@ -2,15 +2,9 @@
 
 #include <cglm/types.h>
 
-#include <stdbool.h>
-
 void load_enemy_state_fire(const struct Preferences* preferences,
                            enum EnemyState* state,
                            const struct AEMModel* model,
                            struct AEMAnimationMixer* mixer);
 void enter_enemy_state_fire();
-void update_enemy_state_fire(mat4 enemy_transform,
-                             bool player_visible,
-                             float delta_time,
-                             vec2 out_velocity,
-                             float* out_angle_delta);
+void update_enemy_state_fire(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time);

@@ -1,14 +1,10 @@
 #include "enemy_state_flinch.h"
 
 #include "enemy_state.h"
-#include "enemy_state_walk.h"
+#include "enemy_state_chase.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
-
-#define ENEMY_FLINCH_ANIMATION_CHANNEL_INDEX 3
-
-#define ENEMY_FLINCH_ANIMATION_INDEX 15
 
 static enum EnemyState* state = NULL;
 static struct AEMAnimationMixer* mixer = NULL;
@@ -19,7 +15,6 @@ void load_enemy_state_flinch(enum EnemyState* state_, const struct AEMModel* mod
 {
   state = state_;
   mixer = mixer_;
-  channel = aem_get_animation_mixer_channel(mixer, ENEMY_FLINCH_ANIMATION_CHANNEL_INDEX);
   flinch_animation_duration = aem_get_model_animation_duration(model, ENEMY_FLINCH_ANIMATION_INDEX);
 }
 
@@ -27,6 +22,7 @@ void enter_enemy_state_flinch()
 {
   *state = EnemyState_Flinch;
 
+  channel = aem_get_animation_mixer_channel(mixer, aem_get_free_animation_mixer_channel_index(mixer));
   channel->animation_index = ENEMY_FLINCH_ANIMATION_INDEX;
   channel->time = 0.0f;
   channel->playback_speed = 1.5f;
@@ -38,9 +34,9 @@ void update_enemy_state_flinch()
   // Custom fade out
   channel->weight = 0.8f - channel->time * (2.5f / flinch_animation_duration);
 
-  // Transition to walking state
+  // Transition to chasing state
   if (channel->weight <= 0.0f)
   {
-    enter_enemy_state_walk(false);
+    enter_enemy_state_chase();
   }
 }

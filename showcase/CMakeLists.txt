@@ -50,6 +50,9 @@ set(SOURCE
   source/enemy/enemy_state_aim.c
   source/enemy/enemy_state_aim.h
 
+  source/enemy/enemy_state_chase.c
+  source/enemy/enemy_state_chase.h
+
   source/enemy/enemy_state_die.c
   source/enemy/enemy_state_die.h
 
@@ -59,8 +62,11 @@ set(SOURCE
   source/enemy/enemy_state_flinch.c
   source/enemy/enemy_state_flinch.h
 
-  source/enemy/enemy_state_walk.c
-  source/enemy/enemy_state_walk.h
+  source/enemy/enemy_state_roam.c
+  source/enemy/enemy_state_roam.h
+
+  source/enemy/enemy_state_strafe.c
+  source/enemy/enemy_state_strafe.h
 
   source/hud/debug_window.c
   source/hud/debug_window.h

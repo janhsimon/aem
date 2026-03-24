@@ -5,10 +5,12 @@
 #include "debug_manager.h"
 #include "enemy_state.h"
 #include "enemy_state_aim.h"
+#include "enemy_state_chase.h"
 #include "enemy_state_die.h"
 #include "enemy_state_fire.h"
 #include "enemy_state_flinch.h"
-#include "enemy_state_walk.h"
+#include "enemy_state_roam.h"
+#include "enemy_state_strafe.h"
 #include "map.h"
 #include "model_manager.h"
 #include "preferences.h"
@@ -25,6 +27,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#define ENEMY_SCALE 19.25f
 
 #define ENEMY_COLLIDER_RADIUS 0.5f
 #define ENEMY_COLLIDER_HEIGHT 1.8f
@@ -53,6 +57,7 @@
 static struct ModelRenderInfo* render_info = NULL;
 
 static enum EnemyState state;
+static struct EnemyStateInput state_input;
 
 static const struct Preferences* preferences = NULL;
 
@@ -86,7 +91,7 @@ static void respawn_enemy(bool play_sound)
   glm_translate_make(transform, spawn_position);
   glm_rotate_y(transform, glm_rad(spawn_yaw + 90.0f),
                transform); // TODO: This is a hack because the enemy doesn't yet use angles
-  glm_scale(transform, (vec3){ 19.25f, 19.25f, 19.25f });
+  glm_scale(transform, (vec3){ ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE });
 
   // Play the optional respawn sound effect
   if (play_sound)
@@ -94,7 +99,8 @@ static void respawn_enemy(bool play_sound)
     play_respawn_sound(spawn_position);
   }
 
-  enter_enemy_state_walk(true);
+  // Start with the initial state: Roaming around
+  enter_enemy_state_roam(true);
 }
 
 bool load_enemy(const struct Preferences* preferences_)
@@ -120,11 +126,16 @@ bool load_enemy(const struct Preferences* preferences_)
   aem_set_animation_mixer_enabled(mixer, true);
   aem_set_animation_mixer_blend_speed(mixer, 4.0f);
 
-  load_enemy_state_walk(preferences, &state, render_info->model, mixer);
+  load_enemy_state_roam(preferences, &state, render_info->model, mixer);
+  load_enemy_state_chase(preferences, &state, render_info->model, mixer);
   load_enemy_state_aim(preferences, &state, mixer);
   load_enemy_state_fire(preferences, &state, render_info->model, mixer);
+  load_enemy_state_strafe(preferences, &state, render_info->model, mixer);
   load_enemy_state_flinch(&state, render_info->model, mixer);
   load_enemy_state_die(&state, render_info->model, mixer);
+
+  state_input.visible_nav_nodes = malloc(sizeof(*state_input.visible_nav_nodes) * get_current_map_nav_node_count());
+  assert(state_input.visible_nav_nodes);
 
   // Enable skeletal animations
   {
@@ -274,62 +285,71 @@ static bool calc_point_visible(vec3 point)
 
 void update_enemy(float delta_time)
 {
-  vec2 desired_velocity = GLM_VEC2_ZERO_INIT;
-  float desired_angle_delta = 0.0f;
-  bool should_respawn = false;
-
-  // Determine if the player is visible from the perspective of the enemy
-  const bool player_visible = calc_player_visible();
-
-  // Determine which nav nodes are visible from the perspective of the enemy
-  static bool* visible_nav_nodes = NULL;
+  // Set up the input state of the enemy
   {
-    const uint32_t nav_node_count = get_current_map_nav_node_count();
-    if (!visible_nav_nodes)
-    {
-      visible_nav_nodes = malloc(sizeof(bool) * nav_node_count);
-      assert(visible_nav_nodes);
-    }
+    // Copy the enemy position, direction, scale and grounded flag
+    glm_vec3_copy(transform[3], state_input.position);
+    glm_vec3_copy(transform[2], state_input.direction);
+    glm_vec3_normalize(state_input.direction);
+    state_input.scale = ENEMY_SCALE;
+    state_input.grounded = enemy_grounded;
 
-    for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
+    // Determine if the player is visible from the perspective of the enemy
+    state_input.player_visible = calc_player_visible();
+
+    // Determine which nav nodes are visible from the perspective of the enemy
     {
-      vec3 position;
-      get_current_map_nav_node(nav_node_index, position);
-      visible_nav_nodes[nav_node_index] = calc_point_visible(position);
+      const uint32_t nav_node_count = get_current_map_nav_node_count();
+      for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
+      {
+        vec3 position;
+        get_current_map_nav_node(nav_node_index, position);
+        state_input.visible_nav_nodes[nav_node_index] = calc_point_visible(position);
+      }
     }
   }
 
+  // Set up the output state of the enemy
+  static struct EnemyStateOutput state_output;
+  glm_vec2_zero(state_output.movement);
+  state_output.angle_delta = 0.0f;
+  state_output.should_respawn = false;
+
   switch (state)
   {
-  case EnemyState_Walk:
-    update_enemy_state_walk(transform[3], transform[2], enemy_grounded, player_visible, visible_nav_nodes, delta_time, desired_velocity,
-                            &desired_angle_delta);
+  case EnemyState_Roam:
+    update_enemy_state_roam(state_input, &state_output, delta_time);
+    break;
+  case EnemyState_Chase:
+    update_enemy_state_chase(state_input, &state_output, delta_time);
     break;
   case EnemyState_Aim:
-    update_enemy_state_aim(transform[3], transform[2], player_visible, delta_time, desired_velocity,
-                           &desired_angle_delta);
+    update_enemy_state_aim(state_input, &state_output, delta_time);
     break;
   case EnemyState_Fire:
-    update_enemy_state_fire(transform, player_visible, delta_time, desired_velocity, &desired_angle_delta);
+    update_enemy_state_fire(state_input, &state_output, delta_time);
+    break;
+  case EnemyState_Strafe:
+    update_enemy_state_strafe(state_input, &state_output, delta_time);
     break;
   case EnemyState_Flinch:
     update_enemy_state_flinch();
     break;
   case EnemyState_Die:
-    update_enemy_state_die(transform[3], transform[2], delta_time, &desired_angle_delta, &should_respawn);
+    update_enemy_state_die(state_input, &state_output, delta_time);
     break;
   }
 
   // Turn
-  glm_rotate_y(transform, glm_rad(desired_angle_delta), transform);
+  glm_rotate_y(transform, glm_rad(state_output.angle_delta), transform);
 
   // Calculate velocity
   vec3 velocity;
   {
     vec3 old_pos;
     glm_vec3_copy(transform[3], old_pos);
-    glm_translate_x(transform, desired_velocity[0]); // Untested as strafing is not implemented yet
-    glm_translate_z(transform, desired_velocity[1]);
+    glm_translate_x(transform, state_output.movement[0]);
+    glm_translate_z(transform, state_output.movement[1]);
     glm_vec3_sub(transform[3], old_pos, velocity);
     velocity[1] = enemy_velocity_y;
   }
@@ -350,7 +370,7 @@ void update_enemy(float delta_time)
   }
 
   // Respawn
-  if (should_respawn)
+  if (state_output.should_respawn)
   {
     respawn_enemy(true);
   }
