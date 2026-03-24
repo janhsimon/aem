@@ -70,17 +70,20 @@ void main()
 
         if (sample_uv.x < 0.0 || sample_uv.x > 1.0 ||
             sample_uv.y < 0.0 || sample_uv.y > 1.0)
-            continue;
+        {
+          continue;
+        }
 
         vec3 sample_view = get_view_pos_aligned(sample_uv);
 
         float depth_diff = sample_view.z - sample_pos.z;
 
-        float range = smoothstep(0.0, 1.0,
-                                 radius / abs(frag_pos.z - sample_view.z));
+        float dist = abs(frag_pos.z - sample_view.z);
+        float range = smoothstep(0.0, radius, dist);
+        range = 1.0 - range;
 
-        if (depth_diff > bias)
-            occlusion += range;
+        float contribution = step(bias, depth_diff) * range;
+        occlusion += contribution;
     }
 
     occlusion = 1.0 - (occlusion / 64.0);
