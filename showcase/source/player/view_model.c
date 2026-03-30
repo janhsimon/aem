@@ -4,6 +4,7 @@
 #include "collision.h"
 #include "debug_manager.h"
 #include "enemy/enemy.h"
+#include "enemy/enemy_manager.h"
 #include "input.h"
 #include "model_manager.h"
 #include "particle_manager.h"
@@ -217,41 +218,57 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
           spawn_tracer(preferences, muzzleflash_p, to);
         }
 
-        const enum EnemyHitArea hit_area = is_enemy_hit(from, to);
-        if (hit_area != EnemyHitArea_None)
+        // Check for hits
         {
-          glm_vec3_negate(ray);
+          bool enemy_hit = false;
 
-          float damage;
-          if (hit_area == EnemyHitArea_Head)
+          const uint32_t enemy_count = get_enemy_count();
+          for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
           {
-            damage = 100.0f;
-            play_headshot_sound();
+            struct Enemy* enemy = get_enemy(enemy_index);
+
+            const enum EnemyHitArea hit_area = is_enemy_hit(enemy, from, to);
+            if (hit_area != EnemyHitArea_None)
+            {
+              glm_vec3_negate(ray);
+
+              float damage;
+              if (hit_area == EnemyHitArea_Head)
+              {
+                damage = 100.0f;
+                play_headshot_sound();
+                spawn_shrapnel(to, n);
+              }
+              if (hit_area == EnemyHitArea_UpperTorso)
+              {
+                damage = 20.0f;
+              }
+              else if (hit_area == EnemyHitArea_LowerTorso)
+              {
+                damage = 15.0f;
+              }
+
+              hurt_enemy(enemy, preferences, damage, ray);
+
+              vec3 sound_pos;
+              glm_vec3_copy(to, sound_pos);
+              play_enemy_hurt_sound(rand() % 4, sound_pos);
+
+              glm_vec3_sub(to, from, n);
+              glm_vec3_normalize(n);
+              spawn_blood(to, n);
+
+              enemy_hit = true;
+              break;
+            }
+          }
+
+          if (!enemy_hit && level_hit)
+          {
+            spawn_smoke(to, n);
             spawn_shrapnel(to, n);
+            play_impact_sound(to);
           }
-          if (hit_area == EnemyHitArea_UpperTorso)
-          {
-            damage = 20.0f;
-          }
-          else if (hit_area == EnemyHitArea_LowerTorso)
-          {
-            damage = 15.0f;
-          }
-          enemy_hurt(damage, ray);
-
-          vec3 sound_pos;
-          glm_vec3_copy(to, sound_pos);
-          play_enemy_hurt_sound(rand() % 4, sound_pos);
-
-          glm_vec3_sub(to, from, n);
-          glm_vec3_normalize(n);
-          spawn_blood(to, n);
-        }
-        else if (level_hit)
-        {
-          spawn_smoke(to, n);
-          spawn_shrapnel(to, n);
-          play_impact_sound(to);
         }
 
         if (!preferences->infinite_ammo)

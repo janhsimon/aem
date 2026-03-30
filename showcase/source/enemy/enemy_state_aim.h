@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cglm/types.h>
+struct Enemy;
+struct Preferences;
+struct EnemyStateOutput;
 
-void load_enemy_state_aim(const struct Preferences* preferences_,
-                          enum EnemyState* state,
-                          struct AEMAnimationMixer* mixer);
-void enter_enemy_state_aim();
-void update_enemy_state_aim(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time);
+void load_enemy_state_aim(struct Enemy* enemy, const struct Preferences* preferences);
+void enter_enemy_state_aim(struct Enemy* enemy);
+void update_enemy_state_aim(struct Enemy* enemy, struct EnemyStateOutput* output, float delta_time);

@@ -1,42 +1,41 @@
 #include "enemy_state_flinch.h"
 
-#include "enemy_state.h"
+#include "enemy.h"
 #include "enemy_state_chase.h"
 
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
 
-static enum EnemyState* state = NULL;
-static struct AEMAnimationMixer* mixer = NULL;
-static struct AEMAnimationChannel* channel = NULL;
 static float flinch_animation_duration = 0.0f;
 
-void load_enemy_state_flinch(enum EnemyState* state_, const struct AEMModel* model, struct AEMAnimationMixer* mixer_)
+void load_enemy_state_flinch(struct Enemy* enemy, const struct AEMModel* model)
 {
-  state = state_;
-  mixer = mixer_;
+  enemy->flinch_state_data.channel = NULL;
+
   flinch_animation_duration = aem_get_model_animation_duration(model, ENEMY_FLINCH_ANIMATION_INDEX);
 }
 
-void enter_enemy_state_flinch()
+void enter_enemy_state_flinch(struct Enemy* enemy)
 {
-  *state = EnemyState_Flinch;
+  enemy->state = EnemyState_Flinch;
 
-  channel = aem_get_animation_mixer_channel(mixer, aem_get_free_animation_mixer_channel_index(mixer));
-  channel->animation_index = ENEMY_FLINCH_ANIMATION_INDEX;
-  channel->time = 0.0f;
-  channel->playback_speed = 1.5f;
-  channel->is_playing = true;
+  enemy->flinch_state_data.channel =
+    aem_get_animation_mixer_channel(enemy->mixer, aem_get_free_animation_mixer_channel_index(enemy->mixer));
+  enemy->flinch_state_data.channel->animation_index = ENEMY_FLINCH_ANIMATION_INDEX;
+  enemy->flinch_state_data.channel->time = 0.0f;
+  enemy->flinch_state_data.channel->playback_speed = 1.5f;
+  enemy->flinch_state_data.channel->is_playing = true;
 }
 
-void update_enemy_state_flinch()
+void update_enemy_state_flinch(struct Enemy* enemy)
 {
   // Custom fade out
-  channel->weight = 0.8f - channel->time * (2.5f / flinch_animation_duration);
+  enemy->flinch_state_data.channel->weight =
+    0.8f - enemy->flinch_state_data.channel->time * (2.5f / flinch_animation_duration);
 
   // Transition to chasing state
-  if (channel->weight <= 0.0f)
+  if (enemy->flinch_state_data.channel->weight <= 0.0f)
   {
-    enter_enemy_state_chase();
+    enter_enemy_state_chase(enemy);
   }
 }

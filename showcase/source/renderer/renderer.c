@@ -12,6 +12,7 @@
 #include "debug_texture_pass/shadow_composite_pipeline.h"
 #include "directional_light.h"
 #include "enemy/enemy.h"
+#include "enemy/enemy_manager.h"
 #include "forward_pass/depth_pipeline.h"
 #include "forward_pass/forward_framebuffer.h"
 #include "forward_pass/particle_pipeline.h"
@@ -253,17 +254,20 @@ static void render_shadow_pass()
       }
     }
 
-    // Enemy (skinned)
+    // Enemies (skinned)
     {
-      mat4 enemy_world_matrix;
-      get_enemy_world_matrix(enemy_world_matrix);
+      uint32_t enemy_count = get_enemy_count();
+      for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
+      {
+        struct Enemy* enemy = get_enemy(enemy_index);
 
-      shadow_pipeline_start_rendering(ShadowPipelineType_Skinned);
-      shadow_pipeline_use_matrices(ShadowPipelineType_Skinned, enemy_world_matrix, light_view_matrix,
-                                   light_proj_matrix);
+        shadow_pipeline_start_rendering(ShadowPipelineType_Skinned);
+        shadow_pipeline_use_matrices(ShadowPipelineType_Skinned, enemy->transform, light_view_matrix,
+                                     light_proj_matrix);
 
-      prepare_enemy_rendering();
-      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
+        bind_enemy_joint_transform_texture(enemy);
+        render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
+      }
     }
   }
 }
@@ -289,16 +293,19 @@ static void render_forward_pass_early()
     }
   }
 
-  // Enemy (skinned)
+  // Enemies (skinned)
   {
-    mat4 enemy_world_matrix;
-    get_enemy_world_matrix(enemy_world_matrix);
+    uint32_t enemy_count = get_enemy_count();
+    for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
+    {
+      struct Enemy* enemy = get_enemy(enemy_index);
 
-    depth_pipeline_start_rendering(DepthPipelineType_Skinned);
-    depth_pipeline_use_matrices(DepthPipelineType_Skinned, enemy_world_matrix, view_matrix, proj_matrix);
+      depth_pipeline_start_rendering(DepthPipelineType_Skinned);
+      depth_pipeline_use_matrices(DepthPipelineType_Skinned, enemy->transform, view_matrix, proj_matrix);
 
-    prepare_enemy_rendering();
-    render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
+      bind_enemy_joint_transform_texture(enemy);
+      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, false);
+    }
   }
 
   //// View model (skinned)
@@ -493,7 +500,7 @@ static void render_forward_pass_late()
       }
     }
 
-    // Enemy (skinned)
+    // Enemies (skinned)
     {
       world_pipeline_start_rendering(WorldPipelineType_Skinned);
       world_pipeline_use_ambient_color(WorldPipelineType_Skinned, preferences->ambient_color,
@@ -515,12 +522,16 @@ static void render_forward_pass_late()
                                              preferences->shadow_mapping_pcf_kernel_size);
       }
 
-      mat4 enemy_world_matrix;
-      get_enemy_world_matrix(enemy_world_matrix);
-      world_pipeline_use_matrices(WorldPipelineType_Skinned, enemy_world_matrix, view_matrix, proj_matrix);
+      uint32_t enemy_count = get_enemy_count();
+      for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
+      {
+        struct Enemy* enemy = get_enemy(enemy_index);
 
-      prepare_enemy_rendering();
-      render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, true);
+        world_pipeline_use_matrices(WorldPipelineType_Skinned, enemy->transform, view_matrix, proj_matrix);
+
+        bind_enemy_joint_transform_texture(enemy);
+        render_model(get_enemy_render_info(), ModelRenderMode_OpaqueMeshesOnly, true);
+      }
     }
   }
 
@@ -790,7 +801,14 @@ static void render_post_pass()
 
     // Capsules
     start_debug_rendering_capsules();
-    debug_draw_enemy();
+
+    // Debug draw enemies
+    uint32_t enemy_count = get_enemy_count();
+    for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
+    {
+      struct Enemy* enemy = get_enemy(enemy_index);
+      debug_draw_enemy(enemy);
+    }
   }
 
   glEnable(GL_DEPTH_TEST);

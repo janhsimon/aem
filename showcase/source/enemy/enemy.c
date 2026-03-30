@@ -1,9 +1,5 @@
 #include "enemy.h"
 
-#include "camera.h"
-#include "collision.h"
-#include "debug_manager.h"
-#include "enemy_state.h"
 #include "enemy_state_aim.h"
 #include "enemy_state_chase.h"
 #include "enemy_state_die.h"
@@ -11,8 +7,11 @@
 #include "enemy_state_flinch.h"
 #include "enemy_state_roam.h"
 #include "enemy_state_strafe.h"
+
+#include "camera.h"
+#include "collision.h"
+#include "debug_manager.h"
 #include "map.h"
-#include "model_manager.h"
 #include "preferences.h"
 #include "sound.h"
 
@@ -21,77 +20,28 @@
 
 #include <cglm/affine.h>
 #include <cglm/vec2.h>
+#include <cglm/vec3.h>
 
 #include <glad/gl.h>
 
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-#define ENEMY_SCALE 19.25f
-
-#define ENEMY_COLLIDER_RADIUS 0.5f
-#define ENEMY_COLLIDER_HEIGHT 1.8f
-
-#define ENEMY_HITBOX_HEAD_JOINT_INDEX 16
-#define ENEMY_HITBOX_HEAD_RADIUS 0.11f
-#define ENEMY_HITBOX_HEAD_X 0.0f
-#define ENEMY_HITBOX_HEAD_BOTTOM_Y 0.3f
-#define ENEMY_HITBOX_HEAD_TOP_Y 0.7f
-#define ENEMY_HITBOX_HEAD_Z 0.2f
-
-#define ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX 14
-#define ENEMY_HITBOX_UPPER_TORSO_RADIUS 0.25f
-#define ENEMY_HITBOX_UPPER_TORSO_X 0.0f
-#define ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y 0.2f
-#define ENEMY_HITBOX_UPPER_TORSO_TOP_Y 0.35f
-#define ENEMY_HITBOX_UPPER_TORSO_Z 0.0f
-
-#define ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX 2
-#define ENEMY_HITBOX_LOWER_TORSO_RADIUS 0.2f
-#define ENEMY_HITBOX_LOWER_TORSO_X 0.0f
-#define ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y -0.15f
-#define ENEMY_HITBOX_LOWER_TORSO_TOP_Y 0.7f
-#define ENEMY_HITBOX_LOWER_TORSO_Z 0.0f
-
-static struct ModelRenderInfo* render_info = NULL;
-
-static enum EnemyState state;
-static struct EnemyStateInput state_input;
-
-static const struct Preferences* preferences = NULL;
-
-static GLuint joint_transform_buffer, joint_transform_texture;
-static mat4* joint_transforms;
-
-static struct AEMAnimationMixer* mixer;
-
-static mat4 transform;
-
-static vec3 hitbox_head_bottom, hitbox_head_top;
-static vec3 hitbox_upper_torso_bottom, hitbox_upper_torso_top;
-static vec3 hitbox_lower_torso_bottom, hitbox_lower_torso_top;
-
-static float health;
-
-static bool enemy_grounded = false;
-static float enemy_velocity_y = 0.0f;
-
-static void respawn_enemy(bool play_sound)
+void respawn_enemy(struct Enemy* enemy, bool play_sound)
 {
   // Reset health
-  health = 100.0f;
+  enemy->health = 100.0f;
 
-  enemy_grounded = false;
+  enemy->grounded = false;
+  enemy->velocity_y = 0.0f;
 
   // Reset position and angle
   vec3 spawn_position;
   float spawn_yaw;
   get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
-  glm_translate_make(transform, spawn_position);
-  glm_rotate_y(transform, glm_rad(spawn_yaw + 90.0f),
-               transform); // TODO: This is a hack because the enemy doesn't yet use angles
-  glm_scale(transform, (vec3){ ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE });
+  glm_translate_make(enemy->transform, spawn_position);
+  glm_rotate_y(enemy->transform, glm_rad(spawn_yaw + 90.0f),
+               enemy->transform); // TODO: This is a hack because the enemy doesn't yet use angles
+  glm_scale(enemy->transform, (vec3){ ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE });
 
   // Play the optional respawn sound effect
   if (play_sound)
@@ -100,127 +50,119 @@ static void respawn_enemy(bool play_sound)
   }
 
   // Start with the initial state: Roaming around
-  enter_enemy_state_roam(true);
+  enter_enemy_state_roam(enemy, true);
 }
 
-bool load_enemy(const struct Preferences* preferences_)
+bool load_enemy(struct Enemy* enemy, const struct Preferences* preferences, const struct AEMModel* model)
 {
-  preferences = preferences_;
+  const uint32_t joint_count = aem_get_model_joint_count(model);
 
-  render_info = load_model("models/soldier.aem");
-  if (!render_info)
+  if (aem_load_animation_mixer(joint_count, 4, &enemy->mixer) != AEMAnimationMixerResult_Success)
   {
     return false;
   }
 
-  glGenBuffers(1, &joint_transform_buffer);
-  glGenTextures(1, &joint_transform_texture);
+  aem_set_animation_mixer_enabled(enemy->mixer, true);
+  aem_set_animation_mixer_blend_speed(enemy->mixer, 4.0f);
 
-  const uint32_t joint_count = aem_get_model_joint_count(render_info->model);
-
-  if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
-  {
-    return false;
-  }
-
-  aem_set_animation_mixer_enabled(mixer, true);
-  aem_set_animation_mixer_blend_speed(mixer, 4.0f);
-
-  load_enemy_state_roam(preferences, &state, render_info->model, mixer);
-  load_enemy_state_chase(preferences, &state, render_info->model, mixer);
-  load_enemy_state_aim(preferences, &state, mixer);
-  load_enemy_state_fire(preferences, &state, render_info->model, mixer);
-  load_enemy_state_strafe(preferences, &state, render_info->model, mixer);
-  load_enemy_state_flinch(&state, render_info->model, mixer);
-  load_enemy_state_die(&state, render_info->model, mixer);
-
-  state_input.visible_nav_nodes = malloc(sizeof(*state_input.visible_nav_nodes) * get_current_map_nav_node_count());
-  assert(state_input.visible_nav_nodes);
+  load_enemy_state_roam(enemy, preferences, model);
+  load_enemy_state_chase(enemy, preferences, model);
+  load_enemy_state_aim(enemy, preferences);
+  load_enemy_state_fire(enemy, preferences, model);
+  load_enemy_state_strafe(enemy, preferences, model);
+  load_enemy_state_flinch(enemy, model);
+  load_enemy_state_die(enemy);
 
   // Enable skeletal animations
   {
-    joint_transforms = malloc(joint_count * sizeof(*joint_transforms));
-    assert(joint_transforms);
+    enemy->joint_transforms = malloc(joint_count * sizeof(*(enemy->joint_transforms)));
+    assert(enemy->joint_transforms);
 
     for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
     {
-      glm_mat4_identity(joint_transforms[joint_index]);
+      glm_mat4_identity(enemy->joint_transforms[joint_index]);
     }
 
-    glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
+    glGenBuffers(1, &enemy->joint_transform_buffer);
+    glGenTextures(1, &enemy->joint_transform_texture);
+
+    glBindBuffer(GL_TEXTURE_BUFFER, enemy->joint_transform_buffer);
     glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * joint_count, NULL, GL_DYNAMIC_DRAW);
 
-    glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
-    glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, joint_transform_buffer);
+    glBindTexture(GL_TEXTURE_BUFFER, enemy->joint_transform_texture);
+    glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, enemy->joint_transform_buffer);
   }
 
-  respawn_enemy(false);
+  respawn_enemy(enemy, false);
 
   return true;
 }
 
-static void update_hitboxes()
+static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* model)
 {
   // Head
   {
     mat4 hitbox_head_transform;
-    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX,
                                             (float*)hitbox_head_transform);
-    glm_mat4_mul(transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
+    glm_mat4_mul(enemy->transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
 
-    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_bottom);
-    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_TOP_Y, ENEMY_HITBOX_HEAD_Z }, hitbox_head_top);
+    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z },
+                  enemy->hitbox_head_bottom);
+    glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_TOP_Y, ENEMY_HITBOX_HEAD_Z }, enemy->hitbox_head_top);
 
-    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_bottom, 1.0f, hitbox_head_bottom);
-    glm_mat4_mulv3(hitbox_head_transform, hitbox_head_top, 1.0f, hitbox_head_top);
+    glm_mat4_mulv3(hitbox_head_transform, enemy->hitbox_head_bottom, 1.0f, enemy->hitbox_head_bottom);
+    glm_mat4_mulv3(hitbox_head_transform, enemy->hitbox_head_top, 1.0f, enemy->hitbox_head_top);
   }
 
   // Upper torso
   {
     mat4 hitbox_upper_torso_transform;
-    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
                                             (float*)hitbox_upper_torso_transform);
-    glm_mat4_mul(transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
+    glm_mat4_mul(enemy->transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
-                  hitbox_upper_torso_bottom);
+                  enemy->hitbox_upper_torso_bottom);
     glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_TOP_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
-                  hitbox_upper_torso_top);
+                  enemy->hitbox_upper_torso_top);
 
-    glm_mat4_mulv3(hitbox_upper_torso_transform, hitbox_upper_torso_bottom, 1.0f, hitbox_upper_torso_bottom);
-    glm_mat4_mulv3(hitbox_upper_torso_transform, hitbox_upper_torso_top, 1.0f, hitbox_upper_torso_top);
+    glm_mat4_mulv3(hitbox_upper_torso_transform, enemy->hitbox_upper_torso_bottom, 1.0f,
+                   enemy->hitbox_upper_torso_bottom);
+    glm_mat4_mulv3(hitbox_upper_torso_transform, enemy->hitbox_upper_torso_top, 1.0f, enemy->hitbox_upper_torso_top);
   }
 
   // Lower torso
   {
     mat4 hitbox_lower_torso_transform;
-    aem_get_animation_mixer_joint_transform(render_info->model, mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
                                             (float*)hitbox_lower_torso_transform);
-    glm_mat4_mul(transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
+    glm_mat4_mul(enemy->transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y, ENEMY_HITBOX_LOWER_TORSO_Z },
-                  hitbox_lower_torso_bottom);
+                  enemy->hitbox_lower_torso_bottom);
     glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_TOP_Y, ENEMY_HITBOX_LOWER_TORSO_Z },
-                  hitbox_lower_torso_top);
+                  enemy->hitbox_lower_torso_top);
 
-    glm_mat4_mulv3(hitbox_lower_torso_transform, hitbox_lower_torso_bottom, 1.0f, hitbox_lower_torso_bottom);
-    glm_mat4_mulv3(hitbox_lower_torso_transform, hitbox_lower_torso_top, 1.0f, hitbox_lower_torso_top);
+    glm_mat4_mulv3(hitbox_lower_torso_transform, enemy->hitbox_lower_torso_bottom, 1.0f,
+                   enemy->hitbox_lower_torso_bottom);
+    glm_mat4_mulv3(hitbox_lower_torso_transform, enemy->hitbox_lower_torso_top, 1.0f, enemy->hitbox_lower_torso_top);
   }
 }
 
-static bool calc_player_visible()
+static bool calc_player_visible(struct Enemy* enemy)
 {
   // First test if the player is somewhat in front of the enemy
   {
     vec3 enemy_dir;
-    glm_vec3_normalize_to(transform[2], enemy_dir);
+    glm_vec3_normalize_to(enemy->transform[2], enemy_dir);
 
     vec3 enemy_to_player;
     {
       vec3 player_pos;
       camera_get_position(player_pos);
 
-      glm_vec3_sub(player_pos, transform[3], enemy_to_player);
+      glm_vec3_sub(player_pos, enemy->transform[3], enemy_to_player);
       enemy_to_player[1] = 0.0f; // Flatten
 
       glm_vec3_normalize(enemy_to_player);
@@ -235,7 +177,7 @@ static bool calc_player_visible()
   // Then test if the enemy can see the player directly
   {
     vec3 ray_from, ray_to;
-    glm_vec3_copy(transform[3], ray_from);
+    glm_vec3_copy(enemy->transform[3], ray_from);
     ray_from[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to head
     camera_get_position(ray_to);
 
@@ -261,53 +203,12 @@ static bool calc_player_visible()
   return true;
 }
 
-static bool calc_point_visible(vec3 point)
+void update_enemy(const struct Preferences* preferences,
+                  struct Enemy* enemy,
+                  const struct AEMModel* model,
+                  float delta_time)
 {
-  vec3 ray_from, ray_to;
-  glm_vec3_copy(transform[3], ray_from);
-  ray_from[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to head
-  glm_vec3_copy(point, ray_to);
-
-  vec3 ray;
-  glm_vec3_sub(ray_to, ray_from, ray);
-
-  const float old_dist = glm_vec3_norm(ray);
-
-  vec3 n;
-  collide_ray(ray_from, ray_to, ray_to, n);
-
-  glm_vec3_sub(ray_to, ray_from, ray);
-
-  const float new_dist = glm_vec3_norm(ray);
-
-  return new_dist >= old_dist;
-}
-
-void update_enemy(float delta_time)
-{
-  // Set up the input state of the enemy
-  {
-    // Copy the enemy position, direction, scale and grounded flag
-    glm_vec3_copy(transform[3], state_input.position);
-    glm_vec3_copy(transform[2], state_input.direction);
-    glm_vec3_normalize(state_input.direction);
-    state_input.scale = ENEMY_SCALE;
-    state_input.grounded = enemy_grounded;
-
-    // Determine if the player is visible from the perspective of the enemy
-    state_input.player_visible = calc_player_visible();
-
-    // Determine which nav nodes are visible from the perspective of the enemy
-    {
-      const uint32_t nav_node_count = get_current_map_nav_node_count();
-      for (uint32_t nav_node_index = 0; nav_node_index < nav_node_count; ++nav_node_index)
-      {
-        vec3 position;
-        get_current_map_nav_node(nav_node_index, position);
-        state_input.visible_nav_nodes[nav_node_index] = calc_point_visible(position);
-      }
-    }
-  }
+  enemy->player_visible = calc_player_visible(enemy);
 
   // Set up the output state of the enemy
   static struct EnemyStateOutput state_output;
@@ -315,111 +216,81 @@ void update_enemy(float delta_time)
   state_output.angle_delta = 0.0f;
   state_output.should_respawn = false;
 
-  switch (state)
+  switch (enemy->state)
   {
   case EnemyState_Roam:
-    update_enemy_state_roam(state_input, &state_output, delta_time);
+    update_enemy_state_roam(enemy, &state_output, delta_time);
     break;
   case EnemyState_Chase:
-    update_enemy_state_chase(state_input, &state_output, delta_time);
+    update_enemy_state_chase(enemy, &state_output, delta_time);
     break;
   case EnemyState_Aim:
-    update_enemy_state_aim(state_input, &state_output, delta_time);
+    update_enemy_state_aim(enemy, &state_output, delta_time);
     break;
   case EnemyState_Fire:
-    update_enemy_state_fire(state_input, &state_output, delta_time);
+    update_enemy_state_fire(enemy, &state_output, delta_time);
     break;
   case EnemyState_Strafe:
-    update_enemy_state_strafe(state_input, &state_output, delta_time);
+    update_enemy_state_strafe(enemy, &state_output, delta_time);
     break;
   case EnemyState_Flinch:
-    update_enemy_state_flinch();
+    update_enemy_state_flinch(enemy);
     break;
   case EnemyState_Die:
-    update_enemy_state_die(state_input, &state_output, delta_time);
+    update_enemy_state_die(enemy, &state_output, delta_time);
     break;
   }
 
   // Turn
-  glm_rotate_y(transform, glm_rad(state_output.angle_delta), transform);
+  glm_rotate_y(enemy->transform, glm_rad(state_output.angle_delta), enemy->transform);
 
   // Calculate velocity
   vec3 velocity;
   {
     vec3 old_pos;
-    glm_vec3_copy(transform[3], old_pos);
-    glm_translate_x(transform, state_output.movement[0]);
-    glm_translate_z(transform, state_output.movement[1]);
-    glm_vec3_sub(transform[3], old_pos, velocity);
-    velocity[1] = enemy_velocity_y;
+    glm_vec3_copy(enemy->transform[3], old_pos);
+    glm_translate_x(enemy->transform, state_output.movement[0]);
+    glm_translate_z(enemy->transform, state_output.movement[1]);
+    glm_vec3_sub(enemy->transform[3], old_pos, velocity);
+    velocity[1] = enemy->velocity_y;
   }
 
   // Simulate capsule
   {
     vec3 eye;
-    glm_vec3_copy(transform[3], eye);
+    glm_vec3_copy(enemy->transform[3], eye);
     eye[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From feet to eye height
 
-    simulate_capsule(preferences, eye, velocity, &enemy_grounded, ENEMY_COLLIDER_HEIGHT, ENEMY_COLLIDER_RADIUS,
+    simulate_capsule(preferences, eye, velocity, &enemy->grounded, ENEMY_COLLIDER_HEIGHT, ENEMY_COLLIDER_RADIUS,
                      delta_time);
 
-    enemy_velocity_y = velocity[1];
+    enemy->velocity_y = velocity[1];
 
     eye[1] -= ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS; // From eye to feet height
-    glm_vec3_copy(eye, transform[3]);
+    glm_vec3_copy(eye, enemy->transform[3]);
   }
 
   // Respawn
   if (state_output.should_respawn)
   {
-    respawn_enemy(true);
+    respawn_enemy(enemy, true);
   }
 
   // Always update animations and hitboxes
-  aem_update_animation(render_info->model, mixer, delta_time, **joint_transforms);
-  update_hitboxes();
+  aem_update_animation(model, enemy->mixer, delta_time, **enemy->joint_transforms);
+  update_enemy_hitboxes(enemy, model);
 
   // Update the joint transform buffer and texture
-  glBindBuffer(GL_TEXTURE_BUFFER, joint_transform_buffer);
-  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(render_info->model), joint_transforms,
+  glBindBuffer(GL_TEXTURE_BUFFER, enemy->joint_transform_buffer);
+  glBufferData(GL_TEXTURE_BUFFER, sizeof(mat4) * aem_get_model_joint_count(model), enemy->joint_transforms,
                GL_DYNAMIC_DRAW);
 }
 
-void prepare_enemy_rendering()
+void bind_enemy_joint_transform_texture(const struct Enemy* enemy)
 {
-  // Joint transform texture
+  // Bind the joint transform texture
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_BUFFER, joint_transform_texture);
-}
-
-struct ModelRenderInfo* get_enemy_render_info()
-{
-  return render_info;
-}
-
-void get_enemy_world_matrix(mat4 world_matrix)
-{
-  glm_mat4_copy(transform, world_matrix);
-}
-
-void debug_draw_enemy()
-{
-  {
-    vec3 collider_bottom, collider_top;
-    glm_vec3_copy(transform[3], collider_bottom);
-    collider_bottom[1] += ENEMY_COLLIDER_RADIUS;
-
-    glm_vec3_copy(collider_bottom, collider_top);
-    collider_top[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
-
-    render_debug_manager_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP);
-  }
-
-  render_debug_manager_capsule(hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
-  render_debug_manager_capsule(hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS,
-                               GLM_XUP);
-  render_debug_manager_capsule(hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS,
-                               GLM_XUP);
+  glBindTexture(GL_TEXTURE_BUFFER, enemy->joint_transform_texture);
 }
 
 static bool check_hitbox(vec3 from, vec3 to, vec3 hitbox_bottom, vec3 hitbox_top, float hitbox_radius)
@@ -439,49 +310,92 @@ static bool check_hitbox(vec3 from, vec3 to, vec3 hitbox_bottom, vec3 hitbox_top
   return hit;
 }
 
-enum EnemyHitArea is_enemy_hit(vec3 from, vec3 to)
+enum EnemyHitArea is_enemy_hit(struct Enemy* enemy, vec3 from, vec3 to)
 {
-  if (check_hitbox(from, to, hitbox_head_bottom, hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS))
+  if (check_hitbox(from, to, enemy->hitbox_head_bottom, enemy->hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS))
   {
     return EnemyHitArea_Head;
   }
 
-  if (check_hitbox(from, to, hitbox_upper_torso_bottom, hitbox_upper_torso_top, ENEMY_HITBOX_UPPER_TORSO_RADIUS))
+  if (check_hitbox(from, to, enemy->hitbox_upper_torso_bottom, enemy->hitbox_upper_torso_top,
+                   ENEMY_HITBOX_UPPER_TORSO_RADIUS))
   {
     return EnemyHitArea_UpperTorso;
   }
 
-  if (check_hitbox(from, to, hitbox_lower_torso_bottom, hitbox_lower_torso_top, ENEMY_HITBOX_LOWER_TORSO_RADIUS))
+  if (check_hitbox(from, to, enemy->hitbox_lower_torso_bottom, enemy->hitbox_lower_torso_top,
+                   ENEMY_HITBOX_LOWER_TORSO_RADIUS))
   {
     return EnemyHitArea_LowerTorso;
+  }
+
+  // If it wasn't a hit, check if it was close
+  if (enemy->state == EnemyState_Roam)
+  {
+    vec3 collider_bottom, collider_top;
+    glm_vec3_copy(enemy->transform[3], collider_bottom);
+    collider_bottom[1] += ENEMY_COLLIDER_RADIUS;
+
+    vec3 a, b;
+    closest_segment_segment(from, to, collider_bottom, collider_top, a, b);
+    glm_vec3_sub(a, b, a);
+
+    const float dist = glm_vec3_norm(a);
+    const bool in_hearing_distance = dist < 5.0f;
+
+    // The enemy heard the shot and starts chasing, aiming and returning fire
+    if (in_hearing_distance)
+    {
+      enter_enemy_state_chase(enemy);
+    }
   }
 
   return EnemyHitArea_None;
 }
 
-void enemy_hurt(float damage, vec3 dir)
+void hurt_enemy(struct Enemy* enemy, struct Preferences* preferences, float damage, vec3 dir)
 {
-  health -= damage;
+  enemy->health -= damage;
 
-  if (health <= 0.0f && preferences->ai_dying)
+  if (enemy->health <= 0.0f && preferences->ai_dying)
   {
-    if (state != EnemyState_Die)
+    if (enemy->state != EnemyState_Die)
     {
-      enter_enemy_state_die();
+      enter_enemy_state_die(enemy);
     }
   }
   else
   {
-    enter_enemy_state_flinch();
+    enter_enemy_state_flinch(enemy);
   }
 }
 
-void free_enemy()
+void debug_draw_enemy(struct Enemy* enemy)
 {
-  aem_free_animation_mixer(mixer);
+  {
+    vec3 collider_bottom, collider_top;
+    glm_vec3_copy(enemy->transform[3], collider_bottom);
+    collider_bottom[1] += ENEMY_COLLIDER_RADIUS;
 
-  glDeleteTextures(1, &joint_transform_texture);
-  glDeleteBuffers(1, &joint_transform_buffer);
+    glm_vec3_copy(collider_bottom, collider_top);
+    collider_top[1] += ENEMY_COLLIDER_HEIGHT - ENEMY_COLLIDER_RADIUS - ENEMY_COLLIDER_RADIUS;
 
-  free(joint_transforms);
+    render_debug_manager_capsule(collider_bottom, collider_top, ENEMY_COLLIDER_RADIUS, GLM_ZUP);
+  }
+
+  render_debug_manager_capsule(enemy->hitbox_head_bottom, enemy->hitbox_head_top, ENEMY_HITBOX_HEAD_RADIUS, GLM_XUP);
+  render_debug_manager_capsule(enemy->hitbox_upper_torso_bottom, enemy->hitbox_upper_torso_top,
+                               ENEMY_HITBOX_UPPER_TORSO_RADIUS, GLM_XUP);
+  render_debug_manager_capsule(enemy->hitbox_lower_torso_bottom, enemy->hitbox_lower_torso_top,
+                               ENEMY_HITBOX_LOWER_TORSO_RADIUS, GLM_XUP);
+}
+
+void free_enemy(struct Enemy* enemy)
+{
+  aem_free_animation_mixer(enemy->mixer);
+
+  glDeleteTextures(1, &enemy->joint_transform_texture);
+  glDeleteBuffers(1, &enemy->joint_transform_buffer);
+
+  free(enemy->joint_transforms);
 }

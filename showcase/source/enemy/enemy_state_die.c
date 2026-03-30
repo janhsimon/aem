@@ -1,52 +1,46 @@
 #include "enemy_state_die.h"
 
-#include "enemy_state.h"
+#include "enemy.h"
 #include "player/player.h"
 
 #include <aem/animation_mixer.h>
 
-static enum EnemyState* state = NULL;
-static struct AEMAnimationMixer* mixer = NULL;
-static struct AEMAnimationChannel* channel = NULL;
-
-static bool has_turned_death_dir = false;
-static float respawn_timer = 0.0f;
-
-void load_enemy_state_die(enum EnemyState* state_, const struct AEMModel* model, struct AEMAnimationMixer* mixer_)
+void load_enemy_state_die(struct Enemy* enemy)
 {
-  state = state_;
-  mixer = mixer_;
+  enemy->die_state_data.channel = NULL;
+  enemy->die_state_data.has_turned_death_dir = false;
+  enemy->die_state_data.respawn_timer = 0.0f;
 }
 
-void enter_enemy_state_die()
+void enter_enemy_state_die(struct Enemy* enemy)
 {
-  *state = EnemyState_Die;
+  enemy->state = EnemyState_Die;
 
-  const uint32_t channel_index = aem_get_free_animation_mixer_channel_index(mixer);
-  channel = aem_get_animation_mixer_channel(mixer, channel_index);
-  channel->animation_index = ENEMY_DIE_ANIMATION_INDEX;
-  channel->time = 0.0f;
-  channel->playback_speed = 1.0f;
-  channel->is_playing = true;
-  channel->is_looping = false;
-  aem_cut_to_animation_mixer_channel(mixer, channel_index);
+  const uint32_t channel_index = aem_get_free_animation_mixer_channel_index(enemy->mixer);
+  enemy->die_state_data.channel = aem_get_animation_mixer_channel(enemy->mixer, channel_index);
+  enemy->die_state_data.channel->animation_index = ENEMY_DIE_ANIMATION_INDEX;
+  enemy->die_state_data.channel->time = 0.0f;
+  enemy->die_state_data.channel->playback_speed = 1.0f;
+  enemy->die_state_data.channel->is_playing = true;
+  enemy->die_state_data.channel->is_looping = false;
+  aem_cut_to_animation_mixer_channel(enemy->mixer, channel_index);
 
-  has_turned_death_dir = false;
-  respawn_timer = 0.0f;
+  enemy->die_state_data.has_turned_death_dir = false;
+  enemy->die_state_data.respawn_timer = 0.0f;
 }
 
-void update_enemy_state_die(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time)
+void update_enemy_state_die(struct Enemy* enemy, struct EnemyStateOutput* output, float delta_time)
 {
-  if (!has_turned_death_dir)
+  if (!enemy->die_state_data.has_turned_death_dir)
   {
-    output->angle_delta = calc_angle_delta_towards_player(enemy.position, enemy.direction);
-    has_turned_death_dir = true;
+    output->angle_delta = calc_angle_delta_towards_player(enemy->transform[3], enemy->transform[2]);
+    enemy->die_state_data.has_turned_death_dir = true;
   }
 
-  if (respawn_timer < ENEMY_RESPAWN_TIME)
+  if (enemy->die_state_data.respawn_timer < ENEMY_RESPAWN_TIME)
   {
-    respawn_timer += delta_time;
+    enemy->die_state_data.respawn_timer += delta_time;
   }
 
-  output->should_respawn = (respawn_timer >= ENEMY_RESPAWN_TIME);
+  output->should_respawn = (enemy->die_state_data.respawn_timer >= ENEMY_RESPAWN_TIME);
 }

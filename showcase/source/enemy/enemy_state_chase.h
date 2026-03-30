@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cglm/types.h>
+struct Enemy;
+struct Preferences;
+struct AEMModel;
+struct EnemyStateOutput;
 
-void load_enemy_state_chase(const struct Preferences* preferences,
-                           enum EnemyState* state,
-                           const struct AEMModel* model,
-                           struct AEMAnimationMixer* mixer);
-void enter_enemy_state_chase();
-void update_enemy_state_chase(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time);
+void load_enemy_state_chase(struct Enemy* enemy, const struct Preferences* preferences, const struct AEMModel* model);
+void enter_enemy_state_chase(struct Enemy* enemy);
+void update_enemy_state_chase(struct Enemy* enemy, struct EnemyStateOutput* output, float delta_time);

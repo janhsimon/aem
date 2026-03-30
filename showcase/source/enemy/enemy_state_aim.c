@@ -1,6 +1,6 @@
 #include "enemy_state_aim.h"
 
-#include "enemy_state.h"
+#include "enemy.h"
 #include "enemy_state_fire.h"
 #include "enemy_state_strafe.h"
 #include "player/player.h"
@@ -8,60 +8,53 @@
 
 #include <aem/animation_mixer.h>
 
-#include <cglm/vec3.h>
-
 static const struct Preferences* preferences = NULL;
-static enum EnemyState* state = NULL;
-static struct AEMAnimationMixer* mixer = NULL;
-static struct AEMAnimationChannel* channel = NULL;
-static float aim_delay = 0.0f;
 
-void load_enemy_state_aim(const struct Preferences* preferences_,
-                          enum EnemyState* state_,
-                          struct AEMAnimationMixer* mixer_)
+void load_enemy_state_aim(struct Enemy* enemy, const struct Preferences* preferences_)
 {
+  enemy->aim_state_data.channel = NULL;
+  enemy->aim_state_data.aim_delay = 0.0f;
+
   preferences = preferences_;
-  state = state_;
-  mixer = mixer_;
-  aim_delay = 0.0f;
 }
 
-void enter_enemy_state_aim()
+void enter_enemy_state_aim(struct Enemy* enemy)
 {
-  *state = EnemyState_Aim;
+  enemy->state = EnemyState_Aim;
 
-  const uint32_t channel_index = aem_get_free_animation_mixer_channel_index(mixer);
-  channel = aem_get_animation_mixer_channel(mixer, channel_index);
-  channel->animation_index = ENEMY_AIM_ANIMATION_INDEX;
-  channel->time = 0.0f;
-  channel->is_playing = false;
-  aem_blend_to_animation_mixer_channel(mixer, channel_index);
+  const uint32_t channel_index = aem_get_free_animation_mixer_channel_index(enemy->mixer);
+  enemy->aim_state_data.channel = aem_get_animation_mixer_channel(enemy->mixer, channel_index);
+  enemy->aim_state_data.channel->animation_index = ENEMY_AIM_ANIMATION_INDEX;
+  enemy->aim_state_data.channel->time = 0.0f;
+  enemy->aim_state_data.channel->is_playing = false;
+  aem_blend_to_animation_mixer_channel(enemy->mixer, channel_index);
 
-  aim_delay = ((rand() % 100) / 100.0f) * (ENEMY_AIM_MAX_DELAY - ENEMY_AIM_MIN_DELAY) + ENEMY_AIM_MIN_DELAY;
+  enemy->aim_state_data.aim_delay =
+    ((rand() % 100) / 100.0f) * (ENEMY_AIM_MAX_DELAY - ENEMY_AIM_MIN_DELAY) + ENEMY_AIM_MIN_DELAY;
 }
 
-void update_enemy_state_aim(struct EnemyStateInput enemy, struct EnemyStateOutput* output, float delta_time)
+void update_enemy_state_aim(struct Enemy* enemy, struct EnemyStateOutput* output, float delta_time)
 {
   // Keep turning towards the player
   if (preferences->ai_turning)
   {
     output->angle_delta =
-      calc_angle_delta_towards_player(enemy.position, enemy.direction) * delta_time * ENEMY_AIM_TURN_RATE;
+      calc_angle_delta_towards_player(enemy->transform[3], enemy->transform[2]) * delta_time * ENEMY_AIM_TURN_RATE;
   }
 
-  // Transition to roaming state
-  if (!enemy.player_visible)
+  // Transition to strafing state
+  if (!enemy->player_visible)
   {
-    enter_enemy_state_strafe();
+    enter_enemy_state_strafe(enemy);
   }
 
   // Transition to firing state
-  if (aim_delay > 0.0f)
+  if (enemy->aim_state_data.aim_delay > 0.0f)
   {
-    aim_delay -= delta_time;
+    enemy->aim_state_data.aim_delay -= delta_time;
   }
   else
   {
-    enter_enemy_state_fire();
+    enter_enemy_state_fire(enemy);
   }
 }

@@ -45,7 +45,8 @@ set(SOURCE
   source/enemy/enemy.c
   source/enemy/enemy.h
 
-  source/enemy/enemy_state.h
+  source/enemy/enemy_manager.c
+  source/enemy/enemy_manager.h
 
   source/enemy/enemy_state_aim.c
   source/enemy/enemy_state_aim.h

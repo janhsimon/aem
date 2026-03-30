@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cglm/types.h>
+struct Enemy;
+struct AEMModel;
 
-void load_enemy_state_flinch(enum EnemyState* state, const struct AEMModel* model, struct AEMAnimationMixer* mixer);
-void enter_enemy_state_flinch();
-void update_enemy_state_flinch();
+void load_enemy_state_flinch(struct Enemy* enemy, const struct AEMModel* model);
+void enter_enemy_state_flinch(struct Enemy* enemy);
+void update_enemy_state_flinch(struct Enemy* enemy);

@@ -1,5 +1,5 @@
 #include "camera.h"
-#include "enemy/enemy.h"
+#include "enemy/enemy_manager.h"
 #include "hud/hud.h"
 #include "input.h"
 #include "map.h"
@@ -51,9 +51,9 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    if (!load_enemy(&preferences))
+    if (!load_enemy_manager(&preferences, 3))
     {
-      printf("Failed to load enemy\n");
+      printf("Failed to load enemy manager\n");
       return EXIT_FAILURE;
     }
 
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         update_view_model(&preferences, firing_enabled, player_moving, delta_time);
       }
 
-      update_enemy(delta_time);
+      update_enemy_manager(delta_time);
       update_particle_manager(delta_time);
       update_tracer_manager(&preferences, delta_time);
       update_hud(window_width, window_height, delta_time, debug_mode_enabled, &preferences);
@@ -181,7 +181,7 @@ int main(int argc, char* argv[])
   // Cleanup
   {
     free_hud();
-    free_enemy();
+    free_enemy_manager();
     free_view_model();
     free_map();
     free_models();
