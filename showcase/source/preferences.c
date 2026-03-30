@@ -28,6 +28,7 @@ void load_default_preferences(struct Preferences* preferences)
   // Player
   preferences->player_run_speed = 3.548f;
   preferences->player_walk_speed = 1.467f;
+  preferences->player_crouch_speed = 1.0f;
   preferences->player_accel = 0.1548f;
   preferences->player_friction = 15.0f;
   preferences->player_jump_strength = 10.0f;

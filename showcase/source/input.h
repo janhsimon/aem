@@ -16,6 +16,7 @@ bool get_shoot_button_down();
 bool get_exit_key_down();
 void get_move_vector(vec3 move, bool* moving);
 bool get_walk_key_down();
+bool get_crouch_key_down();
 bool get_jump_key_down();
 bool get_reload_key_down();
 bool get_debug_key_up();

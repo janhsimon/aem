@@ -41,7 +41,7 @@ struct Preferences
   float camera_near, camera_far;
 
   // Player
-  float player_run_speed, player_walk_speed;
+  float player_run_speed, player_walk_speed, player_crouch_speed;
   float player_accel, player_friction;
   float player_jump_strength;
   float player_no_clip_speed_factor;

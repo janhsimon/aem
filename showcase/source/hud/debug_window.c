@@ -107,6 +107,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
   {
     igSliderFloat("Run speed##Player", &preferences->player_run_speed, 0.0f, 20.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Walk speed##Player", &preferences->player_walk_speed, 0.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Crouch speed##Player", &preferences->player_crouch_speed, 0.0f, 20.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Acceleration##Player", &preferences->player_accel, 0.0f, 2.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Friction##Player", &preferences->player_friction, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
     igSliderFloat("Jump strength##Player", &preferences->player_jump_strength, 0.0f, 250.0f, "%f",

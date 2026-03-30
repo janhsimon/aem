@@ -13,12 +13,17 @@
 #include <cglm/vec3.h>
 
 #define PLAYER_RADIUS 0.25f
-#define PLAYER_HEIGHT 1.8f
+#define PLAYER_HEIGHT_STANDING 1.8f
+#define PLAYER_HEIGHT_CROUCHED 1.3f
+
+#define PLAYER_CROUCH_SPEED 10.0f // How long it takes to switch from standing to crouched stance and back
 
 #define PLAYER_MIN_RESPAWN_COOLDOWN 3.0f // How long to wait after death until the player can respawn, in seconds
 
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
 static bool player_grounded = false;
+
+static float player_height = PLAYER_HEIGHT_STANDING; // From feet to eyes, between standing and crouched height
 
 static float health = 100.0f;
 
@@ -83,7 +88,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         vec3 spawn_position;
         float spawn_yaw;
         get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
-        spawn_position[1] += PLAYER_HEIGHT - PLAYER_RADIUS;
+        spawn_position[1] += player_height - PLAYER_RADIUS;
         camera_set_position(spawn_position);
         camera_set_yaw_pitch_roll(glm_rad(spawn_yaw), 0.0f, 0.0f);
 
@@ -95,6 +100,32 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   }
   else
   {
+    // Crouching or standing stance
+    if (get_crouch_key_down())
+    {
+      if (player_height > PLAYER_HEIGHT_CROUCHED)
+      {
+        player_height -= delta_time * PLAYER_CROUCH_SPEED;
+      }
+
+      if (player_height < PLAYER_HEIGHT_CROUCHED)
+      {
+        player_height = PLAYER_HEIGHT_CROUCHED;
+      }
+    }
+    else
+    {
+      if (player_height < PLAYER_HEIGHT_STANDING)
+      {
+        player_height += delta_time * PLAYER_CROUCH_SPEED;
+      }
+
+      if (player_height > PLAYER_HEIGHT_STANDING)
+      {
+        player_height = PLAYER_HEIGHT_STANDING;
+      }
+    }
+
     // Mouse look
     if (mouse_look)
     {
@@ -140,9 +171,21 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       // Then apply acceleration
       if (glm_vec3_norm(wish_dir) > 0.0f)
       {
-        const float wish_speed =
-          (get_walk_key_down() ? preferences->player_walk_speed : preferences->player_run_speed) *
-          (preferences->no_clip ? preferences->player_no_clip_speed_factor : 1.0f);
+        // Determine the target speed depending on if the player is running, walking, crouching or has no clip turned on
+        float wish_speed = preferences->player_run_speed;
+        if (get_crouch_key_down())
+        {
+          wish_speed = preferences->player_crouch_speed;
+        }
+        else if (get_walk_key_down())
+        {
+          wish_speed = preferences->player_walk_speed;
+        }
+
+        if (preferences->no_clip)
+        {
+          wish_speed *= preferences->player_no_clip_speed_factor;
+        }
 
         const float current_speed = glm_vec3_dot(current_dir, wish_dir);
         const float add_speed = wish_speed - current_speed;
@@ -178,7 +221,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       vec3 eye;
       camera_get_position(eye);
 
-      simulate_capsule(preferences, eye, player_velocity, &player_grounded, PLAYER_HEIGHT, PLAYER_RADIUS, delta_time);
+      simulate_capsule(preferences, eye, player_velocity, &player_grounded, player_height, PLAYER_RADIUS, delta_time);
 
       camera_set_position(eye);
     }
@@ -193,7 +236,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 void get_player_position(vec3 position)
 {
   camera_get_position(position);
-  position[1] -= PLAYER_HEIGHT - PLAYER_RADIUS;
+  position[1] -= player_height - PLAYER_RADIUS;
 }
 
 void get_player_velocity(vec3 velocity)
@@ -265,7 +308,7 @@ bool is_player_hit(vec3 from, vec3 to)
 
   vec3 player_bottom;
   glm_vec3_copy(player_top, player_bottom);
-  player_bottom[1] -= PLAYER_HEIGHT - PLAYER_RADIUS * 2.0f;
+  player_bottom[1] -= player_height - PLAYER_RADIUS * 2.0f;
 
   vec3 a, b;
   closest_segment_segment(from, to, player_top, player_bottom, a, b);
@@ -292,7 +335,7 @@ void player_hurt(float damage, vec3 dir)
 
     vec3 cam_pos;
     camera_get_position(cam_pos);
-    death_feet_height = cam_pos[1] - PLAYER_HEIGHT + (PLAYER_RADIUS + 0.1f);
+    death_feet_height = cam_pos[1] - player_height + (PLAYER_RADIUS + 0.1f);
 
     has_fire_key_been_up_since_death = false;
   }
