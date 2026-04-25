@@ -6,6 +6,7 @@
 #include "light.h"
 #include "model.h"
 #include "scene_state.h"
+#include "skeleton_state.h"
 
 #include <cglm/vec2.h>
 #include <glfw/glfw3.h>
@@ -22,13 +23,18 @@ static uint8_t keyboard_key_mask = 0;
 
 static struct DisplayState* display_state;
 static struct SceneState* scene_state;
+static struct SkeletonState* skeleton_state;
 
 static void (*file_open_callback)() = NULL;
 
-void init_input(struct DisplayState* display_state_, struct SceneState* scene_state_, void (*file_open_callback_)())
+void init_input(struct DisplayState* display_state_,
+                struct SceneState* scene_state_,
+                struct SkeletonState* skeleton_state_,
+                void (*file_open_callback_)())
 {
   display_state = display_state_;
   scene_state = scene_state_;
+  skeleton_state = skeleton_state_;
 
   file_open_callback = file_open_callback_;
 }
@@ -97,6 +103,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     else
     {
       mouse_button_mask &= ~LEFT_MOUSE_BUTTON;
+
+      //if (!is_mouse_over_guizmo())
+      if (skeleton_state->hover_joint_index >= 0)
+      {
+        skeleton_state->selected_joint_index = skeleton_state->hover_joint_index;
+      }
     }
   }
   else if (button == GLFW_MOUSE_BUTTON_RIGHT)
@@ -151,6 +163,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         file_open_callback();
       }
     }
+    else if (key == GLFW_KEY_SPACE)
+    {
+      play_pause_model_animations();
+    }
+    else if (key == GLFW_KEY_ESCAPE)
+    {
+      skeleton_state->selected_joint_index = -1;
+    }
     else if (key == GLFW_KEY_P)
     {
       reset_camera_pivot();
@@ -196,4 +216,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       }
     }
   }
+}
+
+void get_mouse_pos(vec2 pos)
+{
+  glm_vec2_copy(last_cursor_pos, pos);
 }

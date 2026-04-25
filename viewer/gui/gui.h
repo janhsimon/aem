@@ -17,6 +17,7 @@ void init_gui(struct GLFWwindow* window,
 
 bool is_mouse_consumed();
 bool is_keyboard_consumed();
+bool is_mouse_over_guizmo();
 
 void gui_on_new_model_loaded();
 

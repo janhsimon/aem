@@ -95,6 +95,9 @@ void file_open_callback()
 
   scene_state.scale = 100;
 
+  skeleton_state.hover_joint_index = -1;
+  skeleton_state.selected_joint_index = -1;
+
   // Update the UI and overlay for this new model
   gui_on_new_model_loaded();
   skeleton_overlay_on_new_model_loaded();
@@ -181,7 +184,7 @@ int main(int argc, char* argv[])
     glDisable(GL_CULL_FACE);
   }
 
-  init_input(&display_state, &scene_state, file_open_callback);
+  init_input(&display_state, &scene_state, &skeleton_state, file_open_callback);
   init_gui(window, &display_state, &scene_state, &skeleton_state, file_open_callback);
 
   if (!load_model_renderer())
@@ -283,7 +286,7 @@ int main(int argc, char* argv[])
       if (model_loaded && display_state.show_skeleton)
       {
         vec2 screen_resolution = { (float)window_width, (float)window_height };
-        draw_skeleton_overlay(world_matrix, viewproj_matrix, screen_resolution, skeleton_state.selected_joint_index);
+        draw_skeleton_overlay(&skeleton_state, world_matrix, view_matrix, proj_matrix, screen_resolution);
       }
 
       if (display_state.show_gui)

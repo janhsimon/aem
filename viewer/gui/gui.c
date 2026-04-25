@@ -7,6 +7,7 @@
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
+#include <cimgui/cimguizmo.h>
 
 #define CIMGUI_USE_GLFW
 #define CIMGUI_USE_OPENGL3
@@ -60,6 +61,11 @@ bool is_keyboard_consumed()
   return io->WantCaptureKeyboard;
 }
 
+bool is_mouse_over_guizmo()
+{
+  return ImGuizmo_IsOver_Nil();
+}
+
 void gui_on_new_model_loaded()
 {
   animation_mixer_on_new_model();
@@ -71,6 +77,9 @@ void update_gui(int screen_width, int screen_height)
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   igNewFrame();
+
+  ImGuizmo_BeginFrame();
+  ImGuizmo_SetRect(0.0f, 0.0f, io->DisplaySize.x, io->DisplaySize.y);
 
 #ifdef SHOW_DEMO_WINDOW
   igShowDemoWindow(NULL);

@@ -33,7 +33,7 @@ bool load_model(const char* filepath, const char* path)
   joint_count = aem_get_model_joint_count(model);
   if (joint_count > 0)
   {
-    if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
+    if (aem_load_animation_mixer(joint_count, 4, 2, &mixer) != AEMAnimationMixerResult_Success)
     {
       return false;
     }
@@ -242,6 +242,39 @@ uint32_t get_model_joint_rotation_keyframe_count(uint32_t animation_index, uint3
 uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t joint_index)
 {
   return aem_get_model_joint_scale_keyframe_count(model, animation_index, joint_index);
+}
+
+void get_model_animation_joint_base_transform(uint32_t joint_index, mat4 transform)
+{
+  aem_get_animation_mixer_joint_transform(model, mixer, joint_index, AEMAnimationLayer_Base, *transform);
+}
+
+void get_model_animation_joint_combined_transform(uint32_t joint_index, mat4 transform)
+{
+  aem_get_animation_mixer_joint_transform(model, mixer, joint_index,
+                                          AEMAnimationLayer_Base | AEMAnimationLayer_Additive, *transform);
+}
+
+void set_model_animation_joint_additive_transform(uint32_t joint_index, mat4 offset)
+{
+  aem_set_animation_mixer_joint_transform(mixer, joint_index, AEMAnimationLayer_Additive, (float*)offset);
+}
+
+void play_pause_model_animations()
+{
+  if (mixer)
+  {
+    aem_set_animation_mixer_enabled(mixer, true);
+
+    for (uint32_t channel_index = 0; channel_index < 4; ++channel_index)
+    {
+      struct AEMAnimationChannel* channel = aem_get_animation_mixer_channel(mixer, channel_index);
+      if (channel->weight > 0.0f)
+      {
+        channel->is_playing = !channel->is_playing;
+      }
+    }
+  }
 }
 
 void model_update_animation(float delta_time)

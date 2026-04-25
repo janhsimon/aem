@@ -79,6 +79,7 @@ void reset_camera_pivot()
   pivot[1] = 0.4f;
   pivot[2] = 0.0f;
 }
+
 float* get_camera_position()
 {
   return (float*)position;

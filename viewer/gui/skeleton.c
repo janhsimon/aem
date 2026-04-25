@@ -113,7 +113,7 @@ static void draw_skeleton_tree(const struct Node* node)
 
   if (igIsItemHovered(0) && igBeginTooltip())
   {
-    skeleton_state->selected_joint_index = node->id;
+    skeleton_state->hover_joint_index = node->id;
 
     igText("Inverse bind matrix:");
 
@@ -152,10 +152,10 @@ static void draw_skeleton_tree(const struct Node* node)
 
 void update_skeleton(int screen_width, int screen_height)
 {
-  skeleton_state->selected_joint_index = -1;
+  skeleton_state->hover_joint_index = -1;
 
-  igSetNextWindowPos((struct ImVec2){ 50.0f, 50.0f }, ImGuiCond_Once, (struct ImVec2){ 0.0f, 0.0f });
-  igSetNextWindowSize((struct ImVec2){ screen_width / 3, screen_height / 2 }, ImGuiCond_Once);
+  igSetNextWindowPos((struct ImVec2_c){ 50.0f, 50.0f }, ImGuiCond_Once, (struct ImVec2_c){ 0.0f, 0.0f });
+  igSetNextWindowSize((struct ImVec2_c){ screen_width / 3, screen_height / 2 }, ImGuiCond_Once);
 
   igBegin("Skeleton", NULL, 0);
 

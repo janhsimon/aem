@@ -38,8 +38,8 @@ void animation_mixer_on_new_model()
 
 void update_animation_mixer(int screen_width, int screen_height)
 {
-  igSetNextWindowPos((struct ImVec2){ 0.0f, screen_height }, 0, (struct ImVec2){ 0.0f, 1.0f });
-  igSetNextWindowSize((struct ImVec2){ screen_width, 0.0f }, 0);
+  igSetNextWindowPos((struct ImVec2_c){ 0.0f, screen_height }, 0, (struct ImVec2_c){ 0.0f, 1.0f });
+  igSetNextWindowSize((struct ImVec2_c){ screen_width, 0.0f }, 0);
 
   igBegin("##AnimationMixer", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
 
@@ -76,7 +76,7 @@ void update_animation_mixer(int screen_width, int screen_height)
     {
       for (int i = 0; i < 3; ++i)
       {
-        if (igSelectable_Bool(blend_mode_names[i], i == blend_mode, 0, (struct ImVec2){ 0, 0 }))
+        if (igSelectable_Bool(blend_mode_names[i], i == blend_mode, 0, (struct ImVec2_c){ 0, 0 }))
         {
           set_model_animation_mixer_blend_mode(i);
         }
@@ -112,7 +112,7 @@ void update_animation_mixer(int screen_width, int screen_height)
       for (uint32_t animation_index = 0; animation_index < animation_name_count; ++animation_index)
       {
         if (igSelectable_Bool(animation_names[animation_index], channel->animation_index == animation_index, 0,
-                              (struct ImVec2){ 0, 0 }))
+                              (struct ImVec2_c){ 0, 0 }))
         {
           channel->animation_index = animation_index;
           channel->time = 0.0f;
@@ -126,14 +126,14 @@ void update_animation_mixer(int screen_width, int screen_height)
     igSameLine(0.0f, -1.0f);
     if (channel && channel->is_playing)
     {
-      if (igButton("Pause##AnimationChannelPause", (struct ImVec2){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
+      if (igButton("Pause##AnimationChannelPause", (struct ImVec2_c){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
       {
         channel->is_playing = false;
       }
     }
     else
     {
-      if (igButton("Play##AnimationChannelPlay", (struct ImVec2){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
+      if (igButton("Play##AnimationChannelPlay", (struct ImVec2_c){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
       {
         channel->is_playing = true;
       }
@@ -142,7 +142,7 @@ void update_animation_mixer(int screen_width, int screen_height)
     // Stop button
     {
       igSameLine(0.0f, -1.0f);
-      if (igButton("Stop##AnimationChannelStop", (struct ImVec2){ PLAYBACK_BUTTON_WIDTH, 0.0f }) && channel)
+      if (igButton("Stop##AnimationChannelStop", (struct ImVec2_c){ PLAYBACK_BUTTON_WIDTH, 0.0f }) && channel)
       {
         channel->is_playing = false;
         channel->time = 0.0f;
@@ -177,7 +177,7 @@ void update_animation_mixer(int screen_width, int screen_height)
       igSameLine(0.0f, -1.0f);
       igBeginDisabled(channel ? (channel->weight >= 1.0f) : false);
 
-      if (igButton("Blend##AnimationChannelBlend", (struct ImVec2){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
+      if (igButton("Blend##AnimationChannelBlend", (struct ImVec2_c){ PLAYBACK_BUTTON_WIDTH, 0.0f }))
       {
         blend_to_model_animation_channel(channel_index);
       }

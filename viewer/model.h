@@ -42,6 +42,13 @@ uint32_t get_model_joint_translation_keyframe_count(uint32_t animation_index, ui
 uint32_t get_model_joint_rotation_keyframe_count(uint32_t animation_index, uint32_t joint_index);
 uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t joint_index);
 
+void get_model_animation_joint_base_transform(uint32_t joint_index, mat4 transform);
+void get_model_animation_joint_combined_transform(uint32_t joint_index, mat4 transform);
+
+void set_model_animation_joint_additive_transform(uint32_t joint_index, mat4 offset);
+
+void play_pause_model_animations();
+
 void model_update_animation(float delta_time);
 
 void draw_model_opaque();
