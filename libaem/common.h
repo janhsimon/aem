@@ -67,8 +67,9 @@ struct AEMAnimationMixer
   struct AEMAnimationChannel* channels;
   uint32_t channel_count;
 
-  float* joint_transforms;
   uint32_t joint_count;
+  uint32_t layer_count;
+  float* joint_transforms; // One 4x4 matrix transform per joint per layer, in joint space
 
   bool is_blending;
   uint32_t blend_target_channel_index;

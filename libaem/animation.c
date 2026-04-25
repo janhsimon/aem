@@ -132,8 +132,16 @@ static void get_joint_posed_transform_local_trs(const struct AEMModel* model,
   }
 }
 
-enum AEMAnimationMixerResult
-aem_load_animation_mixer(uint32_t joint_count, uint32_t channel_count, struct AEMAnimationMixer** mixer)
+static uint32_t
+get_joint_transform_index(const struct AEMAnimationMixer* mixer, uint32_t layer_index, uint32_t joint_index)
+{
+  return layer_index * mixer->joint_count + joint_index;
+}
+
+enum AEMAnimationMixerResult aem_load_animation_mixer(uint32_t joint_count,
+                                                      uint32_t channel_count,
+                                                      uint32_t layer_count,
+                                                      struct AEMAnimationMixer** mixer)
 {
   *mixer = malloc(sizeof(struct AEMAnimationMixer));
   if (!*mixer)
@@ -160,7 +168,7 @@ aem_load_animation_mixer(uint32_t joint_count, uint32_t channel_count, struct AE
     channel->weight = (channel_index == 0) ? 1.0f : 0.0f;
   }
 
-  (*mixer)->joint_transforms = malloc(sizeof(mat4) * joint_count);
+  (*mixer)->joint_transforms = malloc(sizeof(mat4) * joint_count * layer_count);
   if (!(*mixer)->joint_transforms)
   {
     return AEMAnimationMixerResult_OutOfMemory;
@@ -168,6 +176,20 @@ aem_load_animation_mixer(uint32_t joint_count, uint32_t channel_count, struct AE
 
   (*mixer)->channel_count = channel_count;
   (*mixer)->joint_count = joint_count;
+  (*mixer)->layer_count = layer_count;
+
+  // Initialize all joint transforms for potential additive layers to identity
+  {
+    mat4* joint_transforms = (mat4*)(*mixer)->joint_transforms;
+
+    for (uint32_t layer_index = 1; layer_index < layer_count; ++layer_index)
+    {
+      for (uint32_t joint_index = 0; joint_index < joint_count; ++joint_index)
+      {
+        glm_mat4_identity(joint_transforms[get_joint_transform_index(*mixer, layer_index, joint_index)]);
+      }
+    }
+  }
 
   (*mixer)->is_enabled = false;
 
@@ -224,19 +246,124 @@ aem_get_animation_mixer_channel(const struct AEMAnimationMixer* mixer, uint32_t 
   return &mixer->channels[channel_index];
 }
 
-void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
-                                             const struct AEMAnimationMixer* mixer,
-                                             uint32_t joint_index,
-                                             float transform[16])
+static calc_joint_to_model_transform(const struct AEMModel* model,
+                                     const struct AEMAnimationMixer* mixer,
+                                     uint32_t joint_index,
+                                     mat4 joint_to_model_transform)
 {
-  mat4* t = (mat4*)mixer->joint_transforms;
-  glm_mat4_copy(t[joint_index], (vec4*)transform);
+  mat4* joint_transforms = (mat4*)mixer->joint_transforms;
+
+  glm_mat4_identity(joint_to_model_transform);
 
   int32_t parent_joint_index = model->joints[joint_index].parent_joint_index;
   while (parent_joint_index >= 0)
   {
-    glm_mat4_mul(t[parent_joint_index], (vec4*)transform, (vec4*)transform);
+    mat4 combined_joint_transform;
+
+    // Base layer
+    glm_mat4_copy(joint_transforms[parent_joint_index], combined_joint_transform);
+
+    // Add additive layers
+    for (uint32_t layer_index = 1; layer_index < mixer->layer_count; ++layer_index)
+    {
+      glm_mat4_mul(combined_joint_transform,
+                   joint_transforms[get_joint_transform_index(mixer, layer_index, parent_joint_index)],
+                   combined_joint_transform);
+    }
+
+    glm_mat4_mul(combined_joint_transform, joint_to_model_transform, joint_to_model_transform);
+
     parent_joint_index = model->joints[parent_joint_index].parent_joint_index;
+  }
+}
+
+static uint32_t layer_index_to_bitmask(uint32_t layer_index)
+{
+  return (1 << layer_index);
+}
+
+static bool layers_are_index(enum AEMAnimationLayer layers, uint32_t layer_index)
+{
+  return layer_index_to_bitmask(layer_index) == layers;
+}
+
+static bool layers_include_index(enum AEMAnimationLayer layers, uint32_t layer_index)
+{
+  return layer_index_to_bitmask(layer_index) & layers;
+}
+
+void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
+                                             const struct AEMAnimationMixer* mixer,
+                                             uint32_t joint_index,
+                                             enum AEMAnimationLayer layers,
+                                             float transform[16])
+{
+  if (!mixer->is_enabled)
+  {
+    struct AEMJoint* joint = &model->joints[joint_index];
+
+    mat4 bind_matrix;
+    glm_mat4_make(joint->inverse_bind_matrix, bind_matrix);
+    glm_mat4_inv(bind_matrix, (vec4*)transform);
+    return;
+  }
+
+  mat4* joint_transforms = (mat4*)mixer->joint_transforms;
+
+  // If a single layer was selected
+  bool done = false;
+  for (uint32_t layer_index = 0; layer_index < mixer->layer_count; ++layer_index)
+  {
+    if (layers_are_index(layers, layer_index))
+    {
+      glm_mat4_copy(joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)], (vec4*)transform);
+      done = true;
+      break;
+    }
+  }
+
+  // Otherwise add multiple layers together
+  if (!done)
+  {
+    if (layers & AEMAnimationLayer_Base)
+    {
+      // Base layer
+      glm_mat4_copy(joint_transforms[get_joint_transform_index(mixer, 0, joint_index)], (vec4*)transform);
+
+      // Add additive layers
+      for (uint32_t layer_index = 1; layer_index < mixer->layer_count; ++layer_index)
+      {
+        if (layers_include_index(layers, layer_index))
+        {
+          glm_mat4_mul((vec4*)transform, joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)],
+                       (vec4*)transform);
+        }
+      }
+    }
+  }
+
+  // Get the joint to model transform (this takes offsets into account)
+  mat4 joint_to_model;
+  calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
+
+  // Bring the local joint-space transform to model space
+  glm_mat4_mul(joint_to_model, (vec4*)transform, (vec4*)transform);
+}
+
+void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
+                                             uint32_t joint_index,
+                                             enum AEMAnimationLayer layer,
+                                             float transform[16])
+{
+  mat4* joint_transforms = (mat4*)mixer->joint_transforms;
+
+  for (uint32_t layer_index = 0; layer_index < mixer->layer_count; ++layer_index)
+  {
+    if (layers_are_index(layer, layer_index))
+    {
+      glm_mat4_copy((vec4*)transform, joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)]);
+      return;
+    }
   }
 }
 
@@ -294,16 +421,16 @@ static float smootherstep(float x)
 void aem_update_animation(const struct AEMModel* model,
                           struct AEMAnimationMixer* mixer,
                           float delta_time,
-                          float* joint_transforms)
+                          float* joint_transforms_)
 {
-  mat4* transforms = (mat4*)joint_transforms;
+  mat4* output_transforms = (mat4*)joint_transforms_;
 
   // Show the bind pose and early out if the mixer is not enabled
   if (!mixer->is_enabled)
   {
     for (uint32_t joint_index = 0; joint_index < mixer->joint_count; ++joint_index)
     {
-      glm_mat4_identity(transforms[joint_index]);
+      glm_mat4_identity(output_transforms[joint_index]);
     }
 
     return;
@@ -398,8 +525,9 @@ void aem_update_animation(const struct AEMModel* model,
     }
   }
 
-  mat4* cached_transforms = (mat4*)mixer->joint_transforms;
+  mat4* joint_transforms = (mat4*)mixer->joint_transforms;
 
+  // Update the pose
   for (uint32_t joint_index = 0; joint_index < mixer->joint_count; ++joint_index)
   {
     vec3 t[4], s[4];
@@ -458,26 +586,36 @@ void aem_update_animation(const struct AEMModel* model,
       glm_vec3_lerp(s_ab, s_cd, blend, blended_s);
     }
 
-    glm_mat4_identity(cached_transforms[joint_index]);
-    glm_translate(cached_transforms[joint_index], blended_t);
-    glm_quat_rotate(cached_transforms[joint_index], blended_r, cached_transforms[joint_index]);
-    glm_scale(cached_transforms[joint_index], blended_s);
+    // Base layer
+    const uint32_t base_index = get_joint_transform_index(mixer, 0, joint_index);
+    glm_mat4_identity(joint_transforms[base_index]);
+    glm_translate(joint_transforms[base_index], blended_t);
+    glm_quat_rotate(joint_transforms[base_index], blended_r, joint_transforms[base_index]);
+    glm_scale(joint_transforms[base_index], blended_s);
+
+    // Add additive layers
+    for (uint32_t layer_index = 1; layer_index < mixer->layer_count; ++layer_index)
+    {
+      glm_mat4_mul(joint_transforms[base_index],
+                   joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)],
+                   output_transforms[joint_index]);
+    }
   }
 
   for (uint32_t joint_index = 0; joint_index < mixer->joint_count; ++joint_index)
   {
-    glm_mat4_copy(cached_transforms[joint_index], transforms[joint_index]);
-
     struct AEMJoint* joint = &model->joints[joint_index];
-    int32_t parent_joint_index = joint->parent_joint_index;
-    while (parent_joint_index >= 0)
-    {
-      glm_mat4_mul(cached_transforms[parent_joint_index], transforms[joint_index], transforms[joint_index]);
-      parent_joint_index = model->joints[parent_joint_index].parent_joint_index;
-    }
 
+    // Get the joint to model transform (this takes offsets into account)
+    mat4 joint_to_model;
+    calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
+
+    // Convert the combined joint transform from joint to model space
+    glm_mat4_mul(joint_to_model, output_transforms[joint_index], output_transforms[joint_index]);
+
+    // Use the inverse bind matrix to evaluate the final output transform for this joint
     mat4 inverse_bind_matrix;
     glm_mat4_make(joint->inverse_bind_matrix, inverse_bind_matrix);
-    glm_mat4_mul(transforms[joint_index], inverse_bind_matrix, transforms[joint_index]);
+    glm_mat4_mul(output_transforms[joint_index], inverse_bind_matrix, output_transforms[joint_index]);
   }
 }

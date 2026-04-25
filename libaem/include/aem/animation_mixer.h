@@ -18,6 +18,12 @@ enum AEMAnimationBlendMode
   AEMAnimationBlendMode_Smoother
 };
 
+enum AEMAnimationLayer
+{
+  AEMAnimationLayer_Base = (1 << 0),
+  AEMAnimationLayer_Additive = (1 << 1)
+};
+
 struct AEMAnimationChannel
 {
   uint32_t animation_index;
@@ -25,8 +31,10 @@ struct AEMAnimationChannel
   float time, playback_speed, weight;
 };
 
-enum AEMAnimationMixerResult
-aem_load_animation_mixer(uint32_t joint_count, uint32_t channel_count, struct AEMAnimationMixer** mixer);
+enum AEMAnimationMixerResult aem_load_animation_mixer(uint32_t joint_count,
+                                                      uint32_t channel_count,
+                                                      uint32_t layer_count,
+                                                      struct AEMAnimationMixer** mixer);
 void aem_free_animation_mixer(struct AEMAnimationMixer* mixer);
 
 bool aem_get_animation_mixer_enabled(const struct AEMAnimationMixer* mixer);
@@ -42,9 +50,16 @@ void aem_set_animation_mixer_blend_mode(struct AEMAnimationMixer* mixer, enum AE
 struct AEMAnimationChannel*
 aem_get_animation_mixer_channel(const struct AEMAnimationMixer* mixer, uint32_t channel_index);
 
+// Model-space access and modification of joint transforms, with layer support
 void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
                                              const struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
+                                             enum AEMAnimationLayer layers,
+                                             float transform[16]);
+
+void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
+                                             uint32_t joint_index,
+                                             enum AEMAnimationLayer layer,
                                              float transform[16]);
 
 // Convenience functions
