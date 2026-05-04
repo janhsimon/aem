@@ -58,7 +58,7 @@ static void view_model_get_muzzleflash_world_matrix(struct Preferences* preferen
   view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
 
   mat4 temp;
-  aem_get_animation_mixer_joint_transform(render_info->model, mixer, 1054, (float*)temp);
+  aem_get_animation_mixer_joint_transform(render_info->model, mixer, 1054, AEMAnimationLayer_Base, (float*)temp);
 
   glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
 
@@ -78,7 +78,7 @@ bool load_view_model()
 
   const uint32_t joint_count = aem_get_model_joint_count(render_info->model);
 
-  if (aem_load_animation_mixer(joint_count, 4, &mixer) != AEMAnimationMixerResult_Success)
+  if (aem_load_animation_mixer(joint_count, 4, 1, &mixer) != AEMAnimationMixerResult_Success)
   {
     return false;
   }

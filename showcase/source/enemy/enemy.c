@@ -57,7 +57,7 @@ bool load_enemy(struct Enemy* enemy, const struct Preferences* preferences, cons
 {
   const uint32_t joint_count = aem_get_model_joint_count(model);
 
-  if (aem_load_animation_mixer(joint_count, 4, &enemy->mixer) != AEMAnimationMixerResult_Success)
+  if (aem_load_animation_mixer(joint_count, 4, 1, &enemy->mixer) != AEMAnimationMixerResult_Success)
   {
     return false;
   }
@@ -103,7 +103,7 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   // Head
   {
     mat4 hitbox_head_transform;
-    aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX,
+    aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX, AEMAnimationLayer_Base,
                                             (float*)hitbox_head_transform);
     glm_mat4_mul(enemy->transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
 
@@ -119,7 +119,7 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   {
     mat4 hitbox_upper_torso_transform;
     aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
-                                            (float*)hitbox_upper_torso_transform);
+                                            AEMAnimationLayer_Base, (float*)hitbox_upper_torso_transform);
     glm_mat4_mul(enemy->transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
@@ -136,7 +136,7 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   {
     mat4 hitbox_lower_torso_transform;
     aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
-                                            (float*)hitbox_lower_torso_transform);
+                                            AEMAnimationLayer_Base, (float*)hitbox_lower_torso_transform);
     glm_mat4_mul(enemy->transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y, ENEMY_HITBOX_LOWER_TORSO_Z },

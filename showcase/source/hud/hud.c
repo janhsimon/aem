@@ -195,26 +195,26 @@ void update_hud(uint32_t screen_width,
       sprintf(text, "Respawn in %.1f seconds...", time_remaining);
     }
 
-    ImVec2 size;
-    igCalcTextSize(&size, text, NULL, false, 0.0f);
+    const ImVec2_c size = igCalcTextSize(text, NULL, false, 0.0f);
 
     // Shadow
     ImDrawList_AddText_Vec2(draw_list,
-                            (ImVec2){ screen_width / 2 - size.x / 2 - 1, screen_height / 2 + screen_height / 4 },
+                            (ImVec2_c){ screen_width / 2 - size.x / 2 - 1, screen_height / 2 + screen_height / 4 },
                             shadow_color, text, NULL);
     ImDrawList_AddText_Vec2(draw_list,
-                            (ImVec2){ screen_width / 2 - size.x / 2 + 1, screen_height / 2 + screen_height / 4 },
+                            (ImVec2_c){ screen_width / 2 - size.x / 2 + 1, screen_height / 2 + screen_height / 4 },
                             shadow_color, text, NULL);
     ImDrawList_AddText_Vec2(draw_list,
-                            (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 - 1 },
+                            (ImVec2_c){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 - 1 },
                             shadow_color, text, NULL);
     ImDrawList_AddText_Vec2(draw_list,
-                            (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 + 1 },
+                            (ImVec2_c){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 + 1 },
                             shadow_color, text, NULL);
 
     // Actual text
-    ImDrawList_AddText_Vec2(draw_list, (ImVec2){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 },
-                            color, text, NULL);
+    ImDrawList_AddText_Vec2(draw_list,
+                            (ImVec2_c){ screen_width / 2 - size.x / 2, screen_height / 2 + screen_height / 4 }, color,
+                            text, NULL);
 
     igPopFont();
   }

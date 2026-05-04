@@ -167,7 +167,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
           {
             if (igSelectable_Bool(resolution_names[i],
                                   preferences->shadow_mapping_cascade_texture_sizes[cascade_index] == (256 << i), 0,
-                                  (struct ImVec2){ 0, 0 }))
+                                  (struct ImVec2_c){ 0, 0 }))
             {
               preferences->shadow_mapping_cascade_texture_sizes[cascade_index] = (256 << i);
             }
