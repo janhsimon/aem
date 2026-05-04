@@ -3,7 +3,8 @@
 #include "animation_mixer.h"
 #include "display_state.h"
 #include "main_menu.h"
-#include "skeleton.h"
+#include "skeleton_state.h"
+#include "skeleton_window.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -19,11 +20,12 @@ static ImGuiContext* context = NULL;
 static ImGuiIO* io = NULL;
 
 struct DisplayState* display_state;
+struct SkeletonState* skeleton_state;
 
 void init_gui(struct GLFWwindow* window,
               struct DisplayState* display_state_,
               struct SceneState* scene_state,
-              struct SkeletonState* skeleton_state,
+              struct SkeletonState* skeleton_state_,
               void (*file_open_callback)())
 {
   context = igCreateContext(NULL);
@@ -46,9 +48,10 @@ void init_gui(struct GLFWwindow* window,
   }
 
   display_state = display_state_;
+  skeleton_state = skeleton_state_;
 
-  init_main_menu(display_state, scene_state, file_open_callback);
-  init_skeleton(skeleton_state);
+  init_main_menu(display_state, scene_state, skeleton_state, file_open_callback);
+  init_skeleton_window(skeleton_state);
 }
 
 bool is_mouse_consumed()
@@ -69,7 +72,7 @@ bool is_mouse_over_guizmo()
 void gui_on_new_model_loaded()
 {
   animation_mixer_on_new_model();
-  skeleton_on_new_model();
+  skeleton_window_on_new_model();
 }
 
 void update_gui(int screen_width, int screen_height)
@@ -88,9 +91,9 @@ void update_gui(int screen_width, int screen_height)
   update_main_menu();
   update_animation_mixer(screen_width, screen_height);
 
-  if (display_state->show_skeleton)
+  if (skeleton_state->tool_active)
   {
-    update_skeleton(screen_width, screen_height);
+    update_skeleton_window(screen_width, screen_height);
   }
 
   // End the frame if there won't be rendering later
@@ -108,7 +111,7 @@ void render_gui()
 
 void destroy_gui()
 {
-  destroy_skeleton();
+  destroy_skeleton_window();
   destroy_animation_mixer();
 
   ImGui_ImplOpenGL3_Shutdown();

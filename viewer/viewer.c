@@ -10,6 +10,7 @@
 #include "overlay/wireframe_overlay.h"
 #include "scene_state.h"
 #include "skeleton_state.h"
+#include "skeleton_tool.h"
 
 #include <aem/model.h>
 #include <cglm/affine.h>
@@ -98,9 +99,8 @@ void file_open_callback()
   skeleton_state.hover_joint_index = -1;
   skeleton_state.selected_joint_index = -1;
 
-  // Update the UI and overlay for this new model
   gui_on_new_model_loaded();
-  skeleton_overlay_on_new_model_loaded();
+  skeleton_tool_on_new_model_loaded();
 
   model_loaded = true;
 }
@@ -121,7 +121,6 @@ int main(int argc, char* argv[])
   // Initialize display state
   display_state.show_gui = true;
   display_state.show_grid = true;
-  display_state.show_skeleton = false;
   display_state.show_wireframe = false;
   display_state.render_mode = RenderMode_Full;
   display_state.render_transparent = true;
@@ -137,6 +136,12 @@ int main(int argc, char* argv[])
   scene_state.ambient_color[3] = 0.03f;                                                              // Intensity
   scene_state.light_color[0] = scene_state.light_color[1] = scene_state.light_color[2] = 1.0f;       // RGB color
   scene_state.light_color[3] = 10.0f;                                                                // Intensity
+
+  // Initialize skeleton state
+  skeleton_state.tool_available = skeleton_state.tool_active = false;
+  skeleton_state.translate_enabled = skeleton_state.rotate_enabled = true;
+  skeleton_state.scale_enabled = false;
+  skeleton_state.tool_move_mode = SkeletonToolMoveMode_Global;
 
   // Create window and load OpenGL
   {
@@ -186,6 +191,7 @@ int main(int argc, char* argv[])
 
   init_input(&display_state, &scene_state, &skeleton_state, file_open_callback);
   init_gui(window, &display_state, &scene_state, &skeleton_state, file_open_callback);
+  init_skeleton_tool(&skeleton_state);
 
   if (!load_model_renderer())
   {
@@ -212,12 +218,38 @@ int main(int argc, char* argv[])
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
+    vec2 screen_resolution = { (float)window_width, (float)window_height };
+    mat4 world_matrix, view_matrix, proj_matrix, viewproj_matrix;
+
     // Update
     {
       // Calculate delta time
       const double now_time = glfwGetTime(); // In seconds
       const float delta_time = (float)(now_time - prev_time);
       prev_time = now_time;
+
+      if (scene_state.auto_rotate_camera)
+      {
+        const float speed = (float)scene_state.auto_rotate_camera_speed * (-0.01f);
+        camera_tumble((vec2){ delta_time * speed, 0.0f });
+      }
+
+      {
+        glm_mat4_identity(world_matrix);
+        glm_scale_uni(world_matrix, (float)scene_state.scale * 0.01f);
+
+        calc_view_matrix(view_matrix);
+
+        const float aspect = (float)window_width / (float)window_height;
+        calc_proj_matrix(aspect, glm_rad((float)scene_state.camera_fov), proj_matrix);
+
+        glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
+      }
+
+      if (skeleton_state.tool_active)
+      {
+        update_skeleton_tool(world_matrix, viewproj_matrix, screen_resolution);
+      }
 
       if (display_state.show_gui)
       {
@@ -228,12 +260,6 @@ int main(int argc, char* argv[])
       {
         model_update_animation(delta_time);
       }
-
-      if (scene_state.auto_rotate_camera)
-      {
-        const float speed = (float)scene_state.auto_rotate_camera_speed * (-0.01f);
-        camera_tumble((vec2){ delta_time * speed, 0.0f });
-      }
     }
 
     // Render
@@ -241,19 +267,6 @@ int main(int argc, char* argv[])
       glClearColor(scene_state.background_color[0], scene_state.background_color[1], scene_state.background_color[2],
                    1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-      mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-      glm_scale_uni(world_matrix, (float)scene_state.scale * 0.01f);
-
-      mat4 view_matrix;
-      calc_view_matrix(view_matrix);
-
-      mat4 proj_matrix;
-      const float aspect = (float)window_width / (float)window_height;
-      calc_proj_matrix(aspect, glm_rad((float)scene_state.camera_fov), proj_matrix);
-
-      mat4 viewproj_matrix;
-      glm_mat4_mul(proj_matrix, view_matrix, viewproj_matrix);
 
       vec3 light_dir, camera_pos;
       calc_light_dir(light_dir);
@@ -283,9 +296,8 @@ int main(int argc, char* argv[])
         draw_grid(viewproj_matrix);
       }
 
-      if (model_loaded && display_state.show_skeleton)
+      if (model_loaded && skeleton_state.tool_active)
       {
-        vec2 screen_resolution = { (float)window_width, (float)window_height };
         draw_skeleton_overlay(&skeleton_state, world_matrix, view_matrix, proj_matrix, screen_resolution);
       }
 
@@ -310,6 +322,7 @@ int main(int argc, char* argv[])
     destroy_model();
   }
 
+  destroy_skeleton_tool();
   destroy_wireframe_overlay();
   destroy_skeleton_overlay();
   destroy_grid();

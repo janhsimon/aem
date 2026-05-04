@@ -7,6 +7,7 @@
 #include "model.h"
 #include "scene_state.h"
 #include "skeleton_state.h"
+#include "skeleton_tool.h"
 
 #include <cglm/vec2.h>
 #include <glfw/glfw3.h>
@@ -18,6 +19,7 @@
 #define LEFT_CTRL_KEY (1 << 1)
 
 static vec2 last_cursor_pos;
+static bool is_dragging = false;
 static uint8_t mouse_button_mask = 0;
 static uint8_t keyboard_key_mask = 0;
 
@@ -54,6 +56,8 @@ void cursor_pos_callback(GLFWwindow* window, double x, double y)
   // Camera or light tumble
   if ((mouse_button_mask & LEFT_MOUSE_BUTTON) != 0 && (mouse_button_mask & RIGHT_MOUSE_BUTTON) == 0)
   {
+    is_dragging = true;
+
     vec2 delta = { x, y };
     glm_vec2_sub(delta, last_cursor_pos, delta);
     glm_vec2_scale(delta, GLM_PI, delta);
@@ -104,11 +108,19 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     {
       mouse_button_mask &= ~LEFT_MOUSE_BUTTON;
 
-      //if (!is_mouse_over_guizmo())
-      if (skeleton_state->hover_joint_index >= 0)
+      if (!is_mouse_consumed() && !is_dragging)
       {
-        skeleton_state->selected_joint_index = skeleton_state->hover_joint_index;
+        if (skeleton_state->hover_joint_index >= 0)
+        {
+          skeleton_state->selected_joint_index = skeleton_state->hover_joint_index;
+        }
+        else if (!is_mouse_over_guizmo())
+        {
+          skeleton_state->selected_joint_index = -1;
+        }
       }
+
+      is_dragging = false;
     }
   }
   else if (button == GLFW_MOUSE_BUTTON_RIGHT)
@@ -167,37 +179,81 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     {
       play_pause_model_animations();
     }
-    else if (key == GLFW_KEY_ESCAPE)
-    {
-      skeleton_state->selected_joint_index = -1;
-    }
     else if (key == GLFW_KEY_P)
     {
       reset_camera_pivot();
+    }
+    else if (key == GLFW_KEY_S)
+    {
+      skeleton_state->tool_active = !skeleton_state->tool_active;
+
+      if (skeleton_state->tool_active && !skeleton_state->tool_available)
+      {
+        skeleton_state->tool_active = false;
+      }
     }
     else if (key == GLFW_KEY_U)
     {
       display_state->show_gui = !display_state->show_gui;
     }
-    else if (key == GLFW_KEY_G)
+    else if (key == GLFW_KEY_D)
     {
       display_state->show_grid = !display_state->show_grid;
     }
-    else if (key == GLFW_KEY_S)
-    {
-      display_state->show_skeleton = !display_state->show_skeleton;
-    }
-    else if (key == GLFW_KEY_W)
+    else if (key == GLFW_KEY_F)
     {
       display_state->show_wireframe = !display_state->show_wireframe;
     }
-    else if (key == GLFW_KEY_R)
+    else if (key == GLFW_KEY_C)
     {
       scene_state->auto_rotate_camera = !scene_state->auto_rotate_camera;
     }
     else if (key == GLFW_KEY_T)
     {
       display_state->render_transparent = !display_state->render_transparent;
+    }
+    else if (key == GLFW_KEY_J)
+    {
+      skeleton_tool_reset_selected_joint(skeleton_state);
+    }
+    else if (key == GLFW_KEY_R)
+    {
+      skeleton_tool_reset_all_joints(skeleton_state);
+    }
+    else if (key == GLFW_KEY_Q)
+    {
+      skeleton_state->translate_enabled = !skeleton_state->translate_enabled;
+
+      if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+      {
+        skeleton_state->translate_enabled = true;
+      }
+    }
+    else if (key == GLFW_KEY_W)
+    {
+      skeleton_state->rotate_enabled = !skeleton_state->rotate_enabled;
+
+      if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+      {
+        skeleton_state->rotate_enabled = true;
+      }
+    }
+    else if (key == GLFW_KEY_E)
+    {
+      skeleton_state->scale_enabled = !skeleton_state->scale_enabled;
+
+      if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+      {
+        skeleton_state->scale_enabled = true;
+      }
+    }
+    else if (key == GLFW_KEY_G)
+    {
+      skeleton_state->tool_move_mode = SkeletonToolMoveMode_Global;
+    }
+    else if (key == GLFW_KEY_L)
+    {
+      skeleton_state->tool_move_mode = SkeletonToolMoveMode_Local;
     }
     else if (key == GLFW_KEY_MINUS)
     {

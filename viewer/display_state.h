@@ -34,7 +34,6 @@ struct DisplayState
 {
   bool show_gui;
   bool show_grid;
-  bool show_skeleton;
   bool show_wireframe;
   RenderMode render_mode;
   bool render_transparent;

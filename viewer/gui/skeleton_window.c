@@ -1,4 +1,4 @@
-#include "skeleton.h"
+#include "skeleton_window.h"
 
 #include "model.h"
 #include "skeleton_state.h"
@@ -27,14 +27,14 @@ struct Node
 static struct Node* nodes = NULL;
 static uint32_t node_count;
 
-struct SkeletonState* skeleton_state;
+static struct SkeletonState* skeleton_state;
 
-void init_skeleton(struct SkeletonState* skeleton_state_)
+void init_skeleton_window(struct SkeletonState* skeleton_state_)
 {
   skeleton_state = skeleton_state_;
 }
 
-void skeleton_on_new_model()
+void skeleton_window_on_new_model()
 {
   struct AEMJoint* joints = get_model_joints();
   node_count = get_model_joint_count();
@@ -150,9 +150,17 @@ static void draw_skeleton_tree(const struct Node* node)
   }
 }
 
-void update_skeleton(int screen_width, int screen_height)
+void update_skeleton_window(int screen_width, int screen_height)
 {
-  skeleton_state->hover_joint_index = -1;
+  // Joint name tooltip
+  const struct AEMJoint* joints = get_model_joints();
+  if (skeleton_state->hover_joint_index >= 0)
+  {
+    const struct AEMJoint* joint = &joints[skeleton_state->hover_joint_index];
+    igBeginTooltip();
+    igText(joint->name);
+    igEndTooltip();
+  }
 
   igSetNextWindowPos((struct ImVec2_c){ 50.0f, 50.0f }, ImGuiCond_Once, (struct ImVec2_c){ 0.0f, 0.0f });
   igSetNextWindowSize((struct ImVec2_c){ screen_width / 3, screen_height / 2 }, ImGuiCond_Once);
@@ -174,7 +182,7 @@ void update_skeleton(int screen_width, int screen_height)
   igEnd();
 }
 
-void destroy_skeleton()
+void destroy_skeleton_window()
 {
   for (uint32_t node_index = 0; node_index < node_count; ++node_index)
   {

@@ -17,7 +17,7 @@ static struct AEMAnimationMixer* mixer;
 static uint32_t texture_count;
 static GLuint* texture_handles;
 
-static uint32_t joint_count;
+static uint32_t joint_count = 0;
 static struct AEMJoint* joints;
 static mat4* joint_transforms;
 

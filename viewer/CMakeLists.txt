@@ -25,6 +25,9 @@ set(SOURCE
 
   skeleton_state.h
 
+  skeleton_tool.c
+  skeleton_tool.h
+
   viewer.c
 
   gui/animation_mixer.c
@@ -36,8 +39,8 @@ set(SOURCE
   gui/main_menu.c
   gui/main_menu.h
 
-  gui/skeleton.c
-  gui/skeleton.h
+  gui/skeleton_window.c
+  gui/skeleton_window.h
 
   overlay/skeleton_overlay.c
   overlay/skeleton_overlay.h

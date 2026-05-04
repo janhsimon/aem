@@ -1,20 +1,29 @@
 #include "main_menu.h"
 
+#include "camera.h"
 #include "display_state.h"
+#include "model.h"
 #include "scene_state.h"
+#include "skeleton_state.h"
+#include "skeleton_tool.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
 
 struct DisplayState* display_state;
 struct SceneState* scene_state;
+struct SkeletonState* skeleton_state;
 
 static void (*file_open_callback)() = NULL;
 
-void init_main_menu(struct DisplayState* display_state_, struct SceneState* scene_state_, void (*file_open_callback_)())
+void init_main_menu(struct DisplayState* display_state_,
+                    struct SceneState* scene_state_,
+                    struct SkeletonState* skeleton_state_,
+                    void (*file_open_callback_)())
 {
   display_state = display_state_;
   scene_state = scene_state_;
+  skeleton_state = skeleton_state_;
 
   file_open_callback = file_open_callback_;
 }
@@ -28,6 +37,72 @@ void update_main_menu()
       if (igMenuItem_Bool("Open...", "O", false, true))
       {
         file_open_callback();
+      }
+
+      igEndMenu();
+    }
+
+    if (igBeginMenu("Skeleton", skeleton_state->tool_available))
+    {
+      if (igMenuItem_Bool("Show skeleton", "S", skeleton_state->tool_active, true))
+      {
+        skeleton_state->tool_active = !skeleton_state->tool_active;
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Reset selected joint", "J", false, skeleton_state->selected_joint_index >= 0))
+      {
+        skeleton_tool_reset_selected_joint(skeleton_state);
+      }
+
+      if (igMenuItem_Bool("Reset all joints", "R", false, true))
+      {
+        skeleton_tool_reset_all_joints(skeleton_state);
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Translate", "Q", skeleton_state->translate_enabled, true))
+      {
+        skeleton_state->translate_enabled = !skeleton_state->translate_enabled;
+
+        if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+        {
+          skeleton_state->translate_enabled = true;
+        }
+      }
+
+      if (igMenuItem_Bool("Rotate", "W", skeleton_state->rotate_enabled, true))
+      {
+        skeleton_state->rotate_enabled = !skeleton_state->rotate_enabled;
+
+        if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+        {
+          skeleton_state->rotate_enabled = true;
+        }
+      }
+
+      if (igMenuItem_Bool("Scale", "E", skeleton_state->scale_enabled, true))
+      {
+        skeleton_state->scale_enabled = !skeleton_state->scale_enabled;
+
+        if (!skeleton_state->translate_enabled && !skeleton_state->rotate_enabled && !skeleton_state->scale_enabled)
+        {
+          skeleton_state->scale_enabled = true;
+        }
+      }
+
+      igSeparator();
+
+      if (igMenuItem_Bool("Global", "G", skeleton_state->tool_move_mode == SkeletonToolMoveMode_Global, true))
+      {
+        skeleton_state->tool_move_mode = SkeletonToolMoveMode_Global;
+      }
+
+      if (igMenuItem_Bool("Local", "L", skeleton_state->tool_move_mode == SkeletonToolMoveMode_Local, true))
+      {
+        skeleton_state->tool_move_mode = SkeletonToolMoveMode_Local;
       }
 
       igEndMenu();
@@ -130,7 +205,7 @@ void update_main_menu()
       igSliderInt("##CameraFOV", &scene_state->camera_fov, 10, 160, "Camera FOV: %d deg", 0);
 
       // Auto-rotate camera
-      if (igMenuItem_Bool("Auto-Rotate Camera", "R", scene_state->auto_rotate_camera, true))
+      if (igMenuItem_Bool("Auto-Rotate Camera", "C", scene_state->auto_rotate_camera, true))
       {
         scene_state->auto_rotate_camera = !scene_state->auto_rotate_camera;
       }
@@ -154,15 +229,11 @@ void update_main_menu()
       {
         display_state->show_gui = !display_state->show_gui;
       }
-      if (igMenuItem_Bool("Show Grid", "G", display_state->show_grid, true))
+      if (igMenuItem_Bool("Show Grid", "D", display_state->show_grid, true))
       {
         display_state->show_grid = !display_state->show_grid;
       }
-      if (igMenuItem_Bool("Show Skeleton", "S", display_state->show_skeleton, true))
-      {
-        display_state->show_skeleton = !display_state->show_skeleton;
-      }
-      if (igMenuItem_Bool("Show Wireframe", "W", display_state->show_wireframe, true))
+      if (igMenuItem_Bool("Show Wireframe", "F", display_state->show_wireframe, true))
       {
         display_state->show_wireframe = !display_state->show_wireframe;
       }
