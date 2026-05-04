@@ -598,7 +598,7 @@ void aem_update_animation(const struct AEMModel* model,
     {
       glm_mat4_mul(joint_transforms[base_index],
                    joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)],
-                   output_transforms[joint_index]);
+                   joint_transforms[joint_index]);
     }
   }
 
@@ -611,7 +611,7 @@ void aem_update_animation(const struct AEMModel* model,
     calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
 
     // Convert the combined joint transform from joint to model space
-    glm_mat4_mul(joint_to_model, output_transforms[joint_index], output_transforms[joint_index]);
+    glm_mat4_mul(joint_to_model, joint_transforms[joint_index], output_transforms[joint_index]);
 
     // Use the inverse bind matrix to evaluate the final output transform for this joint
     mat4 inverse_bind_matrix;
