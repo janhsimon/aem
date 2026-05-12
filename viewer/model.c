@@ -269,10 +269,7 @@ void play_pause_model_animations()
     for (uint32_t channel_index = 0; channel_index < 4; ++channel_index)
     {
       struct AEMAnimationChannel* channel = aem_get_animation_mixer_channel(mixer, channel_index);
-      if (channel->weight > 0.0f)
-      {
-        channel->is_playing = !channel->is_playing;
-      }
+      channel->is_playing = !channel->is_playing;
     }
   }
 }

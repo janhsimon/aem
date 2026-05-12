@@ -9,6 +9,8 @@
 #include <cglm/mat4.h>
 #include <cglm/vec2.h>
 
+#include <assert.h>
+
 struct
 {
   vec3 position;
