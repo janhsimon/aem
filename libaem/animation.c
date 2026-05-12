@@ -527,7 +527,7 @@ void aem_update_animation(const struct AEMModel* model,
 
   mat4* joint_transforms = (mat4*)mixer->joint_transforms;
 
-  // Update the pose
+  // Pass 1: Update the base pose in jointspace, apply joint-space additive offset
   for (uint32_t joint_index = 0; joint_index < mixer->joint_count; ++joint_index)
   {
     vec3 t[4], s[4];
@@ -593,15 +593,24 @@ void aem_update_animation(const struct AEMModel* model,
     glm_quat_rotate(joint_transforms[base_index], blended_r, joint_transforms[base_index]);
     glm_scale(joint_transforms[base_index], blended_s);
 
-    // Add additive layers
-    for (uint32_t layer_index = 1; layer_index < mixer->layer_count; ++layer_index)
+    if (mixer->layer_count == 1)
     {
-      glm_mat4_mul(joint_transforms[base_index],
-                   joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)],
-                   joint_transforms[joint_index]);
+      glm_mat4_copy(joint_transforms[base_index], output_transforms[base_index]);
+    }
+    else
+    {
+      // Add additive layers
+      for (uint32_t layer_index = 1; layer_index < mixer->layer_count; ++layer_index)
+      {
+        glm_mat4_mul(joint_transforms[base_index],
+                     joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)],
+                     output_transforms[joint_index]);
+      }
     }
   }
 
+  // Pass 2: Convert outcome of the first pass from joint- to modelspace, use the inverse bind matrix to calculate the
+  // final delta output for skeletal animation of the joints
   for (uint32_t joint_index = 0; joint_index < mixer->joint_count; ++joint_index)
   {
     struct AEMJoint* joint = &model->joints[joint_index];
@@ -611,7 +620,7 @@ void aem_update_animation(const struct AEMModel* model,
     calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
 
     // Convert the combined joint transform from joint to model space
-    glm_mat4_mul(joint_to_model, joint_transforms[joint_index], output_transforms[joint_index]);
+    glm_mat4_mul(joint_to_model, output_transforms[joint_index], output_transforms[joint_index]);
 
     // Use the inverse bind matrix to evaluate the final output transform for this joint
     mat4 inverse_bind_matrix;

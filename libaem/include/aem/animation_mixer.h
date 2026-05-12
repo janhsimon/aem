@@ -50,13 +50,14 @@ void aem_set_animation_mixer_blend_mode(struct AEMAnimationMixer* mixer, enum AE
 struct AEMAnimationChannel*
 aem_get_animation_mixer_channel(const struct AEMAnimationMixer* mixer, uint32_t channel_index);
 
-// Model-space access and modification of joint transforms, with layer support
+// In modelspace
 void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
                                              const struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layers,
                                              float transform[16]);
 
+// In jointspace
 void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layer,
