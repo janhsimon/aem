@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
     }
 
-    if (!load_enemy_manager(&preferences, 3))
+    if (!load_enemy_manager(&preferences, 2))
     {
       printf("Failed to load enemy manager\n");
       return EXIT_FAILURE;

@@ -34,6 +34,8 @@ void respawn_enemy(struct Enemy* enemy, bool play_sound)
   enemy->grounded = false;
   enemy->velocity_y = 0.0f;
 
+  enemy->view_offset_yaw = 0.0f;
+
   // Reset position and angle
   vec3 spawn_position;
   float spawn_yaw;
@@ -57,7 +59,7 @@ bool load_enemy(struct Enemy* enemy, const struct Preferences* preferences, cons
 {
   const uint32_t joint_count = aem_get_model_joint_count(model);
 
-  if (aem_load_animation_mixer(joint_count, 4, 1, &enemy->mixer) != AEMAnimationMixerResult_Success)
+  if (aem_load_animation_mixer(joint_count, 4, 2, &enemy->mixer) != AEMAnimationMixerResult_Success)
   {
     return false;
   }
@@ -214,6 +216,7 @@ void update_enemy(const struct Preferences* preferences,
   static struct EnemyStateOutput state_output;
   glm_vec2_zero(state_output.movement);
   state_output.angle_delta = 0.0f;
+  state_output.new_view_offset_yaw = 0.0f;
   state_output.should_respawn = false;
 
   switch (enemy->state)
@@ -241,8 +244,17 @@ void update_enemy(const struct Preferences* preferences,
     break;
   }
 
-  // Turn
+  // Turn the enemy transform
   glm_rotate_y(enemy->transform, glm_rad(state_output.angle_delta), enemy->transform);
+
+  // View offset
+  {
+    enemy->view_offset_yaw = state_output.new_view_offset_yaw;
+
+    mat4 view_offset = GLM_MAT4_IDENTITY_INIT;
+    glm_rotate_y(view_offset, glm_rad(enemy->view_offset_yaw), view_offset);
+    aem_set_animation_mixer_joint_transform(enemy->mixer, 12, AEMAnimationLayer_Additive, (float*)view_offset);
+  }
 
   // Calculate velocity
   vec3 velocity;

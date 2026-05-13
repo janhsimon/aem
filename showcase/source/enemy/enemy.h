@@ -114,6 +114,7 @@ struct EnemyStateOutput
 {
   vec2 movement;
   float angle_delta;
+  float new_view_offset_yaw;
   bool should_respawn;
 };
 
@@ -127,6 +128,7 @@ struct Enemy
   struct AEMAnimationMixer* mixer;
 
   mat4 transform;
+  float view_offset_yaw;
 
   vec3 hitbox_head_bottom, hitbox_head_top;
   vec3 hitbox_upper_torso_bottom, hitbox_upper_torso_top;
@@ -151,6 +153,8 @@ struct Enemy
     struct AEMAnimationChannel* channel;
     int current_nav_node_index;
     bool* visible_nav_nodes;
+    float view_timer;
+    float target_view_offset_yaw;
 
   } roam_state_data;
 
