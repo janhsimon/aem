@@ -20,6 +20,9 @@
 
 #define PLAYER_MIN_RESPAWN_COOLDOWN 3.0f // How long to wait after death until the player can respawn, in seconds
 
+// How long we consider to have just spawned for, using for protecting from instant deaths, in seconds
+#define POST_SPAWN_TIME_LIMIT 3.0f
+
 static vec3 player_velocity = GLM_VEC3_ZERO_INIT;
 static bool player_grounded = false;
 
@@ -31,6 +34,8 @@ static float death_feet_height = 0.0f;
 
 static bool has_fire_key_been_up_since_death;
 static float respawn_cooldown = 0.0f;
+
+static float post_spawn_timer = 0.0f;
 
 void player_update(const struct Preferences* preferences, bool mouse_look, float delta_time, bool* moving)
 {
@@ -95,11 +100,18 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
         view_model_respawn();
 
         respawn_cooldown = 0.0f;
+
+        post_spawn_timer = 0.0f;
       }
     }
   }
   else
   {
+    if (post_spawn_timer < POST_SPAWN_TIME_LIMIT)
+    {
+      post_spawn_timer += delta_time;
+    }
+
     // Crouching or standing stance
     if (get_crouch_key_down())
     {
@@ -294,6 +306,11 @@ void player_jump()
   }
 
   player_velocity[1] = 10.0f;
+}
+
+bool has_player_just_spawned()
+{
+  return post_spawn_timer < POST_SPAWN_TIME_LIMIT;
 }
 
 float get_player_health()

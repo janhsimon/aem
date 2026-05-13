@@ -14,6 +14,7 @@ float calc_angle_delta_towards_player(vec3 from_position, vec3 from_forward); //
 bool get_player_grounded();
 void player_jump();
 
+bool has_player_just_spawned();
 float get_player_health();
 
 bool is_player_hit(vec3 from, vec3 to);

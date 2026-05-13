@@ -53,7 +53,7 @@ void update_enemy_state_aim(struct Enemy* enemy, struct EnemyStateOutput* output
   {
     enemy->aim_state_data.aim_delay -= delta_time;
   }
-  else
+  else if (!has_player_just_spawned())
   {
     enter_enemy_state_fire(enemy);
   }
