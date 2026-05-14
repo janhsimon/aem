@@ -246,18 +246,21 @@ uint32_t get_model_joint_scale_keyframe_count(uint32_t animation_index, uint32_t
 
 void get_model_animation_joint_base_transform(uint32_t joint_index, mat4 transform)
 {
-  aem_get_animation_mixer_joint_transform(model, mixer, joint_index, AEMAnimationLayer_Base, *transform);
+  aem_get_animation_mixer_joint_transform(model, mixer, joint_index, AEMAnimationLayer_Base,
+                                          AEMJointTransformSpace_Global, *transform);
 }
 
 void get_model_animation_joint_combined_transform(uint32_t joint_index, mat4 transform)
 {
   aem_get_animation_mixer_joint_transform(model, mixer, joint_index,
-                                          AEMAnimationLayer_Base | AEMAnimationLayer_Additive, *transform);
+                                          AEMAnimationLayer_Base | AEMAnimationLayer_Additive,
+                                          AEMJointTransformSpace_Global, *transform);
 }
 
 void set_model_animation_joint_additive_transform(uint32_t joint_index, mat4 offset)
 {
-  aem_set_animation_mixer_joint_transform(mixer, joint_index, AEMAnimationLayer_Additive, (float*)offset);
+  aem_set_animation_mixer_joint_transform(model, mixer, joint_index, AEMAnimationLayer_Additive,
+                                          AEMJointTransformSpace_Local, (float*)offset);
 }
 
 void play_pause_model_animations()
