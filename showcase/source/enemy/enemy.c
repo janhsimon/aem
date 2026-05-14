@@ -19,6 +19,7 @@
 #include <aem/model.h>
 
 #include <cglm/affine.h>
+#include <cglm/euler.h>
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
 
@@ -158,8 +159,22 @@ static bool calc_player_visible(struct Enemy* enemy)
 {
   // First test if the player is somewhat in front of the enemy
   {
+    // Find the facing direction of the enemy while taking the view offset into account
     vec3 enemy_dir;
-    glm_vec3_normalize_to(enemy->transform[2], enemy_dir);
+    {
+      glm_vec3_normalize_to(enemy->transform[2], enemy_dir);
+
+      vec4 temp;
+      glm_vec3_copy(enemy_dir, temp);
+      temp[3] = 0.0f;
+
+      mat4 view_offset;
+      glm_euler((vec3){ glm_rad(enemy->view_offset[0]), glm_rad(enemy->view_offset[1]), 0.0f }, view_offset);
+
+      glm_mat4_mulv(view_offset, temp, temp);
+
+      glm_vec3_copy(temp, enemy_dir);
+    }
 
     vec3 enemy_to_player;
     {

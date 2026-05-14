@@ -16,8 +16,15 @@
 
 #include <assert.h>
 
-#define VIEW_TIME 0.75f // How long the enemy looks a certain direction before changing its view, in seconds
-#define VIEW_SPEED 2.5f // How fast the enemy changes view direction
+#define VIEW_PITCH_MIN -35
+#define VIEW_PITCH_MAX 20
+#define VIEW_PITCH_TIME 1.25f // How long the enemy looks a certain direction before changing its view pitch, in seconds
+#define VIEW_PITCH_SPEED 1.5f // How fast the enemy changes view pitch
+
+#define VIEW_YAW_MIN -80
+#define VIEW_YAW_MAX 80
+#define VIEW_YAW_TIME 0.75f // How long the enemy looks a certain direction before changing its view yaw, in seconds
+#define VIEW_YAW_SPEED 2.5f // How fast the enemy changes view yaw
 
 enum RandomMoveModeReason
 {
@@ -176,7 +183,7 @@ void enter_enemy_state_roam(struct Enemy* enemy, bool instant)
 {
   enemy->state = EnemyState_Roam;
 
-  enemy->roam_state_data.view_timer = 0.0f;
+  enemy->roam_state_data.view_timer[0] = enemy->roam_state_data.view_timer[1] = 0.0f;
   enemy->roam_state_data.target_view_offset[0] = enemy->roam_state_data.target_view_offset[1] = 0.0f;
 
   pick_random_move_mode(enemy, instant ? RandomMoveModeReason_EnemyRespawned : RandomMoveModeReason_StateReentered);
@@ -208,22 +215,33 @@ void update_enemy_state_roam(struct Enemy* enemy, struct EnemyStateOutput* outpu
 {
   // Random torso yaw and pitch to simulate the enemy scanning the environment for the player
   {
-    if (enemy->roam_state_data.view_timer <= 0.0f)
+    // Pitch
+    if (enemy->roam_state_data.view_timer[0] <= 0.0f)
     {
-      enemy->roam_state_data.target_view_offset[0] = (rand() % 30) - 20; // Pitch (limited, mostly upwards ie. negative)
-      enemy->roam_state_data.target_view_offset[1] = (rand() % 160) - 80; // Yaw (wider and centered around 0 degrees)
-      enemy->roam_state_data.view_timer = VIEW_TIME;
+      enemy->roam_state_data.target_view_offset[0] = (rand() % (VIEW_PITCH_MAX - VIEW_PITCH_MIN)) + VIEW_PITCH_MIN;
+      enemy->roam_state_data.view_timer[0] = VIEW_PITCH_TIME;
     }
     else
     {
-      enemy->roam_state_data.view_timer -= delta_time;
+      enemy->roam_state_data.view_timer[0] -= delta_time;
+    }
+
+    // Yaw
+    if (enemy->roam_state_data.view_timer[1] <= 0.0f)
+    {
+      enemy->roam_state_data.target_view_offset[1] = (rand() % (VIEW_YAW_MAX - VIEW_YAW_MIN)) + VIEW_YAW_MIN;
+      enemy->roam_state_data.view_timer[1] = VIEW_YAW_TIME;
+    }
+    else
+    {
+      enemy->roam_state_data.view_timer[1] -= delta_time;
     }
 
     // Lerp towards the target angles
-    output->new_view_offset[0] =
-      glm_lerp(enemy->view_offset[0], enemy->roam_state_data.target_view_offset[0], delta_time * VIEW_SPEED); // Pitch
+    output->new_view_offset[0] = glm_lerp(enemy->view_offset[0], enemy->roam_state_data.target_view_offset[0],
+                                          delta_time * VIEW_PITCH_SPEED); // Pitch
     output->new_view_offset[1] =
-      glm_lerp(enemy->view_offset[1], enemy->roam_state_data.target_view_offset[1], delta_time * VIEW_SPEED); // Yaw
+      glm_lerp(enemy->view_offset[1], enemy->roam_state_data.target_view_offset[1], delta_time * VIEW_YAW_SPEED); // Yaw
   }
 
   // Yaw the torso to face the player all times for testing and randomize pitch

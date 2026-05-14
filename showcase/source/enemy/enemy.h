@@ -153,7 +153,7 @@ struct Enemy
     struct AEMAnimationChannel* channel;
     int current_nav_node_index;
     bool* visible_nav_nodes;
-    float view_timer;
+    float view_timer[2];         // 0: pitch, 1: yaw
     float target_view_offset[2]; // 0: pitch, 1: yaw
 
   } roam_state_data;
