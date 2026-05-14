@@ -34,7 +34,7 @@ void respawn_enemy(struct Enemy* enemy, bool play_sound)
   enemy->grounded = false;
   enemy->velocity_y = 0.0f;
 
-  enemy->view_offset_yaw = 0.0f;
+  enemy->view_offset[0] = enemy->view_offset[1] = 0.0f;
 
   // Reset position and angle
   vec3 spawn_position;
@@ -106,7 +106,7 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   {
     mat4 hitbox_head_transform;
     aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_HEAD_JOINT_INDEX, AEMAnimationLayer_Base,
-                                            (float*)hitbox_head_transform);
+                                            AEMJointTransformSpace_Global, (float*)hitbox_head_transform);
     glm_mat4_mul(enemy->transform, hitbox_head_transform, hitbox_head_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_HEAD_X, ENEMY_HITBOX_HEAD_BOTTOM_Y, ENEMY_HITBOX_HEAD_Z },
@@ -121,7 +121,8 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   {
     mat4 hitbox_upper_torso_transform;
     aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_UPPER_TORSO_JOINT_INDEX,
-                                            AEMAnimationLayer_Base, (float*)hitbox_upper_torso_transform);
+                                            AEMAnimationLayer_Base, AEMJointTransformSpace_Global,
+                                            (float*)hitbox_upper_torso_transform);
     glm_mat4_mul(enemy->transform, hitbox_upper_torso_transform, hitbox_upper_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_UPPER_TORSO_X, ENEMY_HITBOX_UPPER_TORSO_BOTTOM_Y, ENEMY_HITBOX_UPPER_TORSO_Z },
@@ -138,7 +139,8 @@ static void update_enemy_hitboxes(struct Enemy* enemy, const struct AEMModel* mo
   {
     mat4 hitbox_lower_torso_transform;
     aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_HITBOX_LOWER_TORSO_JOINT_INDEX,
-                                            AEMAnimationLayer_Base, (float*)hitbox_lower_torso_transform);
+                                            AEMAnimationLayer_Base, AEMJointTransformSpace_Global,
+                                            (float*)hitbox_lower_torso_transform);
     glm_mat4_mul(enemy->transform, hitbox_lower_torso_transform, hitbox_lower_torso_transform); // Model to world space
 
     glm_vec3_copy((vec3){ ENEMY_HITBOX_LOWER_TORSO_X, ENEMY_HITBOX_LOWER_TORSO_BOTTOM_Y, ENEMY_HITBOX_LOWER_TORSO_Z },
@@ -216,7 +218,7 @@ void update_enemy(const struct Preferences* preferences,
   static struct EnemyStateOutput state_output;
   glm_vec2_zero(state_output.movement);
   state_output.angle_delta = 0.0f;
-  state_output.new_view_offset_yaw = 0.0f;
+  state_output.new_view_offset[0] = state_output.new_view_offset[1] = 0.0f;
   state_output.should_respawn = false;
 
   switch (enemy->state)
@@ -249,11 +251,14 @@ void update_enemy(const struct Preferences* preferences,
 
   // View offset
   {
-    enemy->view_offset_yaw = state_output.new_view_offset_yaw;
+    enemy->view_offset[0] = state_output.new_view_offset[0]; // Pitch
+    enemy->view_offset[1] = state_output.new_view_offset[1]; // Yaw
 
     mat4 view_offset = GLM_MAT4_IDENTITY_INIT;
-    glm_rotate_y(view_offset, glm_rad(enemy->view_offset_yaw), view_offset);
-    aem_set_animation_mixer_joint_transform(enemy->mixer, 12, AEMAnimationLayer_Additive, (float*)view_offset);
+    glm_rotate_y(view_offset, glm_rad(enemy->view_offset[1]), view_offset); // Yaw
+    glm_rotate_x(view_offset, glm_rad(enemy->view_offset[0]), view_offset); // Pitch
+    aem_set_animation_mixer_joint_transform(model, enemy->mixer, 12, AEMAnimationLayer_Additive,
+                                            AEMJointTransformSpace_Global, (float*)view_offset);
   }
 
   // Calculate velocity

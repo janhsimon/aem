@@ -58,7 +58,8 @@ static void view_model_get_muzzleflash_world_matrix(struct Preferences* preferen
   view_model_get_world_matrix(preferences, muzzleflash_world_matrix);
 
   mat4 temp;
-  aem_get_animation_mixer_joint_transform(render_info->model, mixer, 1054, AEMAnimationLayer_Base, (float*)temp);
+  aem_get_animation_mixer_joint_transform(render_info->model, mixer, 1054, AEMAnimationLayer_Base,
+                                          AEMJointTransformSpace_Global, (float*)temp);
 
   glm_mat4_mul(muzzleflash_world_matrix, temp, muzzleflash_world_matrix);
 

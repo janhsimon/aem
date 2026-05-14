@@ -32,7 +32,7 @@ static void fire(struct Enemy* enemy)
 
   mat4 tracer_start;
   aem_get_animation_mixer_joint_transform(model, enemy->mixer, ENEMY_GUN_MUZZLE_JOINT_INDEX, AEMAnimationLayer_Base,
-                                          (float*)tracer_start);
+                                          AEMJointTransformSpace_Global, (float*)tracer_start);
   glm_mat4_mul(enemy->transform, tracer_start, tracer_start);
 
   vec3 start = GLM_VEC3_ZERO_INIT;

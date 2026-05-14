@@ -5,6 +5,7 @@
 #include "enemy_state_aim.h"
 #include "enemy_state_chase.h"
 #include "map.h"
+#include "player/player.h"
 #include "preferences.h"
 #include "sound.h"
 
@@ -176,7 +177,7 @@ void enter_enemy_state_roam(struct Enemy* enemy, bool instant)
   enemy->state = EnemyState_Roam;
 
   enemy->roam_state_data.view_timer = 0.0f;
-  enemy->roam_state_data.target_view_offset_yaw = 0.0f;
+  enemy->roam_state_data.target_view_offset[0] = enemy->roam_state_data.target_view_offset[1] = 0.0f;
 
   pick_random_move_mode(enemy, instant ? RandomMoveModeReason_EnemyRespawned : RandomMoveModeReason_StateReentered);
 }
@@ -205,11 +206,12 @@ static bool calc_point_visible_from_enemy(vec3 enemy_position, vec3 point)
 
 void update_enemy_state_roam(struct Enemy* enemy, struct EnemyStateOutput* output, float delta_time)
 {
-  // Pick a new torso rotation every now and then
+  // Random torso yaw and pitch to simulate the enemy scanning the environment for the player
   {
     if (enemy->roam_state_data.view_timer <= 0.0f)
     {
-      enemy->roam_state_data.target_view_offset_yaw = (rand() % 160) - 80;
+      enemy->roam_state_data.target_view_offset[0] = (rand() % 30) - 20; // Pitch (limited, mostly upwards ie. negative)
+      enemy->roam_state_data.target_view_offset[1] = (rand() % 160) - 80; // Yaw (wider and centered around 0 degrees)
       enemy->roam_state_data.view_timer = VIEW_TIME;
     }
     else
@@ -217,12 +219,34 @@ void update_enemy_state_roam(struct Enemy* enemy, struct EnemyStateOutput* outpu
       enemy->roam_state_data.view_timer -= delta_time;
     }
 
-    output->new_view_offset_yaw =
-      glm_lerp(enemy->view_offset_yaw, enemy->roam_state_data.target_view_offset_yaw, delta_time * VIEW_SPEED);
+    // Lerp towards the target angles
+    output->new_view_offset[0] =
+      glm_lerp(enemy->view_offset[0], enemy->roam_state_data.target_view_offset[0], delta_time * VIEW_SPEED); // Pitch
+    output->new_view_offset[1] =
+      glm_lerp(enemy->view_offset[1], enemy->roam_state_data.target_view_offset[1], delta_time * VIEW_SPEED); // Yaw
   }
 
-  // Torso rotation to face the player at all times
-  // enemy->torso_angle = calc_angle_delta_towards_player(enemy->transform[3], enemy->transform[2]);
+  // Yaw the torso to face the player all times for testing and randomize pitch
+  //{
+  //  // Random pitch for testing
+  //  {
+  //    if (enemy->roam_state_data.view_timer <= 0.0f)
+  //    {
+  //      enemy->roam_state_data.target_view_offset[0] = (rand() % 60) - 30;
+  //      enemy->roam_state_data.view_timer = VIEW_TIME;
+  //    }
+  //    else
+  //    {
+  //      enemy->roam_state_data.view_timer -= delta_time;
+  //    }
+
+  //    output->new_view_offset[0] =
+  //      glm_lerp(enemy->view_offset[0], enemy->roam_state_data.target_view_offset[0], delta_time * VIEW_SPEED);
+  //  }
+
+  //  // Torso yaw rotation to face the player at all times for testing
+  //  output->new_view_offset[1] = calc_angle_delta_towards_player(enemy->transform[3], enemy->transform[2]);
+  //}
 
   // Determine which nav nodes are visible from the perspective of the enemy
   {
