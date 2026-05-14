@@ -296,6 +296,7 @@ void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
                                              const struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layers,
+                                             enum AEMJointTransformSpace space,
                                              float transform[16])
 {
   if (!mixer->is_enabled)
@@ -342,17 +343,22 @@ void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
     }
   }
 
-  // Get the joint to model transform (this takes offsets into account)
-  mat4 joint_to_model;
-  calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
+  if (space == AEMJointTransformSpace_Global)
+  {
+    // Get the joint to model transform (this takes offsets into account)
+    mat4 joint_to_model;
+    calc_joint_to_model_transform(model, mixer, joint_index, joint_to_model);
 
-  // Bring the local joint-space transform to model space
-  glm_mat4_mul(joint_to_model, (vec4*)transform, (vec4*)transform);
+    // Bring the local joint-space transform to model space
+    glm_mat4_mul(joint_to_model, (vec4*)transform, (vec4*)transform);
+  }
 }
 
-void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
+void aem_set_animation_mixer_joint_transform(const struct AEMModel* model,
+                                             struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layer,
+                                             enum AEMJointTransformSpace space,
                                              float transform[16])
 {
   mat4* joint_transforms = (mat4*)mixer->joint_transforms;
@@ -361,7 +367,38 @@ void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
   {
     if (layers_are_index(layer, layer_index))
     {
+      const struct AEMJoint* joint = &model->joints[joint_index];
+
+      // Correct coordinate system for global transforms
+      if (space == AEMJointTransformSpace_Global && joint->parent_joint_index >= 0)
+      {
+        mat4 parent_transform;
+        calc_joint_to_model_transform(model, mixer, joint_index, parent_transform);
+
+        mat3 parent_rot;
+        glm_mat4_pick3(parent_transform, parent_rot);
+
+        // Remove scale from basis vectors
+        glm_vec3_normalize(parent_rot[0]);
+        glm_vec3_normalize(parent_rot[1]);
+        glm_vec3_normalize(parent_rot[2]);
+
+        mat3 inv_parent_rot;
+        glm_mat3_transpose_to(parent_rot, inv_parent_rot);
+
+        mat4 parent4 = GLM_MAT4_IDENTITY_INIT;
+        mat4 inv4 = GLM_MAT4_IDENTITY_INIT;
+        glm_mat4_ins3(parent_rot, parent4);
+        glm_mat4_ins3(inv_parent_rot, inv4);
+
+        // local = inv(parent) * global * parent
+        mat4 temp4;
+        glm_mat4_mul(inv4, (vec4*)transform, temp4);
+        glm_mat4_mul(temp4, parent4, (vec4*)transform);
+      }
+
       glm_mat4_copy((vec4*)transform, joint_transforms[get_joint_transform_index(mixer, layer_index, joint_index)]);
+
       return;
     }
   }

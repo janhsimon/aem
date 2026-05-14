@@ -31,6 +31,12 @@ struct AEMAnimationChannel
   float time, playback_speed, weight;
 };
 
+enum AEMJointTransformSpace
+{
+  AEMJointTransformSpace_Local,
+  AEMJointTransformSpace_Global
+};
+
 enum AEMAnimationMixerResult aem_load_animation_mixer(uint32_t joint_count,
                                                       uint32_t channel_count,
                                                       uint32_t layer_count,
@@ -50,17 +56,19 @@ void aem_set_animation_mixer_blend_mode(struct AEMAnimationMixer* mixer, enum AE
 struct AEMAnimationChannel*
 aem_get_animation_mixer_channel(const struct AEMAnimationMixer* mixer, uint32_t channel_index);
 
-// In modelspace
+// For manual joint transform access and modification
 void aem_get_animation_mixer_joint_transform(const struct AEMModel* model,
                                              const struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layers,
+                                             enum AEMJointTransformSpace space,
                                              float transform[16]);
 
-// In jointspace
-void aem_set_animation_mixer_joint_transform(struct AEMAnimationMixer* mixer,
+void aem_set_animation_mixer_joint_transform(const struct AEMModel* model,
+                                             struct AEMAnimationMixer* mixer,
                                              uint32_t joint_index,
                                              enum AEMAnimationLayer layer,
+                                             enum AEMJointTransformSpace space,
                                              float transform[16]);
 
 // Convenience functions
