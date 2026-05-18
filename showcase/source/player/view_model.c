@@ -8,6 +8,7 @@
 #include "input.h"
 #include "model_manager.h"
 #include "particle_manager.h"
+#include "player/player.h"
 #include "preferences.h"
 #include "sound.h"
 #include "tracer_manager.h"
@@ -21,7 +22,6 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #define IDLE_ANIMATION_INDEX 1
@@ -131,7 +131,15 @@ bool load_view_model()
 
 void update_view_model(struct Preferences* preferences, bool firing_enabled, bool moving, float delta_time)
 {
-  shot_cooldown -= delta_time;
+  if (shot_cooldown > 0.0f)
+  {
+    shot_cooldown -= delta_time;
+
+    if (shot_cooldown < 0.0f)
+    {
+      shot_cooldown = 0.0f;
+    }
+  }
 
   // Move muzzleflash particle emitter to the right position
   {
@@ -195,10 +203,23 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
         mat3 cam_rot;
         camera_get_rotation_with_recoil(cam_rot);
 
-        vec3 ray = { 0.0f, 0.0f, 1.0f };
-        glm_mat3_mulv(cam_rot, ray, ray);
+        vec3 ray;
 
-        glm_vec3_scale_as(ray, 10000.0f, ray);
+        // Spread
+        {
+          const float theta = ((rand() % 100) / 100.0f) * GLM_PI * 2.0f;
+          const float r = sqrtf((rand() % 100) / 100.0f) * get_player_spread();
+
+          ray[0] = cosf(theta) * r;
+          ray[1] = sinf(theta) * r;
+          ray[2] = 1.0f;
+
+          glm_vec3_norm(ray);
+        }
+
+        ray[2] = 10000.0f; // Extend the ray
+
+        glm_mat3_mulv(cam_rot, ray, ray);
 
         vec3 to;
         glm_vec3_add(from, ray, to);
@@ -279,8 +300,12 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
 
         shot_cooldown = SHOT_COOLDOWN;
 
-        camera_add_recoil_yaw_pitch(((rand() % 100) / 100.0f) * 0.04f - 0.02f,
-                                    -0.04f - ((rand() % 100) / 100.0f) * 0.02f);
+        // Recoil
+        if (!preferences->no_recoil)
+        {
+          camera_add_recoil_yaw_pitch(((rand() % 100) / 100.0f) * 0.04f - 0.02f,
+                                      -0.04f - ((rand() % 100) / 100.0f) * 0.02f);
+        }
       }
     }
     else
@@ -431,4 +456,9 @@ void view_model_respawn()
   ammo = BULLET_COUNT;
 
   play_ak47_equip_sound();
+}
+
+float view_model_get_normalized_shot_cooldown()
+{
+  return shot_cooldown / SHOT_COOLDOWN;
 }

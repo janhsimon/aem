@@ -18,6 +18,12 @@ struct ParticleSystemPreferences
   float scale, scale_spread, scale_falloff;
 };
 
+struct WeaponSpreadPreferences
+{
+  float spread_neutral, spread_crouch, spread_walk, spread_run, spread_air;
+  float spread_shrink_time, spread_grow_time;
+};
+
 struct Preferences
 {
   // Debug
@@ -25,6 +31,7 @@ struct Preferences
   bool show_player_info;
   bool infinite_ammo;
   bool no_clip;
+  bool no_spread, no_recoil;
 
   // AI
   bool ai_walking;
@@ -74,9 +81,16 @@ struct Preferences
   float view_model_fov;
   float view_model_tilt;
 
+  // Weapon - CZ
+  struct WeaponSpreadPreferences weapon_cz_spread;
+
   // HUD
   vec4 hud_background_color;
   vec4 hud_foreground_color;
+  int hud_crosshair_length;                                 // The length of the lines that make up the crosshair
+  int hud_crosshair_gap_min, hud_crosshair_gap_max;         // The min/max crosshair gap
+  float hud_crosshair_spread_min, hud_crosshair_spread_max; // Clamps the weapon's spread values
+  int hud_crosshair_fire_expand;                            // How much the crosshair expands when firing a bullet
 
   // Particle systems
   struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,

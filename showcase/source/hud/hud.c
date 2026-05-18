@@ -108,9 +108,16 @@ void update_hud(uint32_t screen_width,
   // Crosshair
   if (get_player_health() > 0.0f)
   {
-    const float gap_size = 6.0f;
+    float spread = glm_clamp(get_player_spread(), (float)preferences->hud_crosshair_spread_min,
+                             (float)preferences->hud_crosshair_spread_max);
+    spread -= (float)preferences->hud_crosshair_spread_min;
+    spread /= ((float)preferences->hud_crosshair_spread_max - (float)preferences->hud_crosshair_spread_min);
+    spread = glm_lerp((float)preferences->hud_crosshair_gap_min, (float)preferences->hud_crosshair_gap_max, spread);
+
+    const float gap_size =
+      spread + view_model_get_normalized_shot_cooldown() * (float)preferences->hud_crosshair_fire_expand;
     const float half_gap_size = gap_size / 2.0f;
-    const float line_size = 8.0f;
+    const float line_size = preferences->hud_crosshair_length;
 
     const ImU32 color = igGetColorU32_Vec4(foreground_color);
 

@@ -30,6 +30,8 @@ static float player_height = PLAYER_HEIGHT_STANDING; // From feet to eyes, betwe
 
 static float health = 100.0f;
 
+static float spread = 0.0f;
+
 static float death_feet_height = 0.0f;
 
 static bool has_fire_key_been_up_since_death;
@@ -107,6 +109,8 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   }
   else
   {
+    float spread_target = preferences->weapon_cz_spread.spread_neutral;
+
     if (post_spawn_timer < POST_SPAWN_TIME_LIMIT)
     {
       post_spawn_timer += delta_time;
@@ -185,13 +189,17 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       {
         // Determine the target speed depending on if the player is running, walking, crouching or has no clip turned on
         float wish_speed = preferences->player_run_speed;
+        spread_target = preferences->weapon_cz_spread.spread_run;
+
         if (get_crouch_key_down())
         {
           wish_speed = preferences->player_crouch_speed;
+          spread_target = preferences->weapon_cz_spread.spread_crouch;
         }
         else if (get_walk_key_down())
         {
           wish_speed = preferences->player_walk_speed;
+          spread_target = preferences->weapon_cz_spread.spread_walk;
         }
 
         if (preferences->no_clip)
@@ -241,6 +249,23 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
     {
       glm_vec3_add(start_cam_pos, player_velocity, start_cam_pos);
       camera_set_position(start_cam_pos);
+    }
+
+    if (!player_grounded)
+    {
+      spread_target = preferences->weapon_cz_spread.spread_air;
+    }
+
+    // Spread
+    {
+      spread = glm_lerp(spread, spread_target,
+                        delta_time * (spread_target > spread ? preferences->weapon_cz_spread.spread_grow_time :
+                                                               preferences->weapon_cz_spread.spread_shrink_time));
+
+      if (preferences->no_spread)
+      {
+        spread = 0.0f;
+      }
     }
   }
 }
@@ -334,7 +359,7 @@ bool is_player_hit(vec3 from, vec3 to)
   return dist < (PLAYER_RADIUS * 0.33f);
 }
 
-void player_hurt(float damage, vec3 dir)
+void player_hurt(const struct Preferences* preferences, float damage, vec3 dir)
 {
   if (health <= 0.0f)
   {
@@ -379,4 +404,9 @@ float player_get_min_respawn_cooldown()
 float player_get_respawn_cooldown()
 {
   return respawn_cooldown;
+}
+
+float get_player_spread()
+{
+  return spread;
 }

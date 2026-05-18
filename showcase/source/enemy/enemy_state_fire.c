@@ -61,7 +61,7 @@ static void fire(struct Enemy* enemy)
   {
     vec3 dir;
     glm_vec3_sub(end, start, dir);
-    player_hurt(rand() % 32 + 9, dir);
+    player_hurt(preferences, rand() % 32 + 9, dir);
   }
 
   {

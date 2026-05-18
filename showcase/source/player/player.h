@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct Preferences;
+
 void player_update(const struct Preferences* preferences, bool mouse_look, float delta_time, bool* moving);
 
 void get_player_position(vec3 position);
@@ -18,7 +20,9 @@ bool has_player_just_spawned();
 float get_player_health();
 
 bool is_player_hit(vec3 from, vec3 to);
-void player_hurt(float damage, vec3 dir);
+void player_hurt(const struct Preferences* preferences, float damage, vec3 dir);
 
 float player_get_min_respawn_cooldown();
 float player_get_respawn_cooldown();
+
+float get_player_spread();

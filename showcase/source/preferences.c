@@ -9,6 +9,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->show_player_info = false;
   preferences->infinite_ammo = false;
   preferences->no_clip = false;
+  preferences->no_spread = preferences->no_recoil = false;
 
   // AI
   preferences->ai_walking = true;
@@ -73,9 +74,24 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->view_model_fov = 40.0f;
   preferences->view_model_tilt = 0.0f;
 
+  // Weapon - CZ
+  preferences->weapon_cz_spread.spread_neutral = 0.0f;
+  preferences->weapon_cz_spread.spread_crouch = 50.0f;
+  preferences->weapon_cz_spread.spread_walk = 140.0f;
+  preferences->weapon_cz_spread.spread_run = 200.0f;
+  preferences->weapon_cz_spread.spread_air = 1000.0f;
+  preferences->weapon_cz_spread.spread_shrink_time = 10.0f;
+  preferences->weapon_cz_spread.spread_grow_time = 25.0f;
+
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);
   glm_vec4_copy((vec4){ 1.0f, 0.74f, 0.0f, 1.0f }, preferences->hud_foreground_color);
+  preferences->hud_crosshair_length = 8;
+  preferences->hud_crosshair_gap_min = 6;
+  preferences->hud_crosshair_gap_max = 56;
+  preferences->hud_crosshair_spread_min = 0.0f;
+  preferences->hud_crosshair_spread_max = 300.0f;
+  preferences->hud_crosshair_fire_expand = 25;
 
   // Smoke particle system
   preferences->smoke_particle_system.particle_count = 600;

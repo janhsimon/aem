@@ -56,6 +56,20 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
+static void update_weapon_spread(struct WeaponSpreadPreferences* preferences)
+{
+  // Spread
+  igSliderFloat("Neutral spread", &preferences->spread_neutral, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Crouch spread", &preferences->spread_crouch, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Walk spread", &preferences->spread_walk, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Run spread", &preferences->spread_run, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Air spread", &preferences->spread_air, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+
+  // Spread shring/grow time
+  igSliderFloat("Spread shrink time", &preferences->spread_shrink_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Spread grow time", &preferences->spread_grow_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+}
+
 void update_debug_window(struct Preferences* preferences, uint32_t screen_width, uint32_t screen_height)
 {
   igSetNextWindowSizeConstraints((ImVec2){ screen_width / 4.0f, screen_height / 2.0f },
@@ -75,6 +89,8 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igCheckbox("Show player information", &preferences->show_player_info);
     igCheckbox("Infinite ammo", &preferences->infinite_ammo);
     igCheckbox("No clip", &preferences->no_clip);
+    igCheckbox("No spread", &preferences->no_spread);
+    igCheckbox("No recoil", &preferences->no_recoil);
 
     igCheckbox("Show shadow map", &show_shadow_map_window);
     igCheckbox("Show view-space normals", &show_view_space_normals_window);
@@ -118,7 +134,8 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
   if (igCollapsingHeader_TreeNodeFlags("Input", ImGuiTreeNodeFlags_None))
   {
-    igSliderFloat("Mouse sensitivity##Input", &preferences->input_mouse_sensitivity, 0.01f, 100.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Mouse sensitivity##Input", &preferences->input_mouse_sensitivity, 0.01f, 100.0f, "%f",
+                  ImGuiSliderFlags_None);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Physics", ImGuiTreeNodeFlags_None))
@@ -204,6 +221,15 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igCheckbox("Visualize Cascades##ShadowMapping", &preferences->shadow_mapping_visualize_cascades);
   }
 
+  if (igCollapsingHeader_TreeNodeFlags("Weapons", ImGuiTreeNodeFlags_None))
+  {
+    if (igTreeNode_Str("CZ"))
+    {
+      update_weapon_spread(&preferences->weapon_cz_spread);
+      igTreePop();
+    }
+  }
+
   if (igCollapsingHeader_TreeNodeFlags("View model", ImGuiTreeNodeFlags_None))
   {
     igSliderFloat3("Position", preferences->view_model_position, -10.0f, 10.0f, "%f", ImGuiSliderFlags_None);
@@ -216,6 +242,17 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
   {
     igColorEdit4("Foreground color##HUD", preferences->hud_foreground_color, ImGuiColorEditFlags_None);
     igColorEdit4("Background color##HUD", preferences->hud_background_color, ImGuiColorEditFlags_None);
+
+    // Crosshair
+    igSliderInt("Crosshair length##HUD", &preferences->hud_crosshair_length, 0, 100, "%d", ImGuiSliderFlags_None);
+    igSliderInt("Crosshair gap min##HUD", &preferences->hud_crosshair_gap_min, 0, 200, "%d", ImGuiSliderFlags_None);
+    igSliderInt("Crosshair gap max##HUD", &preferences->hud_crosshair_gap_max, 0, 200, "%d", ImGuiSliderFlags_None);
+    igSliderFloat("Crosshair spread min##HUD", &preferences->hud_crosshair_spread_min, 0.0f, 100.0f, "%f",
+                  ImGuiSliderFlags_None);
+    igSliderFloat("Crosshair spread max##HUD", &preferences->hud_crosshair_spread_max, 0.0f, 100.0f, "%f",
+                  ImGuiSliderFlags_None);
+    igSliderInt("Crosshair fire expand##HUD", &preferences->hud_crosshair_fire_expand, 0, 100, "%d",
+                ImGuiSliderFlags_None);
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Particle systems", ImGuiTreeNodeFlags_None))
