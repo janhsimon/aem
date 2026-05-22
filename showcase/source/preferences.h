@@ -18,10 +18,18 @@ struct ParticleSystemPreferences
   float scale, scale_spread, scale_falloff;
 };
 
-struct WeaponSpreadPreferences
+struct WeaponPreferences
 {
+  // Spread
   float spread_neutral, spread_crouch, spread_walk, spread_run, spread_air;
   float spread_shrink_time, spread_grow_time;
+
+  // Recoil
+  vec2 recoil_scale;
+
+  // Aim punch
+  vec2 aim_punch_scale;
+  float aim_punch_recover_speed;
 };
 
 struct Preferences
@@ -31,7 +39,7 @@ struct Preferences
   bool show_player_info;
   bool infinite_ammo;
   bool no_clip;
-  bool no_spread, no_recoil;
+  bool no_spread, no_recoil, no_aim_punch;
 
   // AI
   bool ai_walking;
@@ -82,7 +90,7 @@ struct Preferences
   float view_model_tilt;
 
   // Weapon - CZ
-  struct WeaponSpreadPreferences weapon_cz_spread;
+  struct WeaponPreferences weapon_cz;
 
   // HUD
   vec4 hud_background_color;

@@ -11,10 +11,11 @@
 
 static vec3 position = GLM_VEC3_ZERO_INIT;
 static vec3 angles = GLM_VEC3_ZERO_INIT; // pitch, yaw, roll
-static vec2 recoil = GLM_VEC2_ZERO_INIT;
 
-static vec3 forward_without_recoil, forward_with_recoil;
-static mat3 rotation_without_recoil, rotation_with_recoil;
+static vec2 aim_punch = GLM_VEC2_ZERO_INIT; // pitch, yaw
+
+static vec3 forward_without_aim_punch, forward_with_aim_punch;
+static mat3 rotation_without_aim_punch, rotation_with_aim_punch;
 
 static mat4 view_matrix, proj_matrix, view_model_proj_matrix, viewproj_matrix;
 
@@ -45,24 +46,26 @@ static void angles_to_direction(vec3 angles_, vec3 direction)
 
 void camera_calc_forward()
 {
-  angles_to_direction(angles, forward_without_recoil);
+  angles_to_direction(angles, forward_without_aim_punch);
 
-  vec3 angles_with_recoil;
-  angles_with_recoil[0] = angles[0] + recoil[0];
-  angles_with_recoil[1] = angles[1] + recoil[1];
-  angles_with_recoil[2] = angles[2];
+  vec3 angles_with_aim_punch;
+  angles_with_aim_punch[0] = angles[0] + aim_punch[0];
+  angles_with_aim_punch[1] = angles[1] + aim_punch[1];
+  angles_with_aim_punch[2] = angles[2];
 
-  angles_to_direction(angles_with_recoil, forward_with_recoil);
+  angles_to_direction(angles_with_aim_punch, forward_with_aim_punch);
 }
 
-void camera_get_forward_without_recoil(vec3 forward)
+void camera_get_forward(enum CameraMode mode, vec3 forward)
 {
-  glm_vec3_copy(forward_without_recoil, forward);
-}
-
-void camera_get_forward_with_recoil(vec3 forward)
-{
-  glm_vec3_copy(forward_with_recoil, forward);
+  if (mode == CameraMode_WithoutAimPunch)
+  {
+    glm_vec3_copy(forward_without_aim_punch, forward);
+  }
+  else if (mode == CameraMode_WithAimPunch)
+  {
+    glm_vec3_copy(forward_with_aim_punch, forward);
+  }
 }
 
 static void forward_to_rotation_matrix(vec3 forward, mat3 rotation)
@@ -81,22 +84,24 @@ static void forward_to_rotation_matrix(vec3 forward, mat3 rotation)
 
 void camera_calc_rotation()
 {
-  vec3 forward_without_recoil, forward_with_recoil;
-  camera_get_forward_without_recoil(forward_without_recoil);
-  camera_get_forward_with_recoil(forward_with_recoil);
+  vec3 forward_without_aim_punch, forward_with_aim_punch;
+  camera_get_forward(CameraMode_WithoutAimPunch, forward_without_aim_punch);
+  camera_get_forward(CameraMode_WithAimPunch, forward_with_aim_punch);
 
-  forward_to_rotation_matrix(forward_without_recoil, rotation_without_recoil);
-  forward_to_rotation_matrix(forward_with_recoil, rotation_with_recoil);
+  forward_to_rotation_matrix(forward_without_aim_punch, rotation_without_aim_punch);
+  forward_to_rotation_matrix(forward_with_aim_punch, rotation_with_aim_punch);
 }
 
-void camera_get_rotation_without_recoil(mat3 rotation)
+void camera_get_rotation(enum CameraMode mode, mat3 rotation)
 {
-  glm_mat3_copy(rotation_without_recoil, rotation);
-}
-
-void camera_get_rotation_with_recoil(mat3 rotation)
-{
-  glm_mat3_copy(rotation_with_recoil, rotation);
+  if (mode == CameraMode_WithoutAimPunch)
+  {
+    glm_mat3_copy(rotation_without_aim_punch, rotation);
+  }
+  else if (mode == CameraMode_WithAimPunch)
+  {
+    glm_mat3_copy(rotation_with_aim_punch, rotation);
+  }
 }
 
 void camera_get_yaw_pitch_roll(float* yaw, float* pitch, float* roll)
@@ -130,15 +135,21 @@ void camera_add_yaw_pitch_roll(float yaw, float pitch, float roll)
   }
 }
 
-void camera_add_recoil_yaw_pitch(float yaw, float pitch)
+void camera_reset_aim_punch()
 {
-  recoil[1] += yaw;
-  recoil[0] -= pitch;
+  glm_vec2_zero(aim_punch);
 }
 
-void camera_mul_recoil_yaw_pitch(float s)
+void camera_add_aim_punch(float yaw, float pitch)
 {
-  glm_vec2_scale(recoil, s, recoil);
+  aim_punch[0] += pitch;
+  aim_punch[1] += yaw;
+}
+
+void camera_update_aim_punch(const struct Preferences* preferences, float recovery, float delta_time)
+{
+  float recover = preferences->weapon_cz.aim_punch_recover_speed * recovery * delta_time;
+  glm_vec2_lerp(aim_punch, GLM_VEC2_ZERO, recover, aim_punch);
 }
 
 void camera_add_move(vec3 move)
@@ -151,9 +162,9 @@ void camera_calc_matrices(float aspect, float fov, float view_model_fov, float n
   // View matrix
   {
     vec3 final;
-    final[0] = angles[0] + recoil[0]; // Pitch
-    final[1] = angles[1] + recoil[1]; // Yaw
-    final[2] = angles[2];             // Roll
+    final[0] = angles[0] + aim_punch[0]; // Pitch
+    final[1] = angles[1] + aim_punch[1]; // Yaw
+    final[2] = angles[2];                // Roll
 
     // Forward vector from yaw + pitch
     vec3 forward = { cosf(final[1]) * cosf(final[0]), sinf(final[0]), sinf(final[1]) * cosf(final[0]) };

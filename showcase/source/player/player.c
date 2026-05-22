@@ -39,6 +39,25 @@ static float respawn_cooldown = 0.0f;
 
 static float post_spawn_timer = 0.0f;
 
+static void respawn()
+{
+  health = 100.0f;
+
+  vec3 spawn_position;
+  float spawn_yaw;
+  get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
+  spawn_position[1] += player_height - PLAYER_RADIUS;
+  camera_set_position(spawn_position);
+  camera_set_yaw_pitch_roll(glm_rad(spawn_yaw), 0.0f, 0.0f);
+  camera_reset_aim_punch();
+
+  view_model_respawn();
+
+  respawn_cooldown = 0.0f;
+
+  post_spawn_timer = 0.0f;
+}
+
 void player_update(const struct Preferences* preferences, bool mouse_look, float delta_time, bool* moving)
 {
   // Death animation
@@ -90,26 +109,13 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
       if (fire_key_down && respawn_cooldown >= PLAYER_MIN_RESPAWN_COOLDOWN && has_fire_key_been_up_since_death)
       {
-        health = 100.0f;
-
-        vec3 spawn_position;
-        float spawn_yaw;
-        get_current_map_random_enemy_spawn(spawn_position, &spawn_yaw);
-        spawn_position[1] += player_height - PLAYER_RADIUS;
-        camera_set_position(spawn_position);
-        camera_set_yaw_pitch_roll(glm_rad(spawn_yaw), 0.0f, 0.0f);
-
-        view_model_respawn();
-
-        respawn_cooldown = 0.0f;
-
-        post_spawn_timer = 0.0f;
+        respawn();
       }
     }
   }
   else
   {
-    float spread_target = preferences->weapon_cz_spread.spread_neutral;
+    float spread_target = preferences->weapon_cz.spread_neutral;
 
     if (post_spawn_timer < POST_SPAWN_TIME_LIMIT)
     {
@@ -163,7 +169,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       get_move_vector(wish_dir, moving);
 
       mat3 cam_rotation;
-      camera_get_rotation_without_recoil(cam_rotation);
+      camera_get_rotation(CameraMode_WithoutAimPunch, cam_rotation);
       glm_mat3_mulv(cam_rotation, wish_dir, wish_dir); // Transform move from local to camera space
 
       glm_normalize(wish_dir);
@@ -189,17 +195,17 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       {
         // Determine the target speed depending on if the player is running, walking, crouching or has no clip turned on
         float wish_speed = preferences->player_run_speed;
-        spread_target = preferences->weapon_cz_spread.spread_run;
+        spread_target = preferences->weapon_cz.spread_run;
 
         if (get_crouch_key_down())
         {
           wish_speed = preferences->player_crouch_speed;
-          spread_target = preferences->weapon_cz_spread.spread_crouch;
+          spread_target = preferences->weapon_cz.spread_crouch;
         }
         else if (get_walk_key_down())
         {
           wish_speed = preferences->player_walk_speed;
-          spread_target = preferences->weapon_cz_spread.spread_walk;
+          spread_target = preferences->weapon_cz.spread_walk;
         }
 
         if (preferences->no_clip)
@@ -253,14 +259,14 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
     if (!player_grounded)
     {
-      spread_target = preferences->weapon_cz_spread.spread_air;
+      spread_target = preferences->weapon_cz.spread_air;
     }
 
     // Spread
     {
       spread = glm_lerp(spread, spread_target,
-                        delta_time * (spread_target > spread ? preferences->weapon_cz_spread.spread_grow_time :
-                                                               preferences->weapon_cz_spread.spread_shrink_time));
+                        delta_time * (spread_target > spread ? preferences->weapon_cz.spread_grow_time :
+                                                               preferences->weapon_cz.spread_shrink_time));
 
       if (preferences->no_spread)
       {
@@ -383,10 +389,9 @@ void player_hurt(const struct Preferences* preferences, float damage, vec3 dir)
   }
   else
   {
-    // TODO: Could also do this with a separate 'layer' of camera 'recoil' to do custom easing back to the origin
     const float visual_damage = min(damage, 25.0f);
-    camera_add_recoil_yaw_pitch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
-                                ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
+    camera_add_aim_punch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
+                         ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
 
     // And stop the player's horizontal movement
     player_velocity[0] = player_velocity[2] = 0.0f;

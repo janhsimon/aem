@@ -56,7 +56,7 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
-static void update_weapon_spread(struct WeaponSpreadPreferences* preferences)
+static void update_weapon(struct WeaponPreferences* preferences)
 {
   // Spread
   igSliderFloat("Neutral spread", &preferences->spread_neutral, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
@@ -64,10 +64,16 @@ static void update_weapon_spread(struct WeaponSpreadPreferences* preferences)
   igSliderFloat("Walk spread", &preferences->spread_walk, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Run spread", &preferences->spread_run, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Air spread", &preferences->spread_air, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-
-  // Spread shring/grow time
   igSliderFloat("Spread shrink time", &preferences->spread_shrink_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Spread grow time", &preferences->spread_grow_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+
+  // Recoil
+  igSliderFloat2("Recoil scale", preferences->recoil_scale, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+
+  // Aim punch
+  igSliderFloat2("Aim punch scale", preferences->aim_punch_scale, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Aim punch recover speed", &preferences->aim_punch_recover_speed, 0.0f, 10.0f, "%f",
+                ImGuiSliderFlags_None);
 }
 
 void update_debug_window(struct Preferences* preferences, uint32_t screen_width, uint32_t screen_height)
@@ -91,6 +97,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igCheckbox("No clip", &preferences->no_clip);
     igCheckbox("No spread", &preferences->no_spread);
     igCheckbox("No recoil", &preferences->no_recoil);
+    igCheckbox("No aim punch", &preferences->no_aim_punch);
 
     igCheckbox("Show shadow map", &show_shadow_map_window);
     igCheckbox("Show view-space normals", &show_view_space_normals_window);
@@ -225,7 +232,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
   {
     if (igTreeNode_Str("CZ"))
     {
-      update_weapon_spread(&preferences->weapon_cz_spread);
+      update_weapon(&preferences->weapon_cz);
       igTreePop();
     }
   }

@@ -452,7 +452,7 @@ static void render_forward_pass_late()
     glm_vec2_copy((vec2){ screen_width, screen_height }, screen_size);
 
     camera_get_position(camera_position);
-    camera_get_forward_with_recoil(camera_direction);
+    camera_get_forward(CameraMode_WithAimPunch, camera_direction);
 
     for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
     {

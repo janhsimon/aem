@@ -1,5 +1,6 @@
 #include "preferences.h"
 
+#include <cglm/vec2.h>
 #include <cglm/vec3.h>
 
 void load_default_preferences(struct Preferences* preferences)
@@ -9,7 +10,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->show_player_info = false;
   preferences->infinite_ammo = false;
   preferences->no_clip = false;
-  preferences->no_spread = preferences->no_recoil = false;
+  preferences->no_spread = preferences->no_recoil = preferences->no_aim_punch = false;
 
   // AI
   preferences->ai_walking = true;
@@ -75,13 +76,16 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->view_model_tilt = 0.0f;
 
   // Weapon - CZ
-  preferences->weapon_cz_spread.spread_neutral = 0.0f;
-  preferences->weapon_cz_spread.spread_crouch = 50.0f;
-  preferences->weapon_cz_spread.spread_walk = 140.0f;
-  preferences->weapon_cz_spread.spread_run = 200.0f;
-  preferences->weapon_cz_spread.spread_air = 1000.0f;
-  preferences->weapon_cz_spread.spread_shrink_time = 10.0f;
-  preferences->weapon_cz_spread.spread_grow_time = 25.0f;
+  preferences->weapon_cz.spread_neutral = 0.0f;
+  preferences->weapon_cz.spread_crouch = 5.0f;
+  preferences->weapon_cz.spread_walk = 14.0f;
+  preferences->weapon_cz.spread_run = 20.0f;
+  preferences->weapon_cz.spread_air = 100.0f;
+  preferences->weapon_cz.spread_shrink_time = 10.0f;
+  preferences->weapon_cz.spread_grow_time = 25.0f;
+  glm_vec2_copy((vec2){ 0.08f, 0.12f }, preferences->weapon_cz.recoil_scale);
+  glm_vec2_copy((vec2){ 0.25f, 0.25f }, preferences->weapon_cz.aim_punch_scale);
+  preferences->weapon_cz.aim_punch_recover_speed = 350.0f;
 
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);
@@ -90,7 +94,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->hud_crosshair_gap_min = 6;
   preferences->hud_crosshair_gap_max = 56;
   preferences->hud_crosshair_spread_min = 0.0f;
-  preferences->hud_crosshair_spread_max = 300.0f;
+  preferences->hud_crosshair_spread_max = 30.0f;
   preferences->hud_crosshair_fire_expand = 25;
 
   // Smoke particle system

@@ -11,18 +11,23 @@ void camera_get_yaw_pitch_roll(float* yaw, float* pitch, float* roll);
 void camera_set_yaw_pitch_roll(float yaw, float pitch, float roll);
 void camera_add_yaw_pitch_roll(float yaw, float pitch, float roll);
 
-void camera_add_recoil_yaw_pitch(float yaw, float pitch);
-void camera_mul_recoil_yaw_pitch(float s);
+void camera_reset_aim_punch();
+void camera_add_aim_punch(float yaw, float pitch);
+void camera_update_aim_punch(const struct Preferences* preferences, float recovery, float delta_time);
 
 void camera_add_move(vec3 move);
 
+enum CameraMode
+{
+  CameraMode_WithoutAimPunch,
+  CameraMode_WithAimPunch
+};
+
 void camera_calc_forward();
-void camera_get_forward_without_recoil(vec3 forward);
-void camera_get_forward_with_recoil(vec3 forward);
+void camera_get_forward(enum CameraMode mode, vec3 forward);
 
 void camera_calc_rotation();
-void camera_get_rotation_without_recoil(mat3 rotation);
-void camera_get_rotation_with_recoil(mat3 rotation);
+void camera_get_rotation(enum CameraMode mode, mat3 rotation);
 
 void camera_calc_matrices(float aspect, float fov, float view_model_fov, float near, float far);
 void camera_get_view_matrix(mat4 view_matrix);
