@@ -30,7 +30,7 @@ static float player_height = PLAYER_HEIGHT_STANDING; // From feet to eyes, betwe
 
 static float health = 100.0f;
 
-static float spread = 0.0f;
+static float movement_spread = 0.0f;
 
 static float death_feet_height = 0.0f;
 
@@ -49,7 +49,7 @@ static void respawn()
   spawn_position[1] += player_height - PLAYER_RADIUS;
   camera_set_position(spawn_position);
   camera_set_yaw_pitch_roll(glm_rad(spawn_yaw), 0.0f, 0.0f);
-  camera_reset_aim_punch();
+  camera_reset_view_punch();
 
   view_model_respawn();
 
@@ -115,7 +115,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
   }
   else
   {
-    float spread_target = preferences->weapon_cz.spread_neutral;
+    float movement_spread_target = preferences->weapon_cz.movement_spread_neutral;
 
     if (post_spawn_timer < POST_SPAWN_TIME_LIMIT)
     {
@@ -169,7 +169,7 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       get_move_vector(wish_dir, moving);
 
       mat3 cam_rotation;
-      camera_get_rotation(CameraMode_WithoutAimPunch, cam_rotation);
+      camera_get_rotation(CameraMode_WithoutViewPunch, cam_rotation);
       glm_mat3_mulv(cam_rotation, wish_dir, wish_dir); // Transform move from local to camera space
 
       glm_normalize(wish_dir);
@@ -195,17 +195,17 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
       {
         // Determine the target speed depending on if the player is running, walking, crouching or has no clip turned on
         float wish_speed = preferences->player_run_speed;
-        spread_target = preferences->weapon_cz.spread_run;
+        movement_spread_target = preferences->weapon_cz.movement_spread_run;
 
         if (get_crouch_key_down())
         {
           wish_speed = preferences->player_crouch_speed;
-          spread_target = preferences->weapon_cz.spread_crouch;
+          movement_spread_target = preferences->weapon_cz.movement_spread_crouch;
         }
         else if (get_walk_key_down())
         {
           wish_speed = preferences->player_walk_speed;
-          spread_target = preferences->weapon_cz.spread_walk;
+          movement_spread_target = preferences->weapon_cz.movement_spread_walk;
         }
 
         if (preferences->no_clip)
@@ -259,18 +259,19 @@ void player_update(const struct Preferences* preferences, bool mouse_look, float
 
     if (!player_grounded)
     {
-      spread_target = preferences->weapon_cz.spread_air;
+      movement_spread_target = preferences->weapon_cz.movement_spread_air;
     }
 
     // Spread
     {
-      spread = glm_lerp(spread, spread_target,
-                        delta_time * (spread_target > spread ? preferences->weapon_cz.spread_grow_time :
-                                                               preferences->weapon_cz.spread_shrink_time));
+      movement_spread = glm_lerp(movement_spread, movement_spread_target,
+                                 delta_time * (movement_spread_target > movement_spread ?
+                                                 preferences->weapon_cz.movement_spread_grow_time :
+                                                 preferences->weapon_cz.movement_spread_shrink_time));
 
-      if (preferences->no_spread)
+      if (preferences->no_movement_spread)
       {
-        spread = 0.0f;
+        movement_spread = 0.0f;
       }
     }
   }
@@ -389,9 +390,10 @@ void player_hurt(const struct Preferences* preferences, float damage, vec3 dir)
   }
   else
   {
+    // View punch
     const float visual_damage = min(damage, 25.0f);
-    camera_add_aim_punch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
-                         ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
+    camera_add_view_punch(((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f,
+                          ((((rand() % 100) / 100.0f) * visual_damage) - visual_damage * 0.5f) * 0.01f);
 
     // And stop the player's horizontal movement
     player_velocity[0] = player_velocity[2] = 0.0f;
@@ -411,7 +413,7 @@ float player_get_respawn_cooldown()
   return respawn_cooldown;
 }
 
-float get_player_spread()
+float get_player_movement_spread()
 {
-  return spread;
+  return movement_spread;
 }

@@ -30,16 +30,9 @@
 #define SHOOT_ANIMATION_INDEX 4  // AK: 2
 #define RELOAD_ANIMATION_INDEX 6 // AK: 12
 
-#define SHOT_COOLDOWN 0.1f
+#define BULLET_COUNT 30 // TODO: Remove
 
-#define BULLET_COUNT 30
-
-static struct
-{
-  vec2 recoil;
-  float spread;
-} recoil_table[BULLET_COUNT];
-static uint32_t recoil_table_bullet_index = 0;
+static uint32_t recoil_pattern_bullet_index = 0;
 
 static struct ModelRenderInfo* render_info = NULL;
 
@@ -54,6 +47,7 @@ static bool is_reloading = false, is_shooting = false;
 
 static float shot_cooldown = 0.0f;
 static float moving_start_time; // Used for footstep sounds
+static bool has_played_dryfire_sound = false;
 
 static int ammo = BULLET_COUNT;
 
@@ -132,24 +126,6 @@ bool load_view_model()
 
   view_model_respawn();
 
-  // Build the recoil table
-  for (uint32_t bullet = 0; bullet < BULLET_COUNT; ++bullet)
-  {
-    const float norm = (float)bullet / (float)BULLET_COUNT;
-
-    recoil_table[bullet].recoil[0] = sinf(norm * 7.5f);
-    recoil_table[bullet].recoil[1] = 1.0f;
-
-    if (bullet < 10)
-    {
-      const float ease = (float)bullet / 10.0f;
-      recoil_table[bullet].recoil[0] *= ease * ease;
-      recoil_table[bullet].recoil[1] = ease;
-    }
-
-    recoil_table[bullet].spread = norm * 200.0f;
-  }
-
   return true;
 }
 
@@ -158,158 +134,172 @@ static void fire(struct Preferences* preferences)
   vec3 cam_pos;
   camera_get_position(cam_pos);
 
+  // Dry fire
   if (ammo <= 0)
   {
-    play_ak47_dry_sound(cam_pos);
-    shot_cooldown = SHOT_COOLDOWN * 4.0f;
+    if (!has_played_dryfire_sound)
+    {
+      vec3 cam_pos;
+      camera_get_position(cam_pos);
+      play_ak47_dry_sound(cam_pos);
+
+      has_played_dryfire_sound = true;
+    }
+
+    return;
   }
-  else
+
+  struct WeaponPreferences* weapon = &preferences->weapon_cz;
+
+  is_shooting = true;
+  shoot_channel->time = 0.0f;
+  shoot_channel->is_playing = true;
+  aem_set_animation_mixer_blend_speed(mixer, 10.0f);
+  aem_blend_to_animation_mixer_channel(mixer, 3); // To fire
+
+  play_ak47_fire_sound(cam_pos);
+
+  vec3 from;
+  camera_get_position(from);
+
+  mat3 cam_rot;
+  camera_get_rotation(CameraMode_WithoutViewPunch, cam_rot);
+
+  vec3 ray = { 0.0f, 0.0f, 1.0f };
+
+  // Spread
   {
-    is_shooting = true;
-    shoot_channel->time = 0.0f;
-    shoot_channel->is_playing = true;
-    aem_set_animation_mixer_blend_speed(mixer, 10.0f);
-    aem_blend_to_animation_mixer_channel(mixer, 3); // To fire
-
-    play_ak47_fire_sound(cam_pos);
-
-    vec3 from;
-    camera_get_position(from);
-
-    mat3 cam_rot;
-    camera_get_rotation(CameraMode_WithoutAimPunch, cam_rot);
-
-    vec3 ray = { 0.0f, 0.0f, 1.0f };
-
-    // Spread
+    const float movement_spread = get_player_movement_spread();
+    const float firing_spread =
+      weapon->recoil_pattern[recoil_pattern_bullet_index].firing_spread * weapon->firing_spread_scale;
+    const float total_spread = movement_spread + firing_spread;
+    if (total_spread > 0.0f)
     {
-      const float spread = get_player_spread();
-      if (spread > 0.0f)
-      {
-        const float theta = ((rand() % 100) / 100.0f) * GLM_PI * 2.0f;
-        const float r = sqrtf((rand() % 100) / 100.0f) * glm_rad(spread) * 0.1f;
+      const float theta = ((rand() % 100) / 100.0f) * GLM_PI * 2.0f;
+      const float r = sqrtf((rand() % 100) / 100.0f) * glm_rad(total_spread) * 0.1f;
 
-        ray[0] = cosf(theta) * r;
-        ray[1] = sinf(theta) * r;
+      ray[0] = cosf(theta) * r;
+      ray[1] = sinf(theta) * r;
 
-        glm_vec3_norm(ray);
-      }
+      glm_vec3_norm(ray);
     }
-
-    // Recoil
-    if (!preferences->no_recoil)
-    {
-      vec2 recoil;
-      glm_vec2_mul(recoil_table[recoil_table_bullet_index].recoil, preferences->weapon_cz.recoil_scale, recoil);
-
-      mat4 yaw = GLM_MAT4_IDENTITY_INIT, pitch = GLM_MAT4_IDENTITY_INIT;
-      glm_rotate_y(yaw, -recoil[0], yaw);
-      glm_rotate_x(pitch, -recoil[1], pitch);
-
-      mat4 final;
-      glm_mat4_mul(yaw, pitch, final);
-      glm_vec3_rotate_m4(final, ray, ray);
-    }
-
-    glm_vec3_scale(ray, 10000.0f, ray); // Extend the ray for collision detection
-
-    glm_mat3_mulv(cam_rot, ray, ray);
-
-    vec3 to;
-    glm_vec3_add(from, ray, to);
-
-    vec3 n;
-    const bool level_hit = collide_ray(from, to, to, n);
-    add_debug_line(from, to);
-
-    spawn_muzzleflash(GLM_VEC3_ZERO);
-
-    // Spawn tracer
-    {
-      mat4 muzzleflash_m;
-      view_model_get_muzzleflash_world_matrix(preferences, muzzleflash_m);
-
-      vec3 muzzleflash_p = GLM_VEC3_ZERO_INIT;
-      glm_mat4_mulv3(muzzleflash_m, muzzleflash_p, 1.0f, muzzleflash_p);
-      spawn_tracer(preferences, muzzleflash_p, to);
-    }
-
-    // Check for hits
-    {
-      bool enemy_hit = false;
-
-      const uint32_t enemy_count = get_enemy_count();
-      for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
-      {
-        struct Enemy* enemy = get_enemy(enemy_index);
-
-        const enum EnemyHitArea hit_area = is_enemy_hit(enemy, from, to);
-        if (hit_area != EnemyHitArea_None)
-        {
-          glm_vec3_negate(ray);
-
-          float damage = 0.0f;
-          if (hit_area == EnemyHitArea_Head)
-          {
-            damage = 100.0f;
-            play_headshot_sound();
-            spawn_shrapnel(to, n);
-          }
-          if (hit_area == EnemyHitArea_UpperTorso)
-          {
-            damage = 20.0f;
-          }
-          else if (hit_area == EnemyHitArea_LowerTorso)
-          {
-            damage = 15.0f;
-          }
-
-          hurt_enemy(enemy, preferences, damage, ray);
-
-          vec3 sound_pos;
-          glm_vec3_copy(to, sound_pos);
-          play_enemy_hurt_sound(rand() % 4, sound_pos);
-
-          glm_vec3_sub(to, from, n);
-          glm_vec3_normalize(n);
-          spawn_blood(to, n);
-
-          enemy_hit = true;
-          break;
-        }
-      }
-
-      if (!enemy_hit && level_hit)
-      {
-        spawn_smoke(to, n);
-        spawn_shrapnel(to, n);
-        play_impact_sound(to);
-      }
-    }
-
-    // Camera aim punch
-    if (!preferences->no_aim_punch)
-    {
-      vec2 aim_punch = GLM_VEC2_ZERO_INIT;
-      if (recoil_table_bullet_index > 0)
-      {
-        glm_vec2_sub(recoil_table[recoil_table_bullet_index].recoil, recoil_table[recoil_table_bullet_index - 1].recoil,
-                     aim_punch);
-      }
-
-      glm_vec2_mul(aim_punch, preferences->weapon_cz.aim_punch_scale, aim_punch);
-      camera_add_aim_punch(aim_punch[0], aim_punch[1]);
-    }
-
-    if (!preferences->infinite_ammo)
-    {
-      --ammo;
-    }
-
-    ++recoil_table_bullet_index;
-
-    shot_cooldown = SHOT_COOLDOWN;
   }
+
+  // Recoil
+  if (!preferences->no_recoil)
+  {
+    vec2 recoil;
+    glm_vec2_mul(weapon->recoil_pattern[recoil_pattern_bullet_index].recoil, weapon->recoil_scale, recoil);
+
+    mat4 yaw = GLM_MAT4_IDENTITY_INIT, pitch = GLM_MAT4_IDENTITY_INIT;
+    glm_rotate_y(yaw, -recoil[0], yaw);
+    glm_rotate_x(pitch, -recoil[1], pitch);
+
+    mat4 final;
+    glm_mat4_mul(yaw, pitch, final);
+    glm_vec3_rotate_m4(final, ray, ray);
+  }
+
+  glm_vec3_scale(ray, 10000.0f, ray); // Extend the ray for collision detection
+
+  glm_mat3_mulv(cam_rot, ray, ray);
+
+  vec3 to;
+  glm_vec3_add(from, ray, to);
+
+  vec3 n;
+  const bool level_hit = collide_ray(from, to, to, n);
+  add_debug_line(from, to);
+
+  spawn_muzzleflash(GLM_VEC3_ZERO);
+
+  // Spawn tracer
+  {
+    mat4 muzzleflash_m;
+    view_model_get_muzzleflash_world_matrix(preferences, muzzleflash_m);
+
+    vec3 muzzleflash_p = GLM_VEC3_ZERO_INIT;
+    glm_mat4_mulv3(muzzleflash_m, muzzleflash_p, 1.0f, muzzleflash_p);
+    spawn_tracer(preferences, muzzleflash_p, to);
+  }
+
+  // Check for hits
+  {
+    bool enemy_hit = false;
+
+    const uint32_t enemy_count = get_enemy_count();
+    for (uint32_t enemy_index = 0; enemy_index < enemy_count; ++enemy_index)
+    {
+      struct Enemy* enemy = get_enemy(enemy_index);
+
+      const enum EnemyHitArea hit_area = is_enemy_hit(enemy, from, to);
+      if (hit_area != EnemyHitArea_None)
+      {
+        glm_vec3_negate(ray);
+
+        float damage = 0.0f;
+        if (hit_area == EnemyHitArea_Head)
+        {
+          damage = 100.0f;
+          play_headshot_sound();
+          spawn_shrapnel(to, n);
+        }
+        if (hit_area == EnemyHitArea_UpperTorso)
+        {
+          damage = 20.0f;
+        }
+        else if (hit_area == EnemyHitArea_LowerTorso)
+        {
+          damage = 15.0f;
+        }
+
+        hurt_enemy(enemy, preferences, damage, ray);
+
+        vec3 sound_pos;
+        glm_vec3_copy(to, sound_pos);
+        play_enemy_hurt_sound(rand() % 4, sound_pos);
+
+        glm_vec3_sub(to, from, n);
+        glm_vec3_normalize(n);
+        spawn_blood(to, n);
+
+        enemy_hit = true;
+        break;
+      }
+    }
+
+    if (!enemy_hit && level_hit)
+    {
+      spawn_smoke(to, n);
+      spawn_shrapnel(to, n);
+      play_impact_sound(to);
+    }
+  }
+
+  // View punch
+  if (!preferences->no_view_punch)
+  {
+    vec2 view_punch = GLM_VEC2_ZERO_INIT;
+
+    if (recoil_pattern_bullet_index > 0)
+    {
+      view_punch[0] = weapon->recoil_pattern[recoil_pattern_bullet_index].recoil[0] -
+                      weapon->recoil_pattern[recoil_pattern_bullet_index - 1].recoil[0];
+      view_punch[0] *= weapon->view_punch[0];
+    }
+
+    view_punch[1] = weapon->view_punch[1];
+    camera_add_view_punch(view_punch[0], view_punch[1]);
+  }
+
+  if (!preferences->infinite_ammo)
+  {
+    --ammo;
+  }
+
+  ++recoil_pattern_bullet_index;
+  has_played_dryfire_sound = false;
+  shot_cooldown = weapon->fire_rate;
 }
 
 void update_view_model(struct Preferences* preferences, bool firing_enabled, bool moving, float delta_time)
@@ -325,7 +315,8 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
   }
   else if (!get_shoot_button_down())
   {
-    recoil_table_bullet_index = 0;
+    // Reset the recoil pattern
+    recoil_pattern_bullet_index = 0;
   }
 
   // Move muzzleflash particle emitter to the right position
@@ -338,19 +329,8 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
     set_muzzleflash_position(p);
   }
 
-  if (is_shooting)
-  {
-    const float duration = aem_get_model_animation_duration(render_info->model, SHOOT_ANIMATION_INDEX);
-
-    if (shoot_channel->time >= duration - 0.165f)
-    {
-      is_shooting = false;
-      aem_set_animation_mixer_blend_speed(mixer, 10.0f);
-      aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
-    }
-  }
   // Equip animation
-  else if (idle_channel->animation_index == 0)
+  if (idle_channel->animation_index == 0)
   {
     const float duration = aem_get_model_animation_duration(render_info->model, 0);
     if (idle_channel->time >= duration)
@@ -364,6 +344,18 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
   }
   else
   {
+    if (is_shooting)
+    {
+      const float duration = aem_get_model_animation_duration(render_info->model, SHOOT_ANIMATION_INDEX);
+
+      if (shoot_channel->time >= duration - 0.165f)
+      {
+        is_shooting = false;
+        aem_set_animation_mixer_blend_speed(mixer, 10.0f);
+        aem_blend_to_animation_mixer_channel(mixer, (uint32_t)moving); // To idle or walk
+      }
+    }
+
     if (get_shoot_button_down() && firing_enabled && !is_reloading && shot_cooldown <= 0.0f)
     {
       fire(preferences);
@@ -386,7 +378,12 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
       }
       else
       {
-        if (get_reload_key_down() && ammo < BULLET_COUNT)
+        if (!get_shoot_button_down())
+        {
+          has_played_dryfire_sound = false;
+        }
+
+        if (get_reload_key_down() && ammo < BULLET_COUNT && shot_cooldown <= 0.0f)
         {
           is_reloading = true;
           reload_channel->time = 0.0f;
@@ -446,9 +443,10 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
     }
   }
 
-  // Camera aim punch
+  // View punch
   {
-    camera_update_aim_punch(preferences, (1.0f - view_model_get_normalized_shot_cooldown()) * 0.02f, delta_time);
+    camera_update_view_punch(preferences, (1.0f - view_model_get_normalized_shot_cooldown(preferences)) * 0.02f,
+                             delta_time);
   }
 
   prev_moving = moving;
@@ -473,7 +471,7 @@ void view_model_get_world_matrix(struct Preferences* preferences, mat4 world_mat
 
   // And insert the camera orientation
   mat3 cam_rot;
-  camera_get_rotation(CameraMode_WithAimPunch, cam_rot);
+  camera_get_rotation(CameraMode_WithViewPunch, cam_rot);
   glm_mat4_ins3(cam_rot, world_matrix);
 
   glm_translate(world_matrix, preferences->view_model_position);
@@ -518,7 +516,7 @@ void view_model_respawn()
   play_ak47_equip_sound();
 }
 
-float view_model_get_normalized_shot_cooldown()
+float view_model_get_normalized_shot_cooldown(const struct Preferences* preferences)
 {
-  return shot_cooldown / SHOT_COOLDOWN;
+  return shot_cooldown / preferences->weapon_cz.fire_rate;
 }

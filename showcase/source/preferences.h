@@ -18,18 +18,31 @@ struct ParticleSystemPreferences
   float scale, scale_spread, scale_falloff;
 };
 
+struct RecoilPattern
+{
+  vec2 recoil;
+  float firing_spread;
+};
+
 struct WeaponPreferences
 {
-  // Spread
-  float spread_neutral, spread_crouch, spread_walk, spread_run, spread_air;
-  float spread_shrink_time, spread_grow_time;
+  uint32_t bullet_count;
+  float fire_rate;
+
+  // Movement spread
+  float movement_spread_neutral, movement_spread_crouch, movement_spread_walk, movement_spread_run, movement_spread_air;
+  float movement_spread_grow_time, movement_spread_shrink_time;
+
+  // Firing spread
+  float firing_spread_scale;
 
   // Recoil
-  vec2 recoil_scale;
+  struct RecoilPattern* recoil_pattern;
+  vec2 recoil_scale; // Yaw, pitch
 
-  // Aim punch
-  vec2 aim_punch_scale;
-  float aim_punch_recover_speed;
+  // View punch
+  vec2 view_punch;
+  float view_punch_recover_speed;
 };
 
 struct Preferences
@@ -39,7 +52,7 @@ struct Preferences
   bool show_player_info;
   bool infinite_ammo;
   bool no_clip;
-  bool no_spread, no_recoil, no_aim_punch;
+  bool no_movement_spread, no_firing_spread, no_recoil, no_view_punch;
 
   // AI
   bool ai_walking;

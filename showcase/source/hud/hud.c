@@ -108,14 +108,26 @@ void update_hud(uint32_t screen_width,
   // Crosshair
   if (get_player_health() > 0.0f)
   {
-    float spread = glm_clamp(get_player_spread(), (float)preferences->hud_crosshair_spread_min,
-                             (float)preferences->hud_crosshair_spread_max);
-    spread -= (float)preferences->hud_crosshair_spread_min;
-    spread /= ((float)preferences->hud_crosshair_spread_max - (float)preferences->hud_crosshair_spread_min);
-    spread = glm_lerp((float)preferences->hud_crosshair_gap_min, (float)preferences->hud_crosshair_gap_max, spread);
+    // Expand the crosshair to visualize movement spread
+    float movement_spread;
+    {
+      movement_spread = glm_clamp(get_player_movement_spread(), (float)preferences->hud_crosshair_spread_min,
+                                  (float)preferences->hud_crosshair_spread_max);
+      movement_spread -= (float)preferences->hud_crosshair_spread_min;
+      movement_spread /= ((float)preferences->hud_crosshair_spread_max - (float)preferences->hud_crosshair_spread_min);
+      movement_spread =
+        glm_lerp((float)preferences->hud_crosshair_gap_min, (float)preferences->hud_crosshair_gap_max, movement_spread);
+    }
 
-    const float gap_size =
-      spread + view_model_get_normalized_shot_cooldown() * (float)preferences->hud_crosshair_fire_expand;
+    // Also expand the crosshair when firing
+    float fire_expand = 0.0f;
+    if (view_model_get_ammo() >= 0)
+    {
+      fire_expand = view_model_get_normalized_shot_cooldown(preferences);
+      fire_expand *= (float)preferences->hud_crosshair_fire_expand;
+    }
+
+    const float gap_size = movement_spread + fire_expand;
     const float half_gap_size = gap_size / 2.0f;
     const float line_size = preferences->hud_crosshair_length;
 
@@ -404,8 +416,10 @@ void update_hud(uint32_t screen_width,
     }
   }
 
-  /*bool yes = true;
-  igShowDemoWindow(&yes);*/
+  /*
+  bool yes = true;
+  igShowDemoWindow(&yes);
+  */
 }
 
 void render_hud()

@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 
+struct Preferences;
 struct ModelRenderInfo;
 
 bool load_view_model();
@@ -20,4 +21,4 @@ int view_model_get_ammo();
 
 void view_model_respawn();
 
-float view_model_get_normalized_shot_cooldown();
+float view_model_get_normalized_shot_cooldown(const struct Preferences* preferences);

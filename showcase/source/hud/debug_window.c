@@ -56,30 +56,120 @@ static void update_particle_system(struct ParticleSystemPreferences* preferences
   igSliderFloat("Particle scale falloff", &preferences->scale_falloff, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 }
 
+static void plot_recoil_pattern(const struct RecoilPattern* pattern, uint32_t count, ImVec2 canvas_size)
+{
+  ImDrawList* draw_list = igGetWindowDrawList();
+
+  ImVec2 p0 = igGetCursorScreenPos(); // top-left
+  ImVec2 p1 = { p0.x + canvas_size.x, p0.y + canvas_size.y };
+
+  // Reserve space in the layout
+  igInvisibleButton("plot_canvas", canvas_size, 0);
+
+  // Colors
+  ImU32 bg_col = igGetColorU32_Vec4((ImVec4){ 0.16f, 0.16f, 0.16f, 1.0f });
+  ImU32 grid_col = igGetColorU32_Vec4((ImVec4){ 0.27f, 0.27f, 0.27f, 1.0f });
+  ImU32 axis_col = igGetColorU32_Vec4((ImVec4){ 0.47f, 0.47f, 0.47f, 1.0f });
+  ImU32 point_col = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.25f, 0.25f, 1.0f });
+
+  // Background
+  ImDrawList_AddRectFilled(draw_list, p0, p1, bg_col, 0.0f, 0);
+
+  // Grid
+  const int grid_lines = 10;
+
+  for (int i = 0; i <= grid_lines; ++i)
+  {
+    float t = (float)i / (float)grid_lines;
+
+    float x = p0.x + t * canvas_size.x;
+    float y = p0.y + t * canvas_size.y;
+
+    // Vertical
+    ImDrawList_AddLine(draw_list, (ImVec2){ x, p0.y }, (ImVec2){ x, p1.y }, grid_col, 1.0f);
+
+    // Horizontal
+    ImDrawList_AddLine(draw_list, (ImVec2){ p0.x, y }, (ImVec2){ p1.x, y }, grid_col, 1.0f);
+  }
+
+  // X axis at y = 0
+  float axis_y = p1.y;
+  ImDrawList_AddLine(draw_list, (ImVec2){ p0.x, axis_y }, (ImVec2){ p1.x, axis_y }, axis_col, 2.0f);
+
+  // Y axis at x = 0
+  float axis_x = p0.x + canvas_size.x * 0.5f;
+  ImDrawList_AddLine(draw_list, (ImVec2){ axis_x, p0.y }, (ImVec2){ axis_x, p1.y }, axis_col, 2.0f);
+
+  // Plot points
+  for (int i = 0; i < count; ++i)
+  {
+    float nx = pattern[i].recoil[0];
+    float ny = pattern[i].recoil[1];
+
+    // Normalize to screen space
+    float sx = p0.x + ((nx + 1.0f) * 0.5f) * canvas_size.x;
+    float sy = p1.y - (ny * canvas_size.y);
+
+    ImDrawList_AddCircleFilled(draw_list, (ImVec2){ sx, sy }, 3.0f, point_col, 12);
+  }
+}
+
 static void update_weapon(struct WeaponPreferences* preferences)
 {
-  // Spread
-  igSliderFloat("Neutral spread", &preferences->spread_neutral, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Crouch spread", &preferences->spread_crouch, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Walk spread", &preferences->spread_walk, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Run spread", &preferences->spread_run, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Air spread", &preferences->spread_air, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Spread shrink time", &preferences->spread_shrink_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Spread grow time", &preferences->spread_grow_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSeparatorText("Movement spread");
+
+  igSliderInt("Bullet count", &preferences->bullet_count, 0, 1000, "%u", ImGuiSliderFlags_None);
+  igSliderFloat("Fire rate", &preferences->fire_rate, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+
+  // Movement spread
+  igSliderFloat("Neutral", &preferences->movement_spread_neutral, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Crouch", &preferences->movement_spread_crouch, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Walk", &preferences->movement_spread_walk, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Run", &preferences->movement_spread_run, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Air", &preferences->movement_spread_air, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Grow time", &preferences->movement_spread_grow_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Shrink time", &preferences->movement_spread_shrink_time, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+
+  // Firing spread
+  igSeparatorText("Firing spread");
+  igSliderFloat("Scale##FiringSpread", &preferences->firing_spread_scale, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
 
   // Recoil
-  igSliderFloat2("Recoil scale", preferences->recoil_scale, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+  igSeparatorText("Recoil");
 
-  // Aim punch
-  igSliderFloat2("Aim punch scale", preferences->aim_punch_scale, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
-  igSliderFloat("Aim punch recover speed", &preferences->aim_punch_recover_speed, 0.0f, 10.0f, "%f",
+  // Pattern
+  {
+    static int count = -1;
+    if (count < 0)
+    {
+      count = preferences->bullet_count;
+    }
+
+    ImVec2 avail = igGetContentRegionAvail();
+    plot_recoil_pattern(preferences->recoil_pattern, count, (ImVec2){ avail.x, avail.x });
+
+    char s[16];
+    sprintf(s, "%%d / %u", preferences->bullet_count);
+    igSliderInt("Bullet index", &count, 1, preferences->bullet_count, s, ImGuiSliderFlags_None);
+  }
+
+  igSliderFloat2("Scale##Recoil", preferences->recoil_scale, -1.0f, 1.0f, "%f", ImGuiSliderFlags_None);
+
+  // View punch
+  igSeparatorText("View punch");
+  // igSliderFloat("Scale##ViewPunch", &preferences->view_punch_scale, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat2("Amount##ViewPunch", preferences->view_punch, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+  igSliderFloat("Recover speed##ViewPunch", &preferences->view_punch_recover_speed, 0.0f, 1000.0f, "%f",
                 ImGuiSliderFlags_None);
 }
 
 void update_debug_window(struct Preferences* preferences, uint32_t screen_width, uint32_t screen_height)
 {
-  igSetNextWindowSizeConstraints((ImVec2){ screen_width / 4.0f, screen_height / 2.0f },
+  igSetNextWindowSizeConstraints((ImVec2){ screen_width / 3.0f, screen_height / 2.0f },
                                  (ImVec2){ screen_width, screen_height }, NULL, NULL);
+
+  igSetNextWindowPos((ImVec2){ 0.0f, 0.0f }, ImGuiCond_Once, (ImVec2){ 0.0f, 0.0f });
+  igSetNextWindowSize((ImVec2){ screen_width / 3.0f, screen_height }, ImGuiCond_Once);
 
   bool open = true;
   igBegin("Debug", &open, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar);
@@ -95,9 +185,10 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igCheckbox("Show player information", &preferences->show_player_info);
     igCheckbox("Infinite ammo", &preferences->infinite_ammo);
     igCheckbox("No clip", &preferences->no_clip);
-    igCheckbox("No spread", &preferences->no_spread);
+    igCheckbox("No movement spread", &preferences->no_movement_spread);
+    igCheckbox("No firing spread", &preferences->no_firing_spread);
     igCheckbox("No recoil", &preferences->no_recoil);
-    igCheckbox("No aim punch", &preferences->no_aim_punch);
+    igCheckbox("No view punch", &preferences->no_view_punch);
 
     igCheckbox("Show shadow map", &show_shadow_map_window);
     igCheckbox("Show view-space normals", &show_view_space_normals_window);

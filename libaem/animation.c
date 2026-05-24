@@ -445,12 +445,12 @@ void aem_blend_to_animation_mixer_channel(struct AEMAnimationMixer* mixer, uint3
   mixer->blend_progress = 0.0f;
 }
 
-static float smoothstep(float x)
+static float smooth_step(float x)
 {
   return x * x * (3.0f - 2.0f * x);
 }
 
-static float smootherstep(float x)
+static float smoother_step(float x)
 {
   return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
 }
@@ -531,13 +531,13 @@ void aem_update_animation(const struct AEMModel* model,
       float eased = mixer->blend_progress;
       if (mixer->blend_mode == AEMAnimationBlendMode_Smooth)
       {
-        prev_eased = smoothstep(prev_eased);
-        eased = smoothstep(eased);
+        prev_eased = smooth_step(prev_eased);
+        eased = smooth_step(eased);
       }
       else if (mixer->blend_mode == AEMAnimationBlendMode_Smoother)
       {
-        prev_eased = smootherstep(prev_eased);
-        eased = smootherstep(eased);
+        prev_eased = smoother_step(prev_eased);
+        eased = smoother_step(eased);
       }
 
       // Interpolate target weight up

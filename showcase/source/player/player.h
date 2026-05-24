@@ -25,4 +25,4 @@ void player_hurt(const struct Preferences* preferences, float damage, vec3 dir);
 float player_get_min_respawn_cooldown();
 float player_get_respawn_cooldown();
 
-float get_player_spread();
+float get_player_movement_spread();

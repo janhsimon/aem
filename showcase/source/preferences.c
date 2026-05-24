@@ -1,7 +1,40 @@
 #include "preferences.h"
 
+#include <util/util.h>
+
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
+
+static void build_cz_recoil_table(struct WeaponPreferences* preferences)
+{
+  for (uint32_t bullet = 0; bullet < preferences->bullet_count; ++bullet)
+  {
+    const float norm = (float)bullet / (float)preferences->bullet_count;
+
+    preferences->recoil_pattern[bullet].recoil[0] = sinf(norm * 7.5f);
+
+    preferences->recoil_pattern[bullet].firing_spread = 1.0f;
+
+    if (bullet < 5)
+    {
+      const float ease = (float)bullet / 5.0f;
+      preferences->recoil_pattern[bullet].recoil[0] *= ease * ease;
+      preferences->recoil_pattern[bullet].recoil[1] = smooth_step(ease) * 0.9f;
+    }
+    else
+    {
+      const float ease = (float)(bullet - 5) * 100.0f;
+      preferences->recoil_pattern[bullet].recoil[1] = 0.9f + sinf(ease) * 0.1f;
+    }
+
+    // Firing spread ramp up
+    if (bullet < 3)
+    {
+      const float ease = (float)bullet / 3.0f;
+      preferences->recoil_pattern[bullet].firing_spread = smoother_step(ease);
+    }
+  }
+}
 
 void load_default_preferences(struct Preferences* preferences)
 {
@@ -10,13 +43,20 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->show_player_info = false;
   preferences->infinite_ammo = false;
   preferences->no_clip = false;
-  preferences->no_spread = preferences->no_recoil = preferences->no_aim_punch = false;
+  preferences->no_movement_spread = preferences->no_firing_spread = false;
+  preferences->no_recoil = false;
+  preferences->no_view_punch = false;
 
   // AI
   preferences->ai_walking = true;
   preferences->ai_turning = true;
   preferences->ai_dying = true;
   preferences->ai_shooting = true;
+
+#ifndef NDEBUG
+  preferences->ai_walking = false;
+  preferences->ai_shooting = false;
+#endif
 
   // Audio
   preferences->master_volume = 1.0f;
@@ -63,29 +103,35 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->shadow_mapping_pcf_kernel_size = 2;
   preferences->shadow_mapping_visualize_cascades = false;
 
-  // AK
+  // View model - AK
   // glm_vec3_copy((vec3){ 0.0f, -0.02f, 0.1f }, preferences->view_model_position);
   // preferences->view_model_scale = 0.02f;
   // preferences->view_model_fov = 50.0f;
   // preferences->view_model_tilt = 0.0f;
 
-  // CZ
+  // View model - CZ
   glm_vec3_copy((vec3){ -0.07f, -1.62f, 0.1f }, preferences->view_model_position);
   preferences->view_model_scale = 1.0f;
   preferences->view_model_fov = 40.0f;
   preferences->view_model_tilt = 0.0f;
 
   // Weapon - CZ
-  preferences->weapon_cz.spread_neutral = 0.0f;
-  preferences->weapon_cz.spread_crouch = 5.0f;
-  preferences->weapon_cz.spread_walk = 14.0f;
-  preferences->weapon_cz.spread_run = 20.0f;
-  preferences->weapon_cz.spread_air = 100.0f;
-  preferences->weapon_cz.spread_shrink_time = 10.0f;
-  preferences->weapon_cz.spread_grow_time = 25.0f;
-  glm_vec2_copy((vec2){ 0.08f, 0.12f }, preferences->weapon_cz.recoil_scale);
-  glm_vec2_copy((vec2){ 0.25f, 0.25f }, preferences->weapon_cz.aim_punch_scale);
-  preferences->weapon_cz.aim_punch_recover_speed = 350.0f;
+  preferences->weapon_cz.bullet_count = 30;
+  preferences->weapon_cz.fire_rate = 0.07f;
+  preferences->weapon_cz.movement_spread_neutral = 0.0f;
+  preferences->weapon_cz.movement_spread_crouch = 5.0f;
+  preferences->weapon_cz.movement_spread_walk = 14.0f;
+  preferences->weapon_cz.movement_spread_run = 20.0f;
+  preferences->weapon_cz.movement_spread_air = 100.0f;
+  preferences->weapon_cz.movement_spread_grow_time = 25.0f;
+  preferences->weapon_cz.movement_spread_shrink_time = 10.0f;
+  preferences->weapon_cz.firing_spread_scale = 15.0f;
+  preferences->weapon_cz.recoil_pattern =
+    malloc(sizeof(*preferences->weapon_cz.recoil_pattern) * preferences->weapon_cz.bullet_count);
+  glm_vec2_copy((vec2){ 0.08f, 0.18f }, preferences->weapon_cz.recoil_scale);
+  build_cz_recoil_table(&preferences->weapon_cz);
+  glm_vec2_copy((vec2){ 0.1f, 0.025f }, preferences->weapon_cz.view_punch);
+  preferences->weapon_cz.view_punch_recover_speed = 326.0f;
 
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);
@@ -180,4 +226,9 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->bloom_threshold = 14.5f;
   preferences->bloom_soft_knee = 0.95f;
   preferences->bloom_intensity = 0.7f;
+}
+
+void free_preferences(struct Preferences* preferences)
+{
+  free(preferences->weapon_cz.recoil_pattern);
 }

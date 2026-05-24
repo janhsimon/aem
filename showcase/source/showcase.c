@@ -187,6 +187,7 @@ int main(int argc, char* argv[])
     free_models();
     free_renderer();
     free_window();
+    free_preferences();
 
     free_sound(); // This needs to be at the end for some reason
   }

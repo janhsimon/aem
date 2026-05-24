@@ -4,6 +4,7 @@ set(SOURCE
   include/util/util.h
 
   filename.c
+  math.c
   shader.c
   text.c
   texture.c

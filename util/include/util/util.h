@@ -13,7 +13,11 @@ char* path_from_filepath(const char* filepath); // Converter and viewer
 char* basename_from_filename(char* filename);   // Converter
 char* extension_from_filepath(char* filepath);  // Converter
 
-// Shaders
+// Math
+float smooth_step(float x);
+float smoother_step(float x);
+
+  // Shaders
 bool load_shader(const char* filename, GLenum type, GLuint* shader);
 bool generate_shader_program(GLuint vertex_shader,
                              GLuint fragment_shader,
