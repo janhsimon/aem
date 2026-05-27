@@ -108,10 +108,15 @@ struct Preferences
   // HUD
   vec4 hud_background_color;
   vec4 hud_foreground_color;
-  int hud_crosshair_length;                                 // The length of the lines that make up the crosshair
-  int hud_crosshair_gap_min, hud_crosshair_gap_max;         // The min/max crosshair gap
+  bool hud_crosshair_dot;     // Whether or not the crosshair has a center dot
+  bool hud_crosshair_lines;   // Whether or not the crosshair has lines
+  bool hud_crosshair_outline; // Whether or not the crosshair elements have an outline
+  vec4 hud_crosshair_outline_color;
+  int hud_crosshair_thickness;                              // The thickness of the crosshair elements
+  int hud_crosshair_length;                                 // The length of the crosshair lines
+  int hud_crosshair_gap_min, hud_crosshair_gap_max;         // The min/max crosshair gap for the crosshair lines
   float hud_crosshair_spread_min, hud_crosshair_spread_max; // Clamps the weapon's spread values
-  int hud_crosshair_fire_expand;                            // How much the crosshair expands when firing a bullet
+  int hud_crosshair_fire_expand;                            // How much the crosshair lines expand when firing a bullet
 
   // Particle systems
   struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,

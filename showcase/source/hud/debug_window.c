@@ -342,15 +342,25 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     igColorEdit4("Background color##HUD", preferences->hud_background_color, ImGuiColorEditFlags_None);
 
     // Crosshair
-    igSliderInt("Crosshair length##HUD", &preferences->hud_crosshair_length, 0, 100, "%d", ImGuiSliderFlags_None);
-    igSliderInt("Crosshair gap min##HUD", &preferences->hud_crosshair_gap_min, 0, 200, "%d", ImGuiSliderFlags_None);
-    igSliderInt("Crosshair gap max##HUD", &preferences->hud_crosshair_gap_max, 0, 200, "%d", ImGuiSliderFlags_None);
-    igSliderFloat("Crosshair spread min##HUD", &preferences->hud_crosshair_spread_min, 0.0f, 100.0f, "%f",
-                  ImGuiSliderFlags_None);
-    igSliderFloat("Crosshair spread max##HUD", &preferences->hud_crosshair_spread_max, 0.0f, 100.0f, "%f",
-                  ImGuiSliderFlags_None);
-    igSliderInt("Crosshair fire expand##HUD", &preferences->hud_crosshair_fire_expand, 0, 100, "%d",
-                ImGuiSliderFlags_None);
+    igSeparatorText("Crosshair");
+    igCheckbox("Dot", &preferences->hud_crosshair_dot);
+    igCheckbox("Lines", &preferences->hud_crosshair_lines);
+    igCheckbox("Outline", &preferences->hud_crosshair_outline);
+
+    igBeginDisabled(!preferences->hud_crosshair_outline);
+    igColorEdit4("Outline color##HUD", preferences->hud_crosshair_outline_color, ImGuiColorEditFlags_None);
+    igEndDisabled();
+
+    igSliderInt("Thickness##HUD", &preferences->hud_crosshair_thickness, 1, 100, "%d", ImGuiSliderFlags_None);
+
+    igBeginDisabled(!preferences->hud_crosshair_lines);
+    igSliderInt("Length##HUD", &preferences->hud_crosshair_length, 1, 100, "%d", ImGuiSliderFlags_None);
+    igSliderInt("Gap min##HUD", &preferences->hud_crosshair_gap_min, 0, 200, "%d", ImGuiSliderFlags_None);
+    igSliderInt("Gap max##HUD", &preferences->hud_crosshair_gap_max, 0, 200, "%d", ImGuiSliderFlags_None);
+    igSliderFloat("Spread min##HUD", &preferences->hud_crosshair_spread_min, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+    igSliderFloat("Spread max##HUD", &preferences->hud_crosshair_spread_max, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
+    igSliderInt("Fire expansion##HUD", &preferences->hud_crosshair_fire_expand, 0, 100, "%d", ImGuiSliderFlags_None);
+    igEndDisabled();
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Particle systems", ImGuiTreeNodeFlags_None))

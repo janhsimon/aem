@@ -75,6 +75,50 @@ bool load_hud()
   return true;
 }
 
+static void draw_crosshair_rect(ImDrawList* draw_list,
+                                float from_x,
+                                float from_y,
+                                float width,
+                                float height,
+                                ImU32 background_color,
+                                ImU32 foreground_color,
+                                bool outline)
+{
+  const float to_x = from_x + width;
+  const float to_y = from_y + height;
+
+  // Background outline
+  if (outline)
+  {
+    ImDrawList_AddRect(draw_list, (ImVec2){ from_x - 1.0f, from_y - 1.0f }, (ImVec2){ to_x + 1.0f, to_y + 1.0f },
+                       background_color, 0.0f, ImDrawFlags_None, 1.0f);
+  }
+
+  // Foreground fill
+  ImDrawList_AddRectFilled(draw_list, (ImVec2){ from_x, from_y }, (ImVec2){ to_x, to_y }, foreground_color, 0.0f,
+                           ImDrawFlags_None);
+}
+
+void vec4_to_color(vec4 input, ImVec4 *output)
+{
+  output->x = input[0];
+  output->y = input[1];
+  output->z = input[2];
+  output->w = input[3];
+}
+
+static float calc_half_screen(uint32_t size)
+{
+  // Even
+  if (size % 2 == 0)
+  {
+    return (float)(size / 2 - 1);
+  }
+
+  // Odd
+  return floorf((float)size / 2.0f);
+}
+
 void update_hud(uint32_t screen_width,
                 uint32_t screen_height,
                 float delta_time,
@@ -87,23 +131,13 @@ void update_hud(uint32_t screen_width,
 
   ImDrawList* draw_list = igGetForegroundDrawList_WindowPtr(context->CurrentWindow);
 
-  ImVec4 foreground_color, background_color;
-  {
-    foreground_color.x = preferences->hud_foreground_color[0];
-    foreground_color.y = preferences->hud_foreground_color[1];
-    foreground_color.z = preferences->hud_foreground_color[2];
-    foreground_color.w = preferences->hud_foreground_color[3];
-  }
+  ImVec4 foreground_color, background_color, crosshair_outline_color;
+  vec4_to_color(preferences->hud_foreground_color, &foreground_color);
+  vec4_to_color(preferences->hud_background_color, &background_color);
+  vec4_to_color(preferences->hud_crosshair_outline_color, &crosshair_outline_color);
 
-  {
-    background_color.x = preferences->hud_background_color[0];
-    background_color.y = preferences->hud_background_color[1];
-    background_color.z = preferences->hud_background_color[2];
-    background_color.w = preferences->hud_background_color[3];
-  }
-
-  const float half_screen_width = (float)(screen_width / 2);
-  const float half_screen_height = (float)(screen_height / 2);
+  const float half_screen_width = calc_half_screen(screen_width);
+  const float half_screen_height = calc_half_screen(screen_height);
 
   // Crosshair
   if (get_player_health() > 0.0f)
@@ -128,22 +162,53 @@ void update_hud(uint32_t screen_width,
     }
 
     const float gap_size = movement_spread + fire_expand;
-    const float half_gap_size = gap_size / 2.0f;
     const float line_size = preferences->hud_crosshair_length;
 
-    const ImU32 color = igGetColorU32_Vec4(foreground_color);
+    const ImU32 crosshair_color = igGetColorU32_Vec4(foreground_color);
+    const ImU32 outline_color = igGetColorU32_Vec4(crosshair_outline_color);
 
-    // Left and right
-    ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width - half_gap_size - line_size, half_screen_height },
-                       (ImVec2){ half_screen_width - half_gap_size, half_screen_height }, color, 1.0f);
-    ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width + half_gap_size, half_screen_height },
-                       (ImVec2){ half_screen_width + half_gap_size + line_size, half_screen_height }, color, 1.0f);
+    const float thickness = (float)preferences->hud_crosshair_thickness;
+    const float half_thickness = floorf(thickness / 2.0f);
 
-    // Top and bottom
-    ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width, half_screen_height - half_gap_size - line_size },
-                       (ImVec2){ half_screen_width, half_screen_height - half_gap_size }, color, 1.0f);
-    ImDrawList_AddLine(draw_list, (ImVec2){ half_screen_width, half_screen_height + half_gap_size },
-                       (ImVec2){ half_screen_width, half_screen_height + half_gap_size + line_size }, color, 1.0f);
+    float correction = 0.0f;
+    if (((uint32_t)thickness) % 2 == 1)
+    {
+      correction = 1.0f;
+    }
+
+    const bool outline = preferences->hud_crosshair_outline;
+
+    // Lines
+    if (preferences->hud_crosshair_lines)
+    {
+      // Left
+      draw_crosshair_rect(draw_list, half_screen_width - gap_size - line_size, half_screen_height - half_thickness,
+                          line_size, thickness, outline_color, crosshair_color, outline);
+
+      // Right
+      draw_crosshair_rect(draw_list, half_screen_width + gap_size + correction, half_screen_height - half_thickness,
+                          line_size, thickness, outline_color, crosshair_color, outline);
+
+      // Top
+      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - gap_size - line_size,
+                          thickness, line_size, outline_color, crosshair_color, outline);
+
+      // Bottom
+      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height + gap_size + correction,
+                          thickness, line_size, outline_color, crosshair_color, outline);
+    }
+
+    // Dot
+    if (preferences->hud_crosshair_dot)
+    {
+      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - half_thickness, thickness,
+                          thickness, outline_color, crosshair_color, outline);
+    }
+
+    // Center pixel for calibration
+    /*const ImU32 red = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.0f, 0.0f, 1.0f });
+    ImDrawList_AddRectFilled(draw_list, (ImVec2){ half_screen_width, half_screen_height },
+                             (ImVec2){ half_screen_width + 1, half_screen_height + 1 }, red, 0.0f, ImDrawFlags_None);*/
   }
 
   // Health and ammo displays
