@@ -128,7 +128,7 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->weapon_cz.firing_spread_scale = 15.0f;
   preferences->weapon_cz.recoil_pattern =
     malloc(sizeof(*preferences->weapon_cz.recoil_pattern) * preferences->weapon_cz.bullet_count);
-  glm_vec2_copy((vec2){ 0.08f, 0.18f }, preferences->weapon_cz.recoil_scale);
+  glm_vec2_copy((vec2){ 0.128f, 0.288f }, preferences->weapon_cz.recoil_scale);
   build_cz_recoil_table(&preferences->weapon_cz);
   glm_vec2_copy((vec2){ 0.1f, 0.025f }, preferences->weapon_cz.view_punch);
   preferences->weapon_cz.view_punch_recover_speed = 326.0f;

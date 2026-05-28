@@ -383,7 +383,7 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
           has_played_dryfire_sound = false;
         }
 
-        if (get_reload_key_down() && ammo < BULLET_COUNT && shot_cooldown <= 0.0f)
+        if (get_reload_key_down() && ammo < BULLET_COUNT && !is_shooting && shot_cooldown <= 0.0f)
         {
           is_reloading = true;
           reload_channel->time = 0.0f;
