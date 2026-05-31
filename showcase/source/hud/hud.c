@@ -173,12 +173,30 @@ void update_hud(uint32_t screen_width,
   const ImU32 crosshair_color = igGetColorU32_Vec4(foreground_color);
   const ImU32 outline_color = igGetColorU32_Vec4(crosshair_outline_color);
 
-  float half_screen_width = (float)screen_width / 2.0f;   // calc_half_screen(screen_width);
-  float half_screen_height = (float)screen_height / 2.0f; // calc_half_screen(screen_height);
+  const float half_screen_width = (float)screen_width / 2.0f;
+  const float half_screen_height = (float)screen_height / 2.0f;
 
   // Crosshair
   if (get_player_health() > 0.0f)
   {
+    float center_x = half_screen_width;
+    float center_y = half_screen_height;
+
+    // Correct the crosshair center for even screen dimensions when the line thickness is less then 2
+    // This is to make sure the crosshair stays sharp
+    if (preferences->hud_crosshair_lines_thickness < 2.0f)
+    {
+      if (screen_width % 2 == 0)
+      {
+        center_x -= 0.5f;
+      }
+
+      if (screen_height % 2 == 0)
+      {
+        center_y -= -0.5f;
+      }
+    }
+
     // Lines
     if (preferences->hud_crosshair_lines)
     {
@@ -198,72 +216,50 @@ void update_hud(uint32_t screen_width,
       const float line_size = preferences->hud_crosshair_lines_length;
 
       const float thickness = preferences->hud_crosshair_lines_thickness;
-      const float half_thickness = /*floorf*/ (thickness / 2.0f);
-
-      /*float correction = 0.0f;
-      if (((uint32_t)thickness) % 2 == 1)
-      {
-        correction = 1.0f;
-      }*/
-
-      float correction_x = 0.0f, correction_y = 0.0f;
-      if (screen_width % 2 == 0 && thickness < 2.0f)
-      {
-        correction_x = -0.5f;
-      }
-      if (screen_height % 2 == 0 && thickness < 2.0f)
-      {
-        correction_y = -0.5f;
-      }
-      half_screen_width += correction_x;
-      half_screen_height += correction_y;
+      const float half_thickness = thickness / 2.0f;
 
       const bool outline = preferences->hud_crosshair_outline;
       const float outline_thickness = preferences->hud_crosshair_outline_thickness;
 
       // Left
-      draw_crosshair_rect(draw_list, half_screen_width - gap_size - line_size, half_screen_height - half_thickness,
-                          line_size, thickness, outline_color, crosshair_color, outline, outline_thickness);
+      draw_crosshair_rect(draw_list, center_x - gap_size - line_size, center_y - half_thickness, line_size, thickness,
+                          outline_color, crosshair_color, outline, outline_thickness);
 
       // Right
-      draw_crosshair_rect(draw_list, half_screen_width + gap_size /*+ correction*/, half_screen_height - half_thickness,
-                          line_size, thickness, outline_color, crosshair_color, outline, outline_thickness);
+      draw_crosshair_rect(draw_list, center_x + gap_size, center_y - half_thickness, line_size, thickness,
+                          outline_color, crosshair_color, outline, outline_thickness);
 
       // Top
-      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - gap_size - line_size,
-                          thickness, line_size, outline_color, crosshair_color, outline, outline_thickness);
+      draw_crosshair_rect(draw_list, center_x - half_thickness, center_y - gap_size - line_size, thickness, line_size,
+                          outline_color, crosshair_color, outline, outline_thickness);
 
       // Bottom
-      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height + gap_size /*+ correction*/,
-                          thickness, line_size, outline_color, crosshair_color, outline, outline_thickness);
+      draw_crosshair_rect(draw_list, center_x - half_thickness, center_y + gap_size, thickness, line_size,
+                          outline_color, crosshair_color, outline, outline_thickness);
     }
 
     // Dot
-    if (preferences->hud_crosshair_dot_style != CrosshairDotStyle_None)
+    if (preferences->hud_crosshair_dot_shape != CrosshairDotShape_None)
     {
       const float thickness = preferences->hud_crosshair_dot_size;
-      const float half_thickness = /*floorf*/ (thickness / 2.0f);
+      const float half_thickness = thickness / 2.0f;
 
       const bool outline = preferences->hud_crosshair_outline;
       const float outline_thickness = preferences->hud_crosshair_outline_thickness;
 
-      if (preferences->hud_crosshair_dot_style == CrosshairDotStyle_Square)
+      if (preferences->hud_crosshair_dot_shape == CrosshairDotShape_Square)
       {
-        draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - half_thickness,
-                            thickness, thickness, outline_color, crosshair_color, outline, outline_thickness);
+        draw_crosshair_rect(draw_list, center_x - half_thickness, center_y - half_thickness, thickness, thickness,
+                            outline_color, crosshair_color, outline, outline_thickness);
       }
-      else if (preferences->hud_crosshair_dot_style == CrosshairDotStyle_Circle)
+      else if (preferences->hud_crosshair_dot_shape == CrosshairDotShape_Circle)
       {
-        draw_crosshair_circle(draw_list, half_screen_width, half_screen_height, half_thickness, outline_color,
-                              crosshair_color, outline, outline_thickness);
+        draw_crosshair_circle(draw_list, center_x, center_y, half_thickness, outline_color, crosshair_color, outline,
+                              outline_thickness);
       }
     }
 
     // Center pixel for calibration
-    /*const ImU32 red = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.0f, 0.0f, 1.0f });
-    ImDrawList_AddRectFilled(draw_list, (ImVec2){ half_screen_width, half_screen_height },
-                             (ImVec2){ half_screen_width + 1, half_screen_height + 1 }, red, 0.0f, ImDrawFlags_None);*/
-
     /*const ImU32 red = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.0f, 0.0f, 1.0f });
     ImDrawList_AddCircleFilled(draw_list, (ImVec2){ half_screen_width, half_screen_height }, 1.0f, red, 8);*/
 

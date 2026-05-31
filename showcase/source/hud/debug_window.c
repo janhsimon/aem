@@ -346,27 +346,27 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
 
     // Dot
     {
-      char style_names[3][16];
-      sprintf(style_names[0], "None");
-      sprintf(style_names[1], "Square");
-      sprintf(style_names[2], "Circle");
+      char shape_names[3][16];
+      sprintf(shape_names[0], "None");
+      sprintf(shape_names[1], "Square");
+      sprintf(shape_names[2], "Circle");
 
-      if (igBeginCombo("Dot style##HUD", style_names[preferences->hud_crosshair_dot_style], ImGuiComboFlags_None))
+      if (igBeginCombo("Dot shape##HUD", shape_names[preferences->hud_crosshair_dot_shape], ImGuiComboFlags_None))
       {
-        for (uint32_t style_index = 0; style_index < 3; ++style_index)
+        for (uint32_t shape_index = 0; shape_index < 3; ++shape_index)
         {
-          if (igSelectable_Bool(style_names[style_index], preferences->hud_crosshair_dot_style == style_index,
+          if (igSelectable_Bool(shape_names[shape_index], preferences->hud_crosshair_dot_shape == shape_index,
                                 ImGuiSelectableFlags_None, (struct ImVec2_c){ 0, 0 }))
           {
-            preferences->hud_crosshair_dot_style = style_index;
+            preferences->hud_crosshair_dot_shape = shape_index;
           }
         }
 
         igEndCombo();
       }
 
-      igBeginDisabled(preferences->hud_crosshair_dot_style == CrosshairDotStyle_None);
-      igSliderFloat("Dot size", &preferences->hud_crosshair_dot_size, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
+      igBeginDisabled(preferences->hud_crosshair_dot_shape == CrosshairDotShape_None);
+      igSliderFloat("Dot size", &preferences->hud_crosshair_dot_size, 1.0f, 10.0f, "%f", ImGuiSliderFlags_None);
       igEndDisabled();
     }
 

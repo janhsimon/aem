@@ -5,6 +5,7 @@
 #include "debug_manager.h"
 #include "enemy/enemy.h"
 #include "enemy/enemy_manager.h"
+#include "hud/hud.h"
 #include "input.h"
 #include "model_manager.h"
 #include "particle_manager.h"

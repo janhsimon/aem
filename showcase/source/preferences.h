@@ -45,11 +45,11 @@ struct WeaponPreferences
   float view_punch_recover_speed;
 };
 
-enum CrosshairDotStyle
+enum CrosshairDotShape
 {
-  CrosshairDotStyle_None,
-  CrosshairDotStyle_Square,
-  CrosshairDotStyle_Circle
+  CrosshairDotShape_None,
+  CrosshairDotShape_Square,
+  CrosshairDotShape_Circle
 };
 
 struct Preferences
@@ -115,7 +115,7 @@ struct Preferences
   // HUD
   vec4 hud_background_color;
   vec4 hud_foreground_color;
-  enum CrosshairDotStyle hud_crosshair_dot_style;
+  enum CrosshairDotShape hud_crosshair_dot_shape;
   float hud_crosshair_dot_size;
   bool hud_crosshair_lines; // Whether or not the crosshair has lines
   float hud_crosshair_lines_thickness;
