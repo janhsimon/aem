@@ -136,17 +136,20 @@ void load_default_preferences(struct Preferences* preferences)
   // HUD
   glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.42f }, preferences->hud_background_color);
   glm_vec4_copy((vec4){ 1.0f, 0.74f, 0.0f, 1.0f }, preferences->hud_foreground_color);
-  preferences->hud_crosshair_dot = false;
+  preferences->hud_crosshair_dot_style = CrosshairDotStyle_Circle;
+  preferences->hud_crosshair_dot_size = 3.0f;
   preferences->hud_crosshair_lines = true;
+  preferences->hud_crosshair_lines_thickness = 1.0f;
+  preferences->hud_crosshair_lines_length = 10.5f;
   preferences->hud_crosshair_outline = true;
-  glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.65f }, preferences->hud_crosshair_outline_color);
-  preferences->hud_crosshair_thickness = 1;
-  preferences->hud_crosshair_length = 7;
-  preferences->hud_crosshair_gap_min = 4;
-  preferences->hud_crosshair_gap_max = 30;
+  glm_vec4_copy((vec4){ 0.0f, 0.0f, 0.0f, 0.78f }, preferences->hud_crosshair_outline_color);
+  preferences->hud_crosshair_outline_thickness = 1.5f;
+  preferences->hud_crosshair_gap_min = 12;
+  preferences->hud_crosshair_gap_max = 50;
   preferences->hud_crosshair_spread_min = 0.0f;
   preferences->hud_crosshair_spread_max = 30.0f;
-  preferences->hud_crosshair_fire_expand = 5;
+  preferences->hud_crosshair_fire_expand = 25;
+  preferences->hud_crosshair_fire_shrink_time = 25.0f;
 
   // Smoke particle system
   preferences->smoke_particle_system.particle_count = 600;

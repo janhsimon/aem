@@ -5,6 +5,8 @@
 
 bool load_hud();
 
+void hud_crosshair_fire(struct Preferences* preferences);
+
 void update_hud(uint32_t screen_width,
                 uint32_t screen_height,
                 float delta_time,

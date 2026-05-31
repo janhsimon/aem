@@ -33,6 +33,8 @@ static ImGuiContext* context = NULL;
 static ImGuiIO* io = NULL;
 static ImFont *font_lambda = NULL, *font_jura_med = NULL;
 
+static float crosshair_fire_expand = 0.0f;
+
 bool load_hud()
 {
   context = igCreateContext(NULL);
@@ -75,6 +77,11 @@ bool load_hud()
   return true;
 }
 
+void hud_crosshair_fire(struct Preferences* preferences)
+{
+  crosshair_fire_expand = preferences->hud_crosshair_fire_expand;
+}
+
 static void draw_crosshair_rect(ImDrawList* draw_list,
                                 float from_x,
                                 float from_y,
@@ -82,16 +89,20 @@ static void draw_crosshair_rect(ImDrawList* draw_list,
                                 float height,
                                 ImU32 background_color,
                                 ImU32 foreground_color,
-                                bool outline)
+                                bool outline,
+                                float outline_thickness)
 {
   const float to_x = from_x + width;
   const float to_y = from_y + height;
 
+  const float half_outline_thickness = outline_thickness * 0.5f;
+
   // Background outline
   if (outline)
   {
-    ImDrawList_AddRect(draw_list, (ImVec2){ from_x - 1.0f, from_y - 1.0f }, (ImVec2){ to_x + 1.0f, to_y + 1.0f },
-                       background_color, 0.0f, ImDrawFlags_None, 1.0f);
+    ImDrawList_AddRect(draw_list, (ImVec2){ from_x - half_outline_thickness, from_y - half_outline_thickness },
+                       (ImVec2){ to_x + half_outline_thickness, to_y + half_outline_thickness }, background_color, 0.0f,
+                       ImDrawFlags_None, outline_thickness);
   }
 
   // Foreground fill
@@ -99,7 +110,30 @@ static void draw_crosshair_rect(ImDrawList* draw_list,
                            ImDrawFlags_None);
 }
 
-void vec4_to_color(vec4 input, ImVec4 *output)
+static void draw_crosshair_circle(ImDrawList* draw_list,
+                                  float center_x,
+                                  float center_y,
+                                  float radius,
+                                  ImU32 background_color,
+                                  ImU32 foreground_color,
+                                  bool outline,
+                                  float outline_thickness)
+{
+  const int segment_count = (int)glm_clamp(radius * 4.0f, 12.0f, 64.0f);
+  const float half_outline_thickness = outline_thickness * 0.5f;
+
+  // Background outline
+  if (outline)
+  {
+    ImDrawList_AddCircle(draw_list, (ImVec2){ center_x, center_y }, radius + half_outline_thickness, background_color,
+                         segment_count, outline_thickness);
+  }
+
+  // Foreground fill
+  ImDrawList_AddCircleFilled(draw_list, (ImVec2){ center_x, center_y }, radius, foreground_color, segment_count);
+}
+
+static void vec4_to_color(vec4 input, ImVec4* output)
 {
   output->x = input[0];
   output->y = input[1];
@@ -136,79 +170,112 @@ void update_hud(uint32_t screen_width,
   vec4_to_color(preferences->hud_background_color, &background_color);
   vec4_to_color(preferences->hud_crosshair_outline_color, &crosshair_outline_color);
 
-  const float half_screen_width = calc_half_screen(screen_width);
-  const float half_screen_height = calc_half_screen(screen_height);
+  const ImU32 crosshair_color = igGetColorU32_Vec4(foreground_color);
+  const ImU32 outline_color = igGetColorU32_Vec4(crosshair_outline_color);
+
+  float half_screen_width = (float)screen_width / 2.0f;   // calc_half_screen(screen_width);
+  float half_screen_height = (float)screen_height / 2.0f; // calc_half_screen(screen_height);
 
   // Crosshair
   if (get_player_health() > 0.0f)
   {
-    // Expand the crosshair to visualize movement spread
-    float movement_spread;
-    {
-      movement_spread = glm_clamp(get_player_movement_spread(), (float)preferences->hud_crosshair_spread_min,
-                                  (float)preferences->hud_crosshair_spread_max);
-      movement_spread -= (float)preferences->hud_crosshair_spread_min;
-      movement_spread /= ((float)preferences->hud_crosshair_spread_max - (float)preferences->hud_crosshair_spread_min);
-      movement_spread =
-        glm_lerp((float)preferences->hud_crosshair_gap_min, (float)preferences->hud_crosshair_gap_max, movement_spread);
-    }
-
-    // Also expand the crosshair when firing
-    float fire_expand = 0.0f;
-    if (view_model_get_ammo() >= 0)
-    {
-      fire_expand = view_model_get_normalized_shot_cooldown(preferences);
-      fire_expand *= (float)preferences->hud_crosshair_fire_expand;
-    }
-
-    const float gap_size = movement_spread + fire_expand;
-    const float line_size = preferences->hud_crosshair_length;
-
-    const ImU32 crosshair_color = igGetColorU32_Vec4(foreground_color);
-    const ImU32 outline_color = igGetColorU32_Vec4(crosshair_outline_color);
-
-    const float thickness = (float)preferences->hud_crosshair_thickness;
-    const float half_thickness = floorf(thickness / 2.0f);
-
-    float correction = 0.0f;
-    if (((uint32_t)thickness) % 2 == 1)
-    {
-      correction = 1.0f;
-    }
-
-    const bool outline = preferences->hud_crosshair_outline;
-
     // Lines
     if (preferences->hud_crosshair_lines)
     {
+      // Expand the crosshair to visualize movement spread
+      float movement_spread;
+      {
+        movement_spread = glm_clamp(get_player_movement_spread(), (float)preferences->hud_crosshair_spread_min,
+                                    (float)preferences->hud_crosshair_spread_max);
+        movement_spread -= (float)preferences->hud_crosshair_spread_min;
+        movement_spread /=
+          ((float)preferences->hud_crosshair_spread_max - (float)preferences->hud_crosshair_spread_min);
+        movement_spread = glm_lerp((float)preferences->hud_crosshair_gap_min, (float)preferences->hud_crosshair_gap_max,
+                                   movement_spread);
+      }
+
+      const float gap_size = movement_spread + crosshair_fire_expand;
+      const float line_size = preferences->hud_crosshair_lines_length;
+
+      const float thickness = preferences->hud_crosshair_lines_thickness;
+      const float half_thickness = /*floorf*/ (thickness / 2.0f);
+
+      /*float correction = 0.0f;
+      if (((uint32_t)thickness) % 2 == 1)
+      {
+        correction = 1.0f;
+      }*/
+
+      float correction_x = 0.0f, correction_y = 0.0f;
+      if (screen_width % 2 == 0 && thickness < 2.0f)
+      {
+        correction_x = -0.5f;
+      }
+      if (screen_height % 2 == 0 && thickness < 2.0f)
+      {
+        correction_y = -0.5f;
+      }
+      half_screen_width += correction_x;
+      half_screen_height += correction_y;
+
+      const bool outline = preferences->hud_crosshair_outline;
+      const float outline_thickness = preferences->hud_crosshair_outline_thickness;
+
       // Left
       draw_crosshair_rect(draw_list, half_screen_width - gap_size - line_size, half_screen_height - half_thickness,
-                          line_size, thickness, outline_color, crosshair_color, outline);
+                          line_size, thickness, outline_color, crosshair_color, outline, outline_thickness);
 
       // Right
-      draw_crosshair_rect(draw_list, half_screen_width + gap_size + correction, half_screen_height - half_thickness,
-                          line_size, thickness, outline_color, crosshair_color, outline);
+      draw_crosshair_rect(draw_list, half_screen_width + gap_size /*+ correction*/, half_screen_height - half_thickness,
+                          line_size, thickness, outline_color, crosshair_color, outline, outline_thickness);
 
       // Top
       draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - gap_size - line_size,
-                          thickness, line_size, outline_color, crosshair_color, outline);
+                          thickness, line_size, outline_color, crosshair_color, outline, outline_thickness);
 
       // Bottom
-      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height + gap_size + correction,
-                          thickness, line_size, outline_color, crosshair_color, outline);
+      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height + gap_size /*+ correction*/,
+                          thickness, line_size, outline_color, crosshair_color, outline, outline_thickness);
     }
 
     // Dot
-    if (preferences->hud_crosshair_dot)
+    if (preferences->hud_crosshair_dot_style != CrosshairDotStyle_None)
     {
-      draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - half_thickness, thickness,
-                          thickness, outline_color, crosshair_color, outline);
+      const float thickness = preferences->hud_crosshair_dot_size;
+      const float half_thickness = /*floorf*/ (thickness / 2.0f);
+
+      const bool outline = preferences->hud_crosshair_outline;
+      const float outline_thickness = preferences->hud_crosshair_outline_thickness;
+
+      if (preferences->hud_crosshair_dot_style == CrosshairDotStyle_Square)
+      {
+        draw_crosshair_rect(draw_list, half_screen_width - half_thickness, half_screen_height - half_thickness,
+                            thickness, thickness, outline_color, crosshair_color, outline, outline_thickness);
+      }
+      else if (preferences->hud_crosshair_dot_style == CrosshairDotStyle_Circle)
+      {
+        draw_crosshair_circle(draw_list, half_screen_width, half_screen_height, half_thickness, outline_color,
+                              crosshair_color, outline, outline_thickness);
+      }
     }
 
     // Center pixel for calibration
     /*const ImU32 red = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.0f, 0.0f, 1.0f });
     ImDrawList_AddRectFilled(draw_list, (ImVec2){ half_screen_width, half_screen_height },
                              (ImVec2){ half_screen_width + 1, half_screen_height + 1 }, red, 0.0f, ImDrawFlags_None);*/
+
+    /*const ImU32 red = igGetColorU32_Vec4((ImVec4){ 1.0f, 0.0f, 0.0f, 1.0f });
+    ImDrawList_AddCircleFilled(draw_list, (ImVec2){ half_screen_width, half_screen_height }, 1.0f, red, 8);*/
+
+    if (crosshair_fire_expand > 0.0f)
+    {
+      crosshair_fire_expand -= crosshair_fire_expand * preferences->hud_crosshair_fire_shrink_time * delta_time;
+
+      if (crosshair_fire_expand < 0.0f)
+      {
+        crosshair_fire_expand = 0.0f;
+      }
+    }
   }
 
   // Health and ammo displays

@@ -276,6 +276,8 @@ static void fire(struct Preferences* preferences)
     }
   }
 
+  hud_crosshair_fire(preferences);
+
   // View punch
   if (!preferences->no_view_punch)
   {
@@ -445,7 +447,7 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
 
   // View punch
   {
-    camera_update_view_punch(preferences, (1.0f - view_model_get_normalized_shot_cooldown(preferences)) * 0.02f,
+    camera_update_view_punch(preferences, (1.0f - (shot_cooldown / preferences->weapon_cz.fire_rate)) * 0.02f,
                              delta_time);
   }
 
@@ -514,9 +516,4 @@ void view_model_respawn()
   ammo = BULLET_COUNT;
 
   play_ak47_equip_sound();
-}
-
-float view_model_get_normalized_shot_cooldown(const struct Preferences* preferences)
-{
-  return shot_cooldown / preferences->weapon_cz.fire_rate;
 }
