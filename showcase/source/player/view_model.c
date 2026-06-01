@@ -300,7 +300,13 @@ static void fire(struct Preferences* preferences)
     --ammo;
   }
 
+  // Increment the recoil pattern index but make sure it doesn't overflow in case infinite ammo is on
   ++recoil_pattern_bullet_index;
+  if (recoil_pattern_bullet_index >= weapon->bullet_count)
+  {
+    recoil_pattern_bullet_index = weapon->bullet_count - 1;
+  }
+
   has_played_dryfire_sound = false;
   shot_cooldown = weapon->fire_rate;
 }
