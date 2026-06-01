@@ -10,7 +10,7 @@ static GLuint shader_program;
 
 static struct
 {
-  GLint view, proj, brightness, tint;
+  GLint view, proj, billboard, brightness, tint;
 } uniforms;
 
 bool load_particle_pipeline()
@@ -41,6 +41,7 @@ bool load_particle_pipeline()
       glUseProgram(shader_program);
       uniforms.view = get_uniform_location(shader_program, "view");
       uniforms.proj = get_uniform_location(shader_program, "proj");
+      uniforms.billboard = get_uniform_location(shader_program, "billboard");
       uniforms.brightness = get_uniform_location(shader_program, "brightness");
       uniforms.tint = get_uniform_location(shader_program, "tint");
 
@@ -66,6 +67,11 @@ void particle_pipeline_use_viewproj_matrix(mat4 view_matrix, mat4 proj_matrix)
 {
   glUniformMatrix4fv(uniforms.view, 1, GL_FALSE, (float*)view_matrix);
   glUniformMatrix4fv(uniforms.proj, 1, GL_FALSE, (float*)proj_matrix);
+}
+
+void particle_pipeline_use_billboarding(bool billboard)
+{
+  glUniform1i(uniforms.billboard, billboard);
 }
 
 void particle_pipeline_use_brightness(float brightness)

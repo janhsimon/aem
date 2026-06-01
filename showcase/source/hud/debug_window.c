@@ -421,6 +421,12 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
       update_particle_system(&preferences->blood_particle_system);
       igTreePop();
     }
+
+    if (igTreeNode_Str("Bullet hole"))
+    {
+      update_particle_system(&preferences->bullet_hole_particle_system);
+      igTreePop();
+    }
   }
 
   if (igCollapsingHeader_TreeNodeFlags("Tracer", ImGuiTreeNodeFlags_None))

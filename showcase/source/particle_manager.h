@@ -8,6 +8,7 @@ void spawn_smoke(vec3 position, vec3 dir);
 void spawn_shrapnel(vec3 position, vec3 dir);
 void spawn_muzzleflash(vec3 position);
 void spawn_blood(vec3 position, vec3 dir);
+void spawn_bullet_hole(vec3 position, vec3 dir);
 
 void set_muzzleflash_position(vec3 position);
 

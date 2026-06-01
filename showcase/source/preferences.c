@@ -211,6 +211,21 @@ void load_default_preferences(struct Preferences* preferences)
   preferences->blood_particle_system.scale_spread = 0.4f;
   preferences->blood_particle_system.scale_falloff = 0.03f;
 
+  // Bullet hole particle system
+  preferences->bullet_hole_particle_system.particle_count = 1;
+  preferences->bullet_hole_particle_system.additive = false;
+  preferences->bullet_hole_particle_system.brightness = 0.05f;
+  glm_vec3_copy((vec3){ 1.0f, 1.0f, 1.0f }, preferences->bullet_hole_particle_system.tint);
+  preferences->bullet_hole_particle_system.direction_spread = 0.0f;
+  preferences->bullet_hole_particle_system.radius = 0.0f;
+  preferences->bullet_hole_particle_system.gravity = 0.0f;
+  preferences->bullet_hole_particle_system.opacity = 0.94f;
+  preferences->bullet_hole_particle_system.opacity_spread = 0.0f;
+  preferences->bullet_hole_particle_system.opacity_falloff = 0.0f;
+  preferences->bullet_hole_particle_system.scale = 0.111f;
+  preferences->bullet_hole_particle_system.scale_spread = 0.0f;
+  preferences->bullet_hole_particle_system.scale_falloff = 0.0f;
+
   // Tracer
   glm_vec4_copy((vec4){ 0.75f, 0.18f, 0.01f, 0.47f }, preferences->tracer_color);
   preferences->tracer_brightness = 30.8f;

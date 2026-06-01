@@ -130,7 +130,7 @@ struct Preferences
 
   // Particle systems
   struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,
-    blood_particle_system;
+    blood_particle_system, bullet_hole_particle_system;
 
   // Tracer
   vec4 tracer_color;

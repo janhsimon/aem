@@ -273,6 +273,7 @@ static void fire(struct Preferences* preferences)
     {
       spawn_smoke(to, n);
       spawn_shrapnel(to, n);
+      spawn_bullet_hole(to, n);
       play_impact_sound(to);
     }
   }
