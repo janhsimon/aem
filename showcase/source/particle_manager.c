@@ -3,6 +3,7 @@
 #include "preferences.h"
 #include "renderer/forward_pass/particle_renderer.h"
 
+#include <cglm/quat.h>
 #include <cglm/vec3.h>
 
 #include <math.h>
