@@ -212,7 +212,7 @@ static void fire(struct Preferences* preferences)
   const bool level_hit = collide_ray(from, to, to, n);
   add_debug_line(from, to);
 
-  spawn_muzzleflash(GLM_VEC3_ZERO);
+  spawn_player_muzzleflash(GLM_VEC3_ZERO);
 
   // Spawn tracer
   {
@@ -336,7 +336,7 @@ void update_view_model(struct Preferences* preferences, bool firing_enabled, boo
 
     vec3 p = GLM_VEC3_ZERO_INIT;
     glm_mat4_mulv3(m, p, 1.0f, p);
-    set_muzzleflash_position(p);
+    set_player_muzzleflash_position(p);
   }
 
   // Equip animation

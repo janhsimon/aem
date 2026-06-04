@@ -37,10 +37,15 @@ bool get_show_bloom_window()
 
 static void update_particle_system(struct ParticleSystemPreferences* preferences)
 {
-  igSliderInt("Particle count", &preferences->particle_count, 0, 10000, "%d", ImGuiSliderFlags_None);
+  igSliderInt("Particle count per emit", &preferences->particle_count, 0, 10000, "%d", ImGuiSliderFlags_None);
+  igSliderInt("Max particle count", &preferences->max_particle_count, 0, 10000, "%d", ImGuiSliderFlags_None);
+  igCheckbox("Billboard", &preferences->billboard);
+  igCheckbox("Stick to emitter", &preferences->sticky);
   igCheckbox("Additive", &preferences->additive);
+  igSliderInt("Texture index", &preferences->texture_index, 0, 4, "%d", ImGuiSliderFlags_ClampOnInput);
   igSliderFloat("Particle brightness", &preferences->brightness, 0.0f, 100.0f, "%f", ImGuiSliderFlags_Logarithmic);
   igColorEdit3("Particle color", preferences->tint, ImGuiColorEditFlags_None);
+  igSliderFloat("Particle lifetime", &preferences->lifetime, -1.0f, 10000.0f, "%f", ImGuiSliderFlags_Logarithmic);
   igSliderFloat("Direction spread", &preferences->direction_spread, 0.0f, 360.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Emitter radius", &preferences->radius, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Gravity", &preferences->gravity, 0.0f, 10.0f, "%f", ImGuiSliderFlags_None);
@@ -157,7 +162,6 @@ static void update_weapon(struct WeaponPreferences* preferences)
 
   // View punch
   igSeparatorText("View punch");
-  // igSliderFloat("Scale##ViewPunch", &preferences->view_punch_scale, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat2("Amount##ViewPunch", preferences->view_punch, 0.0f, 100.0f, "%f", ImGuiSliderFlags_None);
   igSliderFloat("Recover speed##ViewPunch", &preferences->view_punch_recover_speed, 0.0f, 1000.0f, "%f",
                 ImGuiSliderFlags_None);
@@ -411,9 +415,21 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
       igTreePop();
     }
 
-    if (igTreeNode_Str("Muzzleflash"))
+    if (igTreeNode_Str("Player muzzleflash"))
     {
-      update_particle_system(&preferences->muzzleflash_particle_system);
+      update_particle_system(&preferences->muzzleflash_player_particle_system);
+      igTreePop();
+    }
+
+    if (igTreeNode_Str("Enemy front muzzleflash"))
+    {
+      update_particle_system(&preferences->muzzleflash_enemy_front_particle_system);
+      igTreePop();
+    }
+
+    if (igTreeNode_Str("Enemy side muzzleflash"))
+    {
+      update_particle_system(&preferences->muzzleflash_enemy_side_particle_system);
       igTreePop();
     }
 

@@ -10,7 +10,7 @@ void free_particle_renderer();
 
 void start_particle_rendering();
 void render_particles(vec3* positions,
-                      vec3* directions,
+                      vec4* orientations,
                       float* scales,
                       float* opacities,
                       uint32_t particle_count,

@@ -15,6 +15,8 @@
 #include <aem/animation_mixer.h>
 #include <aem/model.h>
 
+#include <cglm/affine.h>
+#include <cglm/mat3.h>
 #include <cglm/mat4.h>
 #include <cglm/vec3.h>
 
@@ -70,7 +72,90 @@ static void fire(struct Enemy* enemy)
 
     spawn_smoke(to, n);
     spawn_shrapnel(to, n);
+    spawn_bullet_hole(to, n);
     play_impact_sound(to);
+  }
+
+  // Muzzleflash
+  {
+    mat4 joint_to_world;
+    aem_get_animation_mixer_joint_transform(model, enemy->mixer, 39,
+                                            AEMAnimationLayer_Base | AEMAnimationLayer_Additive,
+                                            AEMJointTransformSpace_Global, *joint_to_world);
+
+    glm_mat4_mul(enemy->transform, joint_to_world, joint_to_world); // Model to world space
+
+    const float offset_x = 0.35f;
+    const float offset_y = 0.75f;
+
+    vec3 front_pos = { offset_y, 3.0f, offset_x };
+    glm_mat4_mulv3(joint_to_world, front_pos, 1.0f, front_pos);
+
+    vec3 side_pos = { offset_y, 5.5f, offset_x };
+    glm_mat4_mulv3(joint_to_world, side_pos, 1.0f, side_pos);
+
+    mat3 joint_to_world_rot;
+    glm_mat4_pick3(joint_to_world, joint_to_world_rot);
+    glm_vec3_normalize(joint_to_world_rot[0]);
+    glm_vec3_normalize(joint_to_world_rot[1]);
+    glm_vec3_normalize(joint_to_world_rot[2]);
+
+    versor front_quat;
+    {
+      mat4 flip4 = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate_x(flip4, GLM_PI_2f, flip4);
+      mat3 flip3;
+      glm_mat4_pick3(flip4, flip3);
+
+      mat3 final;
+      glm_mat3_mul(joint_to_world_rot, flip3, final);
+
+      glm_mat3_quat(final, front_quat);
+    }
+
+    versor side_quat1;
+    {
+      mat4 flip4 = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate_z(flip4, GLM_PI_2f, flip4);
+      mat3 flip3;
+      glm_mat4_pick3(flip4, flip3);
+
+      mat4 rot4 = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate_x(rot4, GLM_PI_4, rot4);
+      mat3 rot3;
+      glm_mat4_pick3(rot4, rot3);
+
+      mat3 final_rot;
+      glm_mat3_mul(flip3, rot3, final_rot);
+
+      mat3 final;
+      glm_mat3_mul(joint_to_world_rot, final_rot, final);
+
+      glm_mat3_quat(final, side_quat1);
+    }
+
+    versor side_quat2;
+    {
+      mat4 flip4 = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate_z(flip4, GLM_PI_2f, flip4);
+      mat3 flip3;
+      glm_mat4_pick3(flip4, flip3);
+
+      mat4 rot4 = GLM_MAT4_IDENTITY_INIT;
+      glm_rotate_x(rot4, -GLM_PI_4, rot4);
+      mat3 rot3;
+      glm_mat4_pick3(rot4, rot3);
+
+      mat3 final_rot;
+      glm_mat3_mul(flip3, rot3, final_rot);
+
+      mat3 final;
+      glm_mat3_mul(joint_to_world_rot, final_rot, final);
+
+      glm_mat3_quat(final, side_quat2);
+    }
+
+    spawn_enemy_muzzleflash(front_pos, front_quat, side_pos, side_quat1, side_quat2);
   }
 }
 

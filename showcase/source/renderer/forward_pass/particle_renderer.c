@@ -8,9 +8,9 @@
 #include <glad/gl.h>
 
 static GLuint vao, vbo;
-static GLuint instance_positions, instance_directions, instance_scales, instance_opacities;
+static GLuint instance_positions, instance_orientations, instance_scales, instance_opacities;
 
-static GLuint smoke_texture, muzzleflash_texture, blood_texture, bullet_hole_texture;
+static GLuint smoke_texture, muzzleflash_front_texture, muzzleflash_side_texture, blood_texture, bullet_hole_texture;
 
 bool load_particle_renderer()
 {
@@ -36,7 +36,7 @@ bool load_particle_renderer()
   glGenBuffers(1, &vbo);
 
   glGenBuffers(1, &instance_positions);
-  glGenBuffers(1, &instance_directions);
+  glGenBuffers(1, &instance_orientations);
   glGenBuffers(1, &instance_scales);
   glGenBuffers(1, &instance_opacities);
 
@@ -52,9 +52,9 @@ bool load_particle_renderer()
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)(sizeof(float) * 0));
   glVertexAttribDivisor(1, 1);
 
-  glBindBuffer(GL_ARRAY_BUFFER, instance_directions);
+  glBindBuffer(GL_ARRAY_BUFFER, instance_orientations);
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)(sizeof(float) * 0));
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 0));
   glVertexAttribDivisor(2, 1);
 
   glBindBuffer(GL_ARRAY_BUFFER, instance_scales);
@@ -72,7 +72,12 @@ bool load_particle_renderer()
     return false;
   }
 
-  if (!load_texture("textures/muzzleflash1.png", &muzzleflash_texture))
+  if (!load_texture("textures/muzzleflash_front1.png", &muzzleflash_front_texture))
+  {
+    return false;
+  }
+
+  if (!load_texture("textures/muzzleflash_side1.png", &muzzleflash_side_texture))
   {
     return false;
   }
@@ -94,12 +99,13 @@ void free_particle_renderer()
 {
   free_texture(bullet_hole_texture);
   free_texture(blood_texture);
-  free_texture(muzzleflash_texture);
+  free_texture(muzzleflash_side_texture);
+  free_texture(muzzleflash_front_texture);
   free_texture(smoke_texture);
 
   glDeleteBuffers(1, &instance_opacities);
   glDeleteBuffers(1, &instance_scales);
-  glDeleteBuffers(1, &instance_directions);
+  glDeleteBuffers(1, &instance_orientations);
   glDeleteBuffers(1, &instance_positions);
   glDeleteVertexArrays(1, &vao);
   glDeleteBuffers(1, &vbo);
@@ -111,7 +117,7 @@ void start_particle_rendering()
 }
 
 void render_particles(vec3* positions,
-                      vec3* directions,
+                      vec4* orientations,
                       float* scales,
                       float* opacities,
                       uint32_t particle_count,
@@ -143,8 +149,8 @@ void render_particles(vec3* positions,
   glBindBuffer(GL_ARRAY_BUFFER, instance_positions);
   glBufferData(GL_ARRAY_BUFFER, sizeof(positions[0]) * particle_count, positions, GL_DYNAMIC_DRAW);
 
-  glBindBuffer(GL_ARRAY_BUFFER, instance_directions);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(directions[0]) * particle_count, directions, GL_DYNAMIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, instance_orientations);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(orientations[0]) * particle_count, orientations, GL_DYNAMIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, instance_scales);
   glBufferData(GL_ARRAY_BUFFER, sizeof(scales[0]) * particle_count, scales, GL_DYNAMIC_DRAW);
@@ -155,7 +161,7 @@ void render_particles(vec3* positions,
   glActiveTexture(GL_TEXTURE0);
   if (texture_index == 0)
   {
-    glBindTexture(GL_TEXTURE_2D, muzzleflash_texture);
+    glBindTexture(GL_TEXTURE_2D, muzzleflash_front_texture);
   }
   else if (texture_index == 1)
   {
@@ -168,6 +174,10 @@ void render_particles(vec3* positions,
   else if (texture_index == 3)
   {
     glBindTexture(GL_TEXTURE_2D, bullet_hole_texture);
+  }
+  else if (texture_index == 4)
+  {
+    glBindTexture(GL_TEXTURE_2D, muzzleflash_side_texture);
   }
 
   glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, particle_count);

@@ -7,10 +7,12 @@
 
 struct ParticleSystemPreferences
 {
-  uint32_t particle_count;
-  bool additive;
+  uint32_t particle_count, max_particle_count;
+  bool billboard, sticky, additive;
+  uint32_t texture_index;
   float brightness;
   vec3 tint;
+  float lifetime;
   float direction_spread;
   float radius;
   float gravity;
@@ -130,8 +132,9 @@ struct Preferences
   float hud_crosshair_fire_shrink_time;                     // How fast the crosshair lines shrink after firing a bullet
 
   // Particle systems
-  struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_particle_system,
-    blood_particle_system, bullet_hole_particle_system;
+  struct ParticleSystemPreferences smoke_particle_system, shrapnel_particle_system, muzzleflash_player_particle_system,
+    muzzleflash_enemy_front_particle_system, muzzleflash_enemy_side_particle_system, blood_particle_system,
+    bullet_hole_particle_system;
 
   // Tracer
   vec4 tracer_color;
