@@ -57,6 +57,7 @@ struct Preferences
   // Debug
   bool debug_render;
   bool show_player_info;
+  bool god_mode;
   bool infinite_ammo;
   bool no_clip;
   bool no_movement_spread, no_firing_spread, no_recoil, no_view_punch;

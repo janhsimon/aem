@@ -41,6 +41,7 @@ void load_default_preferences(struct Preferences* preferences)
   // Debug
   preferences->debug_render = false;
   preferences->show_player_info = false;
+  preferences->god_mode = true;
   preferences->infinite_ammo = false;
   preferences->no_clip = false;
   preferences->no_movement_spread = preferences->no_firing_spread = false;

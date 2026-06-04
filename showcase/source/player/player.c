@@ -350,8 +350,13 @@ float get_player_health()
   return health;
 }
 
-bool is_player_hit(vec3 from, vec3 to)
+bool is_player_hit(const struct Preferences* preferences, vec3 from, vec3 to)
 {
+  if (preferences->god_mode)
+  {
+    return false;
+  }
+
   vec3 player_top;
   camera_get_position(player_top);
 

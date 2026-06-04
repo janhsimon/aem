@@ -57,7 +57,7 @@ static void fire(struct Enemy* enemy)
 
   add_debug_line(start, end);
 
-  if (is_player_hit(start, end))
+  if (is_player_hit(preferences, start, end))
   {
     vec3 dir;
     glm_vec3_sub(end, start, dir);

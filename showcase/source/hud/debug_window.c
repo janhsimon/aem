@@ -183,6 +183,7 @@ void update_debug_window(struct Preferences* preferences, uint32_t screen_width,
     }
 
     igCheckbox("Show player information", &preferences->show_player_info);
+    igCheckbox("God mode", &preferences->god_mode);
     igCheckbox("Infinite ammo", &preferences->infinite_ammo);
     igCheckbox("No clip", &preferences->no_clip);
     igCheckbox("No movement spread", &preferences->no_movement_spread);
