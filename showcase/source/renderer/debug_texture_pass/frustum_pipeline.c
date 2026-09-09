@@ -21,17 +21,17 @@ bool load_frustum_pipeline()
 {
   // Load shaders
   GLuint vertex_shader, fragment_shader;
-  if (!load_shader("shaders/simple.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/simple.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!load_shader("shaders/tracer.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/tracer.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
   {
     return false;
   }
@@ -44,18 +44,18 @@ bool load_frustum_pipeline()
     glUseProgram(shader_program);
 
     {
-      GLuint world_uniform_location = get_uniform_location(shader_program, "world");
+      GLuint world_uniform_location = util_get_uniform_location(shader_program, "world");
 
       mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
       glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
     }
 
-    uniforms.viewproj = get_uniform_location(shader_program, "viewproj");
+    uniforms.viewproj = util_get_uniform_location(shader_program, "viewproj");
 
-    GLuint color_uniform_location = get_uniform_location(shader_program, "color");
+    GLuint color_uniform_location = util_get_uniform_location(shader_program, "color");
     glUniform4f(color_uniform_location, 1.0f, 1.0f, 1.0f, 1.0f);
 
-    GLuint brightness_uniform_location = get_uniform_location(shader_program, "brightness");
+    GLuint brightness_uniform_location = util_get_uniform_location(shader_program, "brightness");
     glUniform1f(brightness_uniform_location, 1.0f);
   }
 

@@ -23,12 +23,12 @@ static struct
 static bool load_static_shader_program(const GLuint fragment_shader)
 {
   GLuint vertex_shader;
-  if (!load_shader("shaders/shadow_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/shadow_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[ShadowPipelineType_Static]))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[ShadowPipelineType_Static]))
   {
     return false;
   }
@@ -36,7 +36,8 @@ static bool load_static_shader_program(const GLuint fragment_shader)
   glDeleteShader(vertex_shader);
 
   glUseProgram(shader_programs[ShadowPipelineType_Static]);
-  static_uniforms.worldviewproj = get_uniform_location(shader_programs[ShadowPipelineType_Static], "worldviewproj");
+  static_uniforms.worldviewproj =
+    util_get_uniform_location(shader_programs[ShadowPipelineType_Static], "worldviewproj");
 
   return true;
 }
@@ -44,12 +45,12 @@ static bool load_static_shader_program(const GLuint fragment_shader)
 static bool load_skinned_shader_program(const GLuint fragment_shader)
 {
   GLuint vertex_shader;
-  if (!load_shader("shaders/shadow_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/shadow_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[ShadowPipelineType_Skinned]))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[ShadowPipelineType_Skinned]))
   {
     return false;
   }
@@ -57,11 +58,12 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
   glDeleteShader(vertex_shader);
 
   glUseProgram(shader_programs[ShadowPipelineType_Skinned]);
-  skinned_uniforms.worldviewproj = get_uniform_location(shader_programs[ShadowPipelineType_Skinned], "worldviewproj");
+  skinned_uniforms.worldviewproj =
+    util_get_uniform_location(shader_programs[ShadowPipelineType_Skinned], "worldviewproj");
 
   {
     const GLint joint_transform_tex_uniform_location =
-      get_uniform_location(shader_programs[ShadowPipelineType_Skinned], "joint_transform_tex");
+      util_get_uniform_location(shader_programs[ShadowPipelineType_Skinned], "joint_transform_tex");
     glUniform1i(joint_transform_tex_uniform_location, 0);
   }
 
@@ -72,7 +74,7 @@ bool load_shadow_pipeline()
 {
   // Load a null (no-op) fragment shader
   GLuint fragment_shader;
-  if (!load_shader("shaders/null.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/null.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
@@ -109,5 +111,6 @@ void shadow_pipeline_use_matrices(enum ShadowPipelineType type, mat4 world_matri
   glm_mat4_mul(proj_matrix, view_matrix, worldviewproj_matrix);
   glm_mat4_mul(worldviewproj_matrix, world_matrix, worldviewproj_matrix);
 
-  glUniformMatrix4fv(type == ShadowPipelineType_Static ? static_uniforms.worldviewproj : skinned_uniforms.worldviewproj, 1, GL_FALSE, (float*)worldviewproj_matrix);
+  glUniformMatrix4fv(type == ShadowPipelineType_Static ? static_uniforms.worldviewproj : skinned_uniforms.worldviewproj,
+                     1, GL_FALSE, (float*)worldviewproj_matrix);
 }

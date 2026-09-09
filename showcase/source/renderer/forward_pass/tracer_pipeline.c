@@ -18,17 +18,17 @@ bool load_tracer_pipeline()
   // Load shaders
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/tracer.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+    if (!util_load_shader("shaders/tracer.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
     {
       return false;
     }
 
-    if (!load_shader("shaders/tracer.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/tracer.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }
@@ -38,11 +38,11 @@ bool load_tracer_pipeline()
 
     // Retrieve uniform locations
     glUseProgram(shader_program);
-    uniforms.view = get_uniform_location(shader_program, "view");
-    uniforms.proj = get_uniform_location(shader_program, "proj");
-    uniforms.brightness = get_uniform_location(shader_program, "brightness");
-    uniforms.color = get_uniform_location(shader_program, "color");
-    uniforms.thickness = get_uniform_location(shader_program, "thickness");
+    uniforms.view = util_get_uniform_location(shader_program, "view");
+    uniforms.proj = util_get_uniform_location(shader_program, "proj");
+    uniforms.brightness = util_get_uniform_location(shader_program, "brightness");
+    uniforms.color = util_get_uniform_location(shader_program, "color");
+    uniforms.thickness = util_get_uniform_location(shader_program, "thickness");
   }
 
   return true;

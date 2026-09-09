@@ -69,8 +69,8 @@ static bool export_file(char* filepath)
   char* path = NULL;
   char output_filepath[256];
   {
-    path = path_from_filepath(filepath);
-    char* basename = basename_from_filename(filename_from_filepath(filepath));
+    path = util_path_from_filepath(filepath);
+    char* basename = util_basename_from_filename(util_filename_from_filepath(filepath));
 
     sprintf(output_filepath, "%s/%s%s", path, basename, ".aem"); // Null-terminates string
 
@@ -114,16 +114,16 @@ static bool export_file(char* filepath)
 static bool export_list(const char* filepath)
 {
   long length;
-  char* list = load_text_file(filepath, &length);
+  char* list = util_load_text_file(filepath, &length);
   if (!list)
   {
     printf("Error: Failed to open list input file: \"%s\"\n", filepath);
     return false;
   }
 
-  preprocess_list_file(list, length);
+  util_preprocess_list_file(list, length);
 
-  char* path = path_from_filepath(filepath);
+  char* path = util_path_from_filepath(filepath);
 
   // Export the identified files
   long index = 0;
@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
 
   bool result;
   {
-    const char* extension = extension_from_filepath(filepath);
+    const char* extension = util_extension_from_filepath(filepath);
     if (strcmp(extension, "lst") == 0)
     {
       result = export_list(filepath);

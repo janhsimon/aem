@@ -31,23 +31,25 @@ bool generate_skeleton_overlay()
   glVertexAttribIPointer(1, 1, GL_INT, 16, (void*)12);
 
   GLuint vertex_shader, skeleton_geometry_shader, selected_joint_geometry_shader, fragment_shader;
-  if (!load_shader("shaders/overlay/skeleton.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-      !load_shader("shaders/overlay/skeleton_line.geo.glsl", GL_GEOMETRY_SHADER, &skeleton_geometry_shader) ||
-      !load_shader("shaders/overlay/skeleton_point.geo.glsl", GL_GEOMETRY_SHADER, &selected_joint_geometry_shader) ||
-      !load_shader("shaders/overlay/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/overlay/skeleton.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+      !util_load_shader("shaders/overlay/skeleton_line.geo.glsl", GL_GEOMETRY_SHADER, &skeleton_geometry_shader) ||
+      !util_load_shader("shaders/overlay/skeleton_point.geo.glsl", GL_GEOMETRY_SHADER,
+                        &selected_joint_geometry_shader) ||
+      !util_load_shader("shaders/overlay/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
 
   // Generate skeleton shader programs
   {
-    if (!generate_shader_program(vertex_shader, fragment_shader, &skeleton_geometry_shader, &skeleton_shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, &skeleton_geometry_shader,
+                                      &skeleton_shader_program))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &selected_joint_geometry_shader,
-                                 &selected_joint_shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, &selected_joint_geometry_shader,
+                                      &selected_joint_shader_program))
     {
       return false;
     }
@@ -61,14 +63,15 @@ bool generate_skeleton_overlay()
     {
       glUseProgram(skeleton_shader_program);
 
-      skeleton_viewproj_uniform_location = get_uniform_location(skeleton_shader_program, "viewproj");
-      skeleton_screen_resolution_uniform_location = get_uniform_location(skeleton_shader_program, "screen_resolution");
+      skeleton_viewproj_uniform_location = util_get_uniform_location(skeleton_shader_program, "viewproj");
+      skeleton_screen_resolution_uniform_location =
+        util_get_uniform_location(skeleton_shader_program, "screen_resolution");
 
       glUseProgram(selected_joint_shader_program);
 
-      selected_joint_viewproj_uniform_location = get_uniform_location(selected_joint_shader_program, "viewproj");
+      selected_joint_viewproj_uniform_location = util_get_uniform_location(selected_joint_shader_program, "viewproj");
       selected_joint_screen_resolution_uniform_location =
-        get_uniform_location(selected_joint_shader_program, "screen_resolution");
+        util_get_uniform_location(selected_joint_shader_program, "screen_resolution");
     }
   }
 

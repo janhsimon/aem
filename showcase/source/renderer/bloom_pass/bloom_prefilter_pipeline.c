@@ -17,17 +17,17 @@ bool load_bloom_prefilter_pipeline()
 {
   // Load shaders
   GLuint vertex_shader, fragment_shader;
-  if (!load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!load_shader("shaders/bloom_prefilter.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/bloom_prefilter.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
   {
     return false;
   }
@@ -36,10 +36,10 @@ bool load_bloom_prefilter_pipeline()
   {
     glUseProgram(shader_program);
 
-    uniforms.threshold = get_uniform_location(shader_program, "threshold");
-    uniforms.soft_knee = get_uniform_location(shader_program, "soft_knee");
+    uniforms.threshold = util_get_uniform_location(shader_program, "threshold");
+    uniforms.soft_knee = util_get_uniform_location(shader_program, "soft_knee");
 
-    const GLint hdr_tex_uniform_location = get_uniform_location(shader_program, "hdr_tex");
+    const GLint hdr_tex_uniform_location = util_get_uniform_location(shader_program, "hdr_tex");
     glUniform1i(hdr_tex_uniform_location, 0);
   }
 

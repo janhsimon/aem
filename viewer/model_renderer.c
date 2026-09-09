@@ -9,9 +9,9 @@
 static GLuint vertex_array, vertex_buffer, index_buffer, joint_transform_buffer, joint_transform_texture;
 
 static GLuint shader_program;
-static GLint pass_uniform_location, ambient_color_uniform_location, light_dir_uniform_location, light_color_uniform_location,
-  camera_pos_uniform_location, render_mode_uniform_location, postprocessing_mode_uniform_location,
-  world_uniform_location, viewproj_uniform_location;
+static GLint pass_uniform_location, ambient_color_uniform_location, light_dir_uniform_location,
+  light_color_uniform_location, camera_pos_uniform_location, render_mode_uniform_location,
+  postprocessing_mode_uniform_location, world_uniform_location, viewproj_uniform_location;
 
 bool load_model_renderer()
 {
@@ -59,13 +59,13 @@ bool load_model_renderer()
   // Generate shader program
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/model.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/model.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/model.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !util_load_shader("shaders/model.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }
@@ -77,27 +77,28 @@ bool load_model_renderer()
     {
       glUseProgram(shader_program);
 
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      world_uniform_location = util_get_uniform_location(shader_program, "world");
+      viewproj_uniform_location = util_get_uniform_location(shader_program, "viewproj");
 
-      pass_uniform_location = get_uniform_location(shader_program, "render_pass");
-      ambient_color_uniform_location = get_uniform_location(shader_program, "ambient_color");
-      light_dir_uniform_location = get_uniform_location(shader_program, "light_dir");
-      light_color_uniform_location = get_uniform_location(shader_program, "light_color");
-      camera_pos_uniform_location = get_uniform_location(shader_program, "camera_pos");
-      render_mode_uniform_location = get_uniform_location(shader_program, "render_mode");
-      postprocessing_mode_uniform_location = get_uniform_location(shader_program, "postprocessing_mode");
+      pass_uniform_location = util_get_uniform_location(shader_program, "render_pass");
+      ambient_color_uniform_location = util_get_uniform_location(shader_program, "ambient_color");
+      light_dir_uniform_location = util_get_uniform_location(shader_program, "light_dir");
+      light_color_uniform_location = util_get_uniform_location(shader_program, "light_color");
+      camera_pos_uniform_location = util_get_uniform_location(shader_program, "camera_pos");
+      render_mode_uniform_location = util_get_uniform_location(shader_program, "render_mode");
+      postprocessing_mode_uniform_location = util_get_uniform_location(shader_program, "postprocessing_mode");
 
-      const GLint joint_transform_tex_uniform_location = get_uniform_location(shader_program, "joint_transform_tex");
+      const GLint joint_transform_tex_uniform_location =
+        util_get_uniform_location(shader_program, "joint_transform_tex");
       glUniform1i(joint_transform_tex_uniform_location, 0);
 
-      const GLint base_color_tex_uniform_location = get_uniform_location(shader_program, "base_color_tex");
+      const GLint base_color_tex_uniform_location = util_get_uniform_location(shader_program, "base_color_tex");
       glUniform1i(base_color_tex_uniform_location, 1);
 
-      const GLint normal_tex_uniform_location = get_uniform_location(shader_program, "normal_tex");
+      const GLint normal_tex_uniform_location = util_get_uniform_location(shader_program, "normal_tex");
       glUniform1i(normal_tex_uniform_location, 2);
 
-      const GLint pbr_tex_uniform_location = get_uniform_location(shader_program, "pbr_tex");
+      const GLint pbr_tex_uniform_location = util_get_uniform_location(shader_program, "pbr_tex");
       glUniform1i(pbr_tex_uniform_location, 3);
     }
   }

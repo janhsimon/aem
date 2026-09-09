@@ -23,12 +23,12 @@ static struct
 static bool load_static_shader_program(const GLuint fragment_shader)
 {
   GLuint vertex_shader;
-  if (!load_shader("shaders/depth_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/depth_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[DepthPipelineType_Static]))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[DepthPipelineType_Static]))
   {
     return false;
   }
@@ -36,8 +36,8 @@ static bool load_static_shader_program(const GLuint fragment_shader)
   glDeleteShader(vertex_shader);
 
   glUseProgram(shader_programs[DepthPipelineType_Static]);
-  static_uniforms.worldview = get_uniform_location(shader_programs[DepthPipelineType_Static], "worldview");
-  static_uniforms.proj = get_uniform_location(shader_programs[DepthPipelineType_Static], "proj");
+  static_uniforms.worldview = util_get_uniform_location(shader_programs[DepthPipelineType_Static], "worldview");
+  static_uniforms.proj = util_get_uniform_location(shader_programs[DepthPipelineType_Static], "proj");
 
   return true;
 }
@@ -45,12 +45,12 @@ static bool load_static_shader_program(const GLuint fragment_shader)
 static bool load_skinned_shader_program(const GLuint fragment_shader)
 {
   GLuint vertex_shader;
-  if (!load_shader("shaders/depth_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/depth_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[DepthPipelineType_Skinned]))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_programs[DepthPipelineType_Skinned]))
   {
     return false;
   }
@@ -58,13 +58,13 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
   glDeleteShader(vertex_shader);
 
   glUseProgram(shader_programs[DepthPipelineType_Skinned]);
-  skinned_uniforms.world = get_uniform_location(shader_programs[DepthPipelineType_Skinned], "world");
-  skinned_uniforms.view = get_uniform_location(shader_programs[DepthPipelineType_Skinned], "view");
-  skinned_uniforms.proj = get_uniform_location(shader_programs[DepthPipelineType_Skinned], "proj");
+  skinned_uniforms.world = util_get_uniform_location(shader_programs[DepthPipelineType_Skinned], "world");
+  skinned_uniforms.view = util_get_uniform_location(shader_programs[DepthPipelineType_Skinned], "view");
+  skinned_uniforms.proj = util_get_uniform_location(shader_programs[DepthPipelineType_Skinned], "proj");
 
   {
     const GLint joint_transform_tex_uniform_location =
-      get_uniform_location(shader_programs[DepthPipelineType_Skinned], "joint_transform_tex");
+      util_get_uniform_location(shader_programs[DepthPipelineType_Skinned], "joint_transform_tex");
     glUniform1i(joint_transform_tex_uniform_location, 0);
   }
 
@@ -74,7 +74,7 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
 bool load_depth_pipeline()
 {
   GLuint fragment_shader;
-  if (!load_shader("shaders/depth.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/depth.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }

@@ -56,13 +56,13 @@ bool generate_grid()
   // Generate shader program
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/grid.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/grid.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/grid.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !util_load_shader("shaders/grid.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }
@@ -74,7 +74,7 @@ bool generate_grid()
     {
       glUseProgram(shader_program);
 
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      viewproj_uniform_location = util_get_uniform_location(shader_program, "viewproj");
     }
   }
 

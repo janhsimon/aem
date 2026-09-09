@@ -13,6 +13,7 @@ set(SOURCE
 set(DEPENDENCIES
   glad
   libaem
+  stb
 )
 
 add_library(${TARGET_NAME} STATIC)

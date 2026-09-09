@@ -1,7 +1,8 @@
 #include "hud_damage_indicator.h"
 
 #include "camera.h"
-#include "texture.h"
+
+#include <util/util.h>
 
 #include <cglm/affine2d.h>
 
@@ -23,7 +24,7 @@ static float segment_opacities[SEGMENT_COUNT];
 
 bool load_hud_damage_indicator()
 {
-  if (!load_texture("textures/pain.png", (unsigned int*)(&segment_texture._TexID)))
+  if (!util_load_texture("textures/pain.png", UtilTextureWrapMode_ClampToEdge, (unsigned int*)(&segment_texture._TexID)))
   {
     return false;
   }
@@ -156,5 +157,5 @@ void update_hud_damage_indicator(struct ImDrawList* draw_list,
 
 void free_hud_damage_indicator()
 {
-  free_texture(segment_texture._TexID);
+  util_free_texture(segment_texture._TexID);
 }

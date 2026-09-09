@@ -18,17 +18,17 @@ bool load_debug_pipeline()
   // Load shaders
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/simple.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+    if (!util_load_shader("shaders/simple.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
     {
       return false;
     }
 
-    if (!load_shader("shaders/debug.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/debug.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }
@@ -39,9 +39,9 @@ bool load_debug_pipeline()
     // Retrieve uniform locations and set constant uniforms
     {
       glUseProgram(shader_program);
-      uniforms.world = get_uniform_location(shader_program, "world");
-      uniforms.viewproj = get_uniform_location(shader_program, "viewproj");
-      uniforms.color = get_uniform_location(shader_program, "color");
+      uniforms.world = util_get_uniform_location(shader_program, "world");
+      uniforms.viewproj = util_get_uniform_location(shader_program, "viewproj");
+      uniforms.color = util_get_uniform_location(shader_program, "color");
     }
   }
 

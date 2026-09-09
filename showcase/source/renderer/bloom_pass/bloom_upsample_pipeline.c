@@ -19,17 +19,17 @@ bool load_bloom_upsample_pipeline()
 {
   // Load shaders
   GLuint vertex_shader, fragment_shader;
-  if (!load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!load_shader("shaders/bloom_upsample.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/bloom_upsample.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
   {
     return false;
   }
@@ -38,13 +38,13 @@ bool load_bloom_upsample_pipeline()
   {
     glUseProgram(shader_program);
 
-    uniforms.low_resolution = get_uniform_location(shader_program, "low_resolution");
-    uniforms.bloom_intensity = get_uniform_location(shader_program, "bloom_intensity");
+    uniforms.low_resolution = util_get_uniform_location(shader_program, "low_resolution");
+    uniforms.bloom_intensity = util_get_uniform_location(shader_program, "bloom_intensity");
 
-    const GLint low_tex_uniform_location = get_uniform_location(shader_program, "low_tex");
+    const GLint low_tex_uniform_location = util_get_uniform_location(shader_program, "low_tex");
     glUniform1i(low_tex_uniform_location, 0);
 
-    const GLint high_tex_uniform_location = get_uniform_location(shader_program, "high_tex");
+    const GLint high_tex_uniform_location = util_get_uniform_location(shader_program, "high_tex");
     glUniform1i(high_tex_uniform_location, 1);
   }
 

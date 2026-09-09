@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char* load_text_file(const char* filepath, long* length)
+char* util_load_text_file(const char* filepath, long* length)
 {
   FILE* file = fopen(filepath, "rb");
   if (!file)
@@ -33,7 +33,7 @@ char* load_text_file(const char* filepath, long* length)
   return content;
 }
 
-void preprocess_list_file(char* list, long length)
+void util_preprocess_list_file(char* list, long length)
 {
   long index = 0;
   while (index < length)

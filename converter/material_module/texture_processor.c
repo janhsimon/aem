@@ -166,17 +166,17 @@ void process_textures(const char* path,
   {
     GLuint vertex_shader, fragment_shader;
     {
-      const bool result = load_shader("shaders/texture.vert.glsl", GL_VERTEX_SHADER, &vertex_shader);
+      const bool result = util_load_shader("shaders/texture.vert.glsl", GL_VERTEX_SHADER, &vertex_shader);
       assert(result);
     }
 
     {
-      const bool result = load_shader("shaders/texture.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader);
+      const bool result = util_load_shader("shaders/texture.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader);
       assert(result);
     }
 
     {
-      const bool result = generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program);
+      const bool result = util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program);
       assert(result);
     }
 
@@ -186,17 +186,17 @@ void process_textures(const char* path,
     glUseProgram(shader_program);
 
     // Retrieve uniform locations
-    texture_type_uniform_location = get_uniform_location(shader_program, "texture_type");
-    color_uniform_location = get_uniform_location(shader_program, "color");
-    alpha_mode_uniform_location = get_uniform_location(shader_program, "alpha_mode");
-    alpha_mask_threshold_uniform_location = get_uniform_location(shader_program, "alpha_mask_threshold");
-    pbr_workflow_uniform_location = get_uniform_location(shader_program, "pbr_workflow");
-    texture_bound_uniform_location = get_uniform_location(shader_program, "texture_bound");
+    texture_type_uniform_location = util_get_uniform_location(shader_program, "texture_type");
+    color_uniform_location = util_get_uniform_location(shader_program, "color");
+    alpha_mode_uniform_location = util_get_uniform_location(shader_program, "alpha_mode");
+    alpha_mask_threshold_uniform_location = util_get_uniform_location(shader_program, "alpha_mask_threshold");
+    pbr_workflow_uniform_location = util_get_uniform_location(shader_program, "pbr_workflow");
+    texture_bound_uniform_location = util_get_uniform_location(shader_program, "texture_bound");
 
     // Set constant uniforms
     {
       const GLint samplers[] = { 0, 1, 2 };
-      const GLint textures_uniform_location = get_uniform_location(shader_program, "textures");
+      const GLint textures_uniform_location = util_get_uniform_location(shader_program, "textures");
       glUniform1iv(textures_uniform_location, 3, samplers);
     }
   }
@@ -419,7 +419,7 @@ void process_textures(const char* path,
   // Cleanup the remaining resources
   {
     glDeleteTextures(1, &fallback_source_tex);
-    
+
     glDeleteFramebuffers(1, &fbo);
     glDeleteVertexArrays(1, &vao);
 

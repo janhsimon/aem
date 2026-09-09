@@ -33,9 +33,6 @@ set(SOURCE
   source/sound.c
   source/sound.h
 
-  source/texture.c
-  source/texture.h
-
   source/tracer_manager.c
   source/tracer_manager.h
 

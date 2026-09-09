@@ -29,12 +29,12 @@ static bool load_static_shader_program(const GLuint fragment_shader)
   GLuint* sp = &shader_programs[WorldPipelineType_Static];
 
   GLuint vertex_shader;
-  if (!load_shader("shaders/world_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/world_static.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, sp))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, sp))
   {
     return false;
   }
@@ -46,56 +46,56 @@ static bool load_static_shader_program(const GLuint fragment_shader)
   // Retrieve uniforms
   {
 
-    uniforms[WorldPipelineType_Static].world = get_uniform_location(*sp, "world");
-    uniforms[WorldPipelineType_Static].view = get_uniform_location(*sp, "view");
-    uniforms[WorldPipelineType_Static].proj = get_uniform_location(*sp, "proj");
+    uniforms[WorldPipelineType_Static].world = util_get_uniform_location(*sp, "world");
+    uniforms[WorldPipelineType_Static].view = util_get_uniform_location(*sp, "view");
+    uniforms[WorldPipelineType_Static].proj = util_get_uniform_location(*sp, "proj");
 
-    uniforms[WorldPipelineType_Static].render_pass = get_uniform_location(*sp, "render_pass");
+    uniforms[WorldPipelineType_Static].render_pass = util_get_uniform_location(*sp, "render_pass");
 
-    uniforms[WorldPipelineType_Static].light_dir = get_uniform_location(*sp, "light_dir");
-    uniforms[WorldPipelineType_Static].light_color = get_uniform_location(*sp, "light_color");
+    uniforms[WorldPipelineType_Static].light_dir = util_get_uniform_location(*sp, "light_dir");
+    uniforms[WorldPipelineType_Static].light_color = util_get_uniform_location(*sp, "light_color");
 
     for (int cascade_index = 0; cascade_index < 4; ++cascade_index)
     {
       char buf[64];
       sprintf(buf, "light_viewprojs[%u]", cascade_index);
-      uniforms[WorldPipelineType_Static].light_viewprojs[cascade_index] = get_uniform_location(*sp, buf);
+      uniforms[WorldPipelineType_Static].light_viewprojs[cascade_index] = util_get_uniform_location(*sp, buf);
     }
 
-    uniforms[WorldPipelineType_Static].camera_pos = get_uniform_location(*sp, "camera_pos");
-    uniforms[WorldPipelineType_Static].camera_dir = get_uniform_location(*sp, "camera_dir");
+    uniforms[WorldPipelineType_Static].camera_pos = util_get_uniform_location(*sp, "camera_pos");
+    uniforms[WorldPipelineType_Static].camera_dir = util_get_uniform_location(*sp, "camera_dir");
 
-    uniforms[WorldPipelineType_Static].ambient_color = get_uniform_location(*sp, "ambient_color");
+    uniforms[WorldPipelineType_Static].ambient_color = util_get_uniform_location(*sp, "ambient_color");
 
-    uniforms[WorldPipelineType_Static].screen_size = get_uniform_location(*sp, "screen_size");
+    uniforms[WorldPipelineType_Static].screen_size = util_get_uniform_location(*sp, "screen_size");
 
-    uniforms[WorldPipelineType_Static].shadow_map_bias = get_uniform_location(*sp, "shadow_map_bias");
-    uniforms[WorldPipelineType_Static].pcf_radius = get_uniform_location(*sp, "pcf_radius");
-    uniforms[WorldPipelineType_Static].pcf_kernel_size = get_uniform_location(*sp, "pcf_kernel_size");
+    uniforms[WorldPipelineType_Static].shadow_map_bias = util_get_uniform_location(*sp, "shadow_map_bias");
+    uniforms[WorldPipelineType_Static].pcf_radius = util_get_uniform_location(*sp, "pcf_radius");
+    uniforms[WorldPipelineType_Static].pcf_kernel_size = util_get_uniform_location(*sp, "pcf_kernel_size");
 
     for (uint32_t split_index = 0; split_index < 3; ++split_index)
     {
       char buf[64];
       sprintf(buf, "cascade_splits[%u]", split_index);
-      uniforms[WorldPipelineType_Static].cascade_splits[split_index] = get_uniform_location(*sp, buf);
+      uniforms[WorldPipelineType_Static].cascade_splits[split_index] = util_get_uniform_location(*sp, buf);
     }
 
-    uniforms[WorldPipelineType_Static].enable_shadow_mapping = get_uniform_location(*sp, "enable_shadow_mapping");
-    uniforms[WorldPipelineType_Static].enable_ssao = get_uniform_location(*sp, "enable_ssao");
+    uniforms[WorldPipelineType_Static].enable_shadow_mapping = util_get_uniform_location(*sp, "enable_shadow_mapping");
+    uniforms[WorldPipelineType_Static].enable_ssao = util_get_uniform_location(*sp, "enable_ssao");
 
     uniforms[WorldPipelineType_Static].visualize_shadow_mapping_cascades =
-      get_uniform_location(*sp, "visualize_shadow_mapping_cascades");
+      util_get_uniform_location(*sp, "visualize_shadow_mapping_cascades");
   }
 
   // Set constant uniforms
   {
-    const GLint base_color_tex_uniform_location = get_uniform_location(*sp, "base_color_tex");
+    const GLint base_color_tex_uniform_location = util_get_uniform_location(*sp, "base_color_tex");
     glUniform1i(base_color_tex_uniform_location, 1);
 
-    const GLint normal_tex_uniform_location = get_uniform_location(*sp, "normal_tex");
+    const GLint normal_tex_uniform_location = util_get_uniform_location(*sp, "normal_tex");
     glUniform1i(normal_tex_uniform_location, 2);
 
-    const GLint pbr_tex_uniform_location = get_uniform_location(*sp, "pbr_tex");
+    const GLint pbr_tex_uniform_location = util_get_uniform_location(*sp, "pbr_tex");
     glUniform1i(pbr_tex_uniform_location, 3);
 
     for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
@@ -103,11 +103,11 @@ static bool load_static_shader_program(const GLuint fragment_shader)
       char buf[64];
       sprintf(buf, "shadow_tex[%u]", cascade_index);
 
-      const GLint shadow_tex_uniform_location = get_uniform_location(*sp, buf);
+      const GLint shadow_tex_uniform_location = util_get_uniform_location(*sp, buf);
       glUniform1i(shadow_tex_uniform_location, 4 + cascade_index);
     }
 
-    const GLint ssao_tex_uniform_location = get_uniform_location(*sp, "ssao_tex");
+    const GLint ssao_tex_uniform_location = util_get_uniform_location(*sp, "ssao_tex");
     glUniform1i(ssao_tex_uniform_location, 8);
   }
 
@@ -119,12 +119,12 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
   GLuint* sp = &shader_programs[WorldPipelineType_Skinned];
 
   GLuint vertex_shader;
-  if (!load_shader("shaders/world_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+  if (!util_load_shader("shaders/world_skinned.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
   {
     return false;
   }
 
-  if (!generate_shader_program(vertex_shader, fragment_shader, NULL, sp))
+  if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, sp))
   {
     return false;
   }
@@ -136,59 +136,59 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
   // Retrieve uniforms
   {
 
-    uniforms[WorldPipelineType_Skinned].world = get_uniform_location(*sp, "world");
-    uniforms[WorldPipelineType_Skinned].view = get_uniform_location(*sp, "view");
-    uniforms[WorldPipelineType_Skinned].proj = get_uniform_location(*sp, "proj");
+    uniforms[WorldPipelineType_Skinned].world = util_get_uniform_location(*sp, "world");
+    uniforms[WorldPipelineType_Skinned].view = util_get_uniform_location(*sp, "view");
+    uniforms[WorldPipelineType_Skinned].proj = util_get_uniform_location(*sp, "proj");
 
-    uniforms[WorldPipelineType_Skinned].render_pass = get_uniform_location(*sp, "render_pass");
+    uniforms[WorldPipelineType_Skinned].render_pass = util_get_uniform_location(*sp, "render_pass");
 
-    uniforms[WorldPipelineType_Skinned].light_dir = get_uniform_location(*sp, "light_dir");
-    uniforms[WorldPipelineType_Skinned].light_color = get_uniform_location(*sp, "light_color");
+    uniforms[WorldPipelineType_Skinned].light_dir = util_get_uniform_location(*sp, "light_dir");
+    uniforms[WorldPipelineType_Skinned].light_color = util_get_uniform_location(*sp, "light_color");
 
     for (int cascade_index = 0; cascade_index < 4; ++cascade_index)
     {
       char buf[64];
       sprintf(buf, "light_viewprojs[%u]", cascade_index);
-      uniforms[WorldPipelineType_Skinned].light_viewprojs[cascade_index] = get_uniform_location(*sp, buf);
+      uniforms[WorldPipelineType_Skinned].light_viewprojs[cascade_index] = util_get_uniform_location(*sp, buf);
     }
 
-    uniforms[WorldPipelineType_Skinned].camera_pos = get_uniform_location(*sp, "camera_pos");
-    uniforms[WorldPipelineType_Skinned].camera_dir = get_uniform_location(*sp, "camera_dir");
+    uniforms[WorldPipelineType_Skinned].camera_pos = util_get_uniform_location(*sp, "camera_pos");
+    uniforms[WorldPipelineType_Skinned].camera_dir = util_get_uniform_location(*sp, "camera_dir");
 
-    uniforms[WorldPipelineType_Skinned].ambient_color = get_uniform_location(*sp, "ambient_color");
+    uniforms[WorldPipelineType_Skinned].ambient_color = util_get_uniform_location(*sp, "ambient_color");
 
-    uniforms[WorldPipelineType_Skinned].screen_size = get_uniform_location(*sp, "screen_size");
+    uniforms[WorldPipelineType_Skinned].screen_size = util_get_uniform_location(*sp, "screen_size");
 
-    uniforms[WorldPipelineType_Skinned].shadow_map_bias = get_uniform_location(*sp, "shadow_map_bias");
-    uniforms[WorldPipelineType_Skinned].pcf_radius = get_uniform_location(*sp, "pcf_radius");
-    uniforms[WorldPipelineType_Skinned].pcf_kernel_size = get_uniform_location(*sp, "pcf_kernel_size");
+    uniforms[WorldPipelineType_Skinned].shadow_map_bias = util_get_uniform_location(*sp, "shadow_map_bias");
+    uniforms[WorldPipelineType_Skinned].pcf_radius = util_get_uniform_location(*sp, "pcf_radius");
+    uniforms[WorldPipelineType_Skinned].pcf_kernel_size = util_get_uniform_location(*sp, "pcf_kernel_size");
 
     for (uint32_t split_index = 0; split_index < 3; ++split_index)
     {
       char buf[64];
       sprintf(buf, "cascade_splits[%u]", split_index);
-      uniforms[WorldPipelineType_Skinned].cascade_splits[split_index] = get_uniform_location(*sp, buf);
+      uniforms[WorldPipelineType_Skinned].cascade_splits[split_index] = util_get_uniform_location(*sp, buf);
     }
 
-    uniforms[WorldPipelineType_Skinned].enable_shadow_mapping = get_uniform_location(*sp, "enable_shadow_mapping");
-    uniforms[WorldPipelineType_Skinned].enable_ssao = get_uniform_location(*sp, "enable_ssao");
+    uniforms[WorldPipelineType_Skinned].enable_shadow_mapping = util_get_uniform_location(*sp, "enable_shadow_mapping");
+    uniforms[WorldPipelineType_Skinned].enable_ssao = util_get_uniform_location(*sp, "enable_ssao");
 
     uniforms[WorldPipelineType_Skinned].visualize_shadow_mapping_cascades =
-      get_uniform_location(*sp, "visualize_shadow_mapping_cascades");
+      util_get_uniform_location(*sp, "visualize_shadow_mapping_cascades");
   }
 
   // Set constant uniforms
   {
-    const GLint joint_transform_tex_uniform_location = get_uniform_location(*sp, "joint_transform_tex");
+    const GLint joint_transform_tex_uniform_location = util_get_uniform_location(*sp, "joint_transform_tex");
     glUniform1i(joint_transform_tex_uniform_location, 0);
 
-    const GLint base_color_tex_uniform_location = get_uniform_location(*sp, "base_color_tex");
+    const GLint base_color_tex_uniform_location = util_get_uniform_location(*sp, "base_color_tex");
     glUniform1i(base_color_tex_uniform_location, 1);
 
-    const GLint normal_tex_uniform_location = get_uniform_location(*sp, "normal_tex");
+    const GLint normal_tex_uniform_location = util_get_uniform_location(*sp, "normal_tex");
     glUniform1i(normal_tex_uniform_location, 2);
 
-    const GLint pbr_tex_uniform_location = get_uniform_location(*sp, "pbr_tex");
+    const GLint pbr_tex_uniform_location = util_get_uniform_location(*sp, "pbr_tex");
     glUniform1i(pbr_tex_uniform_location, 3);
 
     for (uint32_t cascade_index = 0; cascade_index < 4; ++cascade_index)
@@ -196,11 +196,11 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
       char buf[64];
       sprintf(buf, "shadow_tex[%u]", cascade_index);
 
-      const GLint shadow_tex_uniform_location = get_uniform_location(*sp, buf);
+      const GLint shadow_tex_uniform_location = util_get_uniform_location(*sp, buf);
       glUniform1i(shadow_tex_uniform_location, 4 + cascade_index);
     }
 
-    const GLint ssao_tex_uniform_location = get_uniform_location(*sp, "ssao_tex");
+    const GLint ssao_tex_uniform_location = util_get_uniform_location(*sp, "ssao_tex");
     glUniform1i(ssao_tex_uniform_location, 8);
   }
 
@@ -210,7 +210,7 @@ static bool load_skinned_shader_program(const GLuint fragment_shader)
 bool load_world_pipeline()
 {
   GLuint fragment_shader;
-  if (!load_shader("shaders/world.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+  if (!util_load_shader("shaders/world.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
   {
     return false;
   }

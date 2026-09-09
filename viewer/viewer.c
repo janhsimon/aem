@@ -66,7 +66,7 @@ void file_open_callback()
   }
 
   // Load the new model
-  char* path = path_from_filepath(filepath);
+  char* path = util_path_from_filepath(filepath);
 
   const double start_time = glfwGetTime();
 

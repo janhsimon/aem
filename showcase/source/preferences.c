@@ -19,7 +19,7 @@ static void build_cz_recoil_table(struct WeaponPreferences* preferences)
     {
       const float ease = (float)bullet / 5.0f;
       preferences->recoil_pattern[bullet].recoil[0] *= ease * ease;
-      preferences->recoil_pattern[bullet].recoil[1] = smooth_step(ease) * 0.9f;
+      preferences->recoil_pattern[bullet].recoil[1] = util_smooth_step(ease) * 0.9f;
     }
     else
     {
@@ -31,7 +31,7 @@ static void build_cz_recoil_table(struct WeaponPreferences* preferences)
     if (bullet < 3)
     {
       const float ease = (float)bullet / 3.0f;
-      preferences->recoil_pattern[bullet].firing_spread = smoother_step(ease);
+      preferences->recoil_pattern[bullet].firing_spread = util_smoother_step(ease);
     }
   }
 }

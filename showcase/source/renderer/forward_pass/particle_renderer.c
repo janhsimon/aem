@@ -1,7 +1,8 @@
 #include "particle_renderer.h"
 
 #include "particle_pipeline.h"
-#include "texture.h"
+
+#include <util/util.h>
 
 #include <cglm/vec3.h>
 
@@ -67,27 +68,28 @@ bool load_particle_renderer()
   glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)(sizeof(float) * 0));
   glVertexAttribDivisor(4, 1);
 
-  if (!load_texture("textures/smoke1.jpg", &smoke_texture))
+  if (!util_load_texture("textures/smoke1.jpg", UtilTextureWrapMode_ClampToEdge, &smoke_texture))
   {
     return false;
   }
 
-  if (!load_texture("textures/muzzleflash_front1.png", &muzzleflash_front_texture))
+  if (!util_load_texture("textures/muzzleflash_front1.png", UtilTextureWrapMode_ClampToEdge,
+                         &muzzleflash_front_texture))
   {
     return false;
   }
 
-  if (!load_texture("textures/muzzleflash_side1.png", &muzzleflash_side_texture))
+  if (!util_load_texture("textures/muzzleflash_side1.png", UtilTextureWrapMode_ClampToEdge, &muzzleflash_side_texture))
   {
     return false;
   }
 
-  if (!load_texture("textures/blood1.png", &blood_texture))
+  if (!util_load_texture("textures/blood1.png", UtilTextureWrapMode_ClampToEdge, &blood_texture))
   {
     return false;
   }
 
-  if (!load_texture("textures/bullet_hole1.png", &bullet_hole_texture))
+  if (!util_load_texture("textures/bullet_hole1.png", UtilTextureWrapMode_ClampToEdge, &bullet_hole_texture))
   {
     return false;
   }
@@ -97,11 +99,11 @@ bool load_particle_renderer()
 
 void free_particle_renderer()
 {
-  free_texture(bullet_hole_texture);
-  free_texture(blood_texture);
-  free_texture(muzzleflash_side_texture);
-  free_texture(muzzleflash_front_texture);
-  free_texture(smoke_texture);
+  util_free_texture(bullet_hole_texture);
+  util_free_texture(blood_texture);
+  util_free_texture(muzzleflash_side_texture);
+  util_free_texture(muzzleflash_front_texture);
+  util_free_texture(smoke_texture);
 
   glDeleteBuffers(1, &instance_opacities);
   glDeleteBuffers(1, &instance_scales);

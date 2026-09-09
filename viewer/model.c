@@ -56,7 +56,7 @@ bool load_model(const char* filepath, const char* path)
 
     for (uint32_t texture_index = 0; texture_index < texture_count; ++texture_index)
     {
-      texture_handles[texture_index] = load_model_texture(model, &textures[texture_index]);
+      texture_handles[texture_index] = util_load_model_texture(model, &textures[texture_index]);
     }
   }
 

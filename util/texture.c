@@ -2,7 +2,50 @@
 
 #include <aem/model.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include <assert.h>
+
+bool util_load_texture(const char* filepath, enum UtilTextureWrapMode wrap_mode, GLuint* texture)
+{
+  int width, height, nrChannels;
+  unsigned char* data = stbi_load(filepath, &width, &height, &nrChannels, 4);
+  if (!data)
+  {
+    printf("Failed to open texture file: \"%s\"\n", filepath);
+    return false;
+  }
+
+  glGenTextures(1, texture);
+  glBindTexture(GL_TEXTURE_2D, *texture);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+  // Set basic texture parameters
+  if (wrap_mode == UtilTextureWrapMode_Repeat)
+  {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+  else if (wrap_mode == UtilTextureWrapMode_ClampToEdge)
+  {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  }
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  stbi_image_free(data);
+
+  return true;
+}
+
+void util_free_texture(GLuint texture)
+{
+  glDeleteTextures(1, &texture);
+}
 
 static GLuint aem_texture_wrap_mode_to_gl(enum AEMTextureWrapMode wrap_mode)
 {
@@ -56,7 +99,7 @@ static void aem_texture_to_gl_formats(const struct AEMTexture* texture, GLenum* 
   }
 }
 
-GLuint load_model_texture(const struct AEMModel* model, const struct AEMTexture* texture)
+GLuint util_load_model_texture(const struct AEMModel* model, const struct AEMTexture* texture)
 {
   const uint8_t* data = (uint8_t*)aem_get_model_image_buffer(model);
 

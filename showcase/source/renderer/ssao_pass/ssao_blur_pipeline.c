@@ -18,17 +18,18 @@ bool load_ssao_blur_pipeline()
   // Load shaders
   {
     GLuint vertex_shader, fragment_shader;
-    if (!load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
+
+    if (!util_load_shader("shaders/fullscreen.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
     {
       return false;
     }
 
-    if (!load_shader("shaders/ssao_blur.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/ssao_blur.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &shader_program))
     {
       return false;
     }
@@ -40,16 +41,16 @@ bool load_ssao_blur_pipeline()
     {
       glUseProgram(shader_program);
 
-      uniforms.texel_size = get_uniform_location(shader_program, "texel_size");
-      uniforms.full_resolution = get_uniform_location(shader_program, "full_resolution");
-      uniforms.depth_sigma = get_uniform_location(shader_program, "depth_sigma");
-      uniforms.radius = get_uniform_location(shader_program, "radius");
-      uniforms.axis = get_uniform_location(shader_program, "axis");
+      uniforms.texel_size = util_get_uniform_location(shader_program, "texel_size");
+      uniforms.full_resolution = util_get_uniform_location(shader_program, "full_resolution");
+      uniforms.depth_sigma = util_get_uniform_location(shader_program, "depth_sigma");
+      uniforms.radius = util_get_uniform_location(shader_program, "radius");
+      uniforms.axis = util_get_uniform_location(shader_program, "axis");
 
-      const GLint ssao_tex_uniform_location = get_uniform_location(shader_program, "ssao_tex");
+      const GLint ssao_tex_uniform_location = util_get_uniform_location(shader_program, "ssao_tex");
       glUniform1i(ssao_tex_uniform_location, 0);
 
-      const GLint depth_tex_uniform_location = get_uniform_location(shader_program, "depth_tex");
+      const GLint depth_tex_uniform_location = util_get_uniform_location(shader_program, "depth_tex");
       glUniform1i(depth_tex_uniform_location, 1);
     }
   }

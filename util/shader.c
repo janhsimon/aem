@@ -5,10 +5,10 @@
 
 #define SHADER_LOG_SIZE 512
 
-bool load_shader(const char* filename, GLenum type, GLuint* shader)
+bool util_load_shader(const char* filename, GLenum type, GLuint* shader)
 {
   long length;
-  GLchar* source = (GLchar*)load_text_file(filename, &length);
+  GLchar* source = (GLchar*)util_load_text_file(filename, &length);
   if (!source)
   {
     printf("Failed to open shader file: \"%s\"\n", filename);
@@ -36,7 +36,7 @@ bool load_shader(const char* filename, GLenum type, GLuint* shader)
   return true;
 }
 
-bool generate_shader_program(GLuint vertex_shader,
+bool util_generate_shader_program(GLuint vertex_shader,
                              GLuint fragment_shader,
                              GLuint* geometry_shader,
                              GLuint* shader_program)
@@ -66,7 +66,7 @@ bool generate_shader_program(GLuint vertex_shader,
   return true;
 }
 
-GLint get_uniform_location(GLuint shader_program, const char* name)
+GLint util_get_uniform_location(GLuint shader_program, const char* name)
 {
   GLint uniform_location = glGetUniformLocation(shader_program, name);
   if (uniform_location < 0)

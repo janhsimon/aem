@@ -2,6 +2,8 @@
 
 #include "model_manager.h"
 
+#include <util/util.h>
+
 #include <aem/model.h>
 
 #include <glad/gl.h>
@@ -60,7 +62,8 @@ void load_model_renderer()
 
     for (uint32_t texture_index = 0; texture_index < mri->texture_count; ++texture_index)
     {
-      texture_handles[mri->first_texture + texture_index] = load_model_texture(model, &mri->textures[texture_index]);
+      texture_handles[mri->first_texture + texture_index] =
+        util_load_model_texture(model, &mri->textures[texture_index]);
     }
   }
 

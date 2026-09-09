@@ -12,14 +12,14 @@ bool generate_wireframe_overlay()
   // Generate shader program
   {
     GLuint vertex_shader, geometry_shader, fragment_shader;
-    if (!load_shader("shaders/overlay/wireframe.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !load_shader("shaders/overlay/wireframe.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
-        !load_shader("shaders/overlay/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    if (!util_load_shader("shaders/overlay/wireframe.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
+        !util_load_shader("shaders/overlay/wireframe.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
+        !util_load_shader("shaders/overlay/overlay.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
     {
       return false;
     }
 
-    if (!generate_shader_program(vertex_shader, fragment_shader, &geometry_shader, &shader_program))
+    if (!util_generate_shader_program(vertex_shader, fragment_shader, &geometry_shader, &shader_program))
     {
       return false;
     }
@@ -32,8 +32,8 @@ bool generate_wireframe_overlay()
     {
       glUseProgram(shader_program);
 
-      world_uniform_location = get_uniform_location(shader_program, "world");
-      viewproj_uniform_location = get_uniform_location(shader_program, "viewproj");
+      world_uniform_location = util_get_uniform_location(shader_program, "world");
+      viewproj_uniform_location = util_get_uniform_location(shader_program, "viewproj");
     }
   }
 

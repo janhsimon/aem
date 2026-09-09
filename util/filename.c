@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char* filename_from_filepath(char* filepath)
+char* util_filename_from_filepath(char* filepath)
 {
   char* trim = filepath;
   while (*filepath != '\0')
@@ -19,7 +19,7 @@ char* filename_from_filepath(char* filepath)
   return trim;
 }
 
-char* path_from_filepath(const char* filepath)
+char* util_path_from_filepath(const char* filepath)
 {
   int length = 0;
   int offset = 0;
@@ -39,7 +39,7 @@ char* path_from_filepath(const char* filepath)
   return path;
 }
 
-char* basename_from_filename(char* filename)
+char* util_basename_from_filename(char* filename)
 {
   int length = 0;
   int offset = 0;
@@ -59,7 +59,7 @@ char* basename_from_filename(char* filename)
   return path;
 }
 
-char* extension_from_filepath(char* filepath)
+char* util_extension_from_filepath(char* filepath)
 {
   char* extension = filepath;
   while (*filepath != '\0')
