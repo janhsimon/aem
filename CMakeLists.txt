@@ -8,6 +8,7 @@ project(aem C)
 
 add_subdirectory(external)
 
+add_subdirectory(anvil)
 add_subdirectory(converter)
 add_subdirectory(libaem)
 add_subdirectory(showcase)
