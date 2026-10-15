@@ -20,12 +20,8 @@ static GLint viewport_size_uniform_location, color_uniform_location;
 
 static vec2 vertices[12]; // 0-3 = corners, 4-7 = corner control points, 8-11 mid control points
 
-static struct ToolState* tool_state = NULL;
-
-bool generate_move_tool_gizmo(struct ToolState* tool_state_)
+bool generate_move_tool_gizmo()
 {
-  tool_state = tool_state_;
-
   // Generate scale tool vertex array
   {
     glGenVertexArrays(1, &vertex_array);
@@ -140,6 +136,6 @@ void draw_move_tool_gizmo(const struct Viewport* viewport)
     glUseProgram(point_shader_program);
     glPointSize(8.0f);
 
-    glDrawArrays(GL_POINTS, 4, tool_state->active_tool == Tool_Scale ? 8 : 4);
+    glDrawArrays(GL_POINTS, 4, get_active_tool() == Tool_Scale ? 8 : 4);
   }
 }

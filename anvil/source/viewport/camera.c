@@ -101,11 +101,11 @@ void camera_assign_viewport(struct Camera* camera, struct Viewport* viewport)
       }
       else if (viewport_type == ViewportType_Front)
       {
-        glm_vec3_copy((vec3){ 0.0f, 0.0f, -1.0f }, eye);
+        glm_vec3_copy((vec3){ 0.0f, 0.0f, 1.0f }, eye);
       }
       else if (viewport_type == ViewportType_Left)
       {
-        glm_vec3_copy((vec3){ -1.0f, 0.0f, 0.0f }, eye);
+        glm_vec3_copy((vec3){ 1.0f, 0.0f, 0.0f }, eye);
       }
 
       glm_vec3_scale(eye, 100.0f, eye);
@@ -137,7 +137,6 @@ void camera_screen_to_world_2d(struct Camera* camera, vec2 in_screen, vec3 out_w
     glm_vec2_scale((vec2){ (float)width, (float)height }, 0.5f, half_viewport_size);
   }
 
-  //vec2 d;
   glm_vec2_sub(d, half_viewport_size, d);
 
   const float world_per_pixel = camera->orthographic.zoom * 0.01f;
@@ -149,9 +148,18 @@ void camera_screen_to_world_2d(struct Camera* camera, vec2 in_screen, vec3 out_w
   vec3 offset_y;
   glm_vec3_scale(camera->transform[1], -d[1], offset_y);
 
-  glm_vec3_add(camera->transform[3], camera->transform[2], out_world);
+  glm_vec3_copy(camera->transform[3], out_world);
   glm_vec3_add(out_world, offset_x, out_world);
   glm_vec3_add(out_world, offset_y, out_world);
+
+  // Set the depth component to zero
+  for (int i = 0; i < 3; ++i)
+  {
+    if (camera->transform[2][i] != 0.0f)
+    {
+      out_world[i] = 0.0f;
+    }
+  }
 }
 
 void camera_world_to_clip(struct Camera* camera, vec3 in_world, vec2 out_clip)
@@ -276,4 +284,9 @@ void camera_calc_proj_matrix(struct Camera* camera, mat4 proj_matrix)
     const float aspect = half_viewport_resolution[0] / half_viewport_resolution[1];
     glm_perspective(camera->perspective.fov, aspect, camera->near, camera->far, proj_matrix);
   }
+}
+
+void camera_get_forward(struct Camera* camera, vec3 forward)
+{
+  glm_vec3_copy(camera->transform[2], forward);
 }

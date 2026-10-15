@@ -21,3 +21,5 @@ void camera_mouse_look_3d(struct Camera* camera, vec2 mouse_pos);
 
 void camera_calc_view_matrix(struct Camera* camera, mat4 view_matrix);
 void camera_calc_proj_matrix(struct Camera* camera, mat4 proj_matrix);
+
+void camera_get_forward(struct Camera* camera, vec3 forward);

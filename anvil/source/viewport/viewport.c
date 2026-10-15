@@ -6,6 +6,8 @@
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
+#include "tool/add_cube_tool.h"
+#include "tool/add_cube_tool_gizmo.h"
 #include "tool/camera_tool.h"
 #include "tool/move_tool_gizmo.h"
 #include "tool/rotate_tool.h"
@@ -21,8 +23,6 @@
 #include <glad/gl.h>
 
 #define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f
-
-static struct ToolState* tool_state = NULL;
 
 struct Viewport
 {
@@ -41,11 +41,8 @@ bool make_viewport(struct Viewport** viewport,
                    uint32_t x,
                    uint32_t y,
                    uint32_t width,
-                   uint32_t height,
-                   struct ToolState* tool_state_)
+                   uint32_t height)
 {
-  tool_state = tool_state_;
-
   *viewport = malloc(sizeof(struct Viewport));
   if (!(*viewport))
   {
@@ -86,7 +83,7 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
 {
   if (viewport->type == ViewportType_Perspective)
   {
-    if (button == MouseButton_Left)
+    if (button == MouseButton_Right)
     {
       // Start mouse look
       glm_vec3_copy(mouse_position, mouse_look_anchor);
@@ -98,11 +95,16 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
   {
     bool event_consumed = false;
 
-    if (tool_state->active_tool == Tool_Scale)
+    const enum Tool active_tool = get_active_tool();
+    if (active_tool == Tool_AddCube)
+    {
+      event_consumed = add_cube_tool_on_mouse_button_pressed(viewport, button, mouse_position);
+    }
+    else if (active_tool == Tool_Scale)
     {
       event_consumed = scale_tool_on_mouse_button_pressed(viewport, button, mouse_position);
     }
-    else if (tool_state->active_tool == Tool_Rotate)
+    else if (active_tool == Tool_Rotate)
     {
       event_consumed = rotate_tool_on_mouse_button_pressed(viewport, button, mouse_position);
     }
@@ -121,11 +123,12 @@ void viewport_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButto
 {
   if (viewport->type != ViewportType_Perspective)
   {
-    if (tool_state->active_tool == Tool_Scale)
+    const enum Tool active_tool = get_active_tool();
+    if (active_tool == Tool_Scale)
     {
       scale_tool_on_mouse_button_clicked(viewport, button, mouse_position);
     }
-    else if (tool_state->active_tool == Tool_Rotate)
+    else if (active_tool == Tool_Rotate)
     {
       rotate_tool_on_mouse_button_clicked(viewport, button, mouse_position);
     }
@@ -144,14 +147,22 @@ void viewport_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
     return;
   }
 
-  if (tool_state->active_tool == Tool_Scale)
+  const enum Tool active_tool = get_active_tool();
+  if (active_tool == Tool_AddCube)
+  {
+    if (!add_cube_tool_on_mouse_moved(viewport, mouse_position))
+    {
+      input_use_default_cursor();
+    }
+  }
+  else if (active_tool == Tool_Scale)
   {
     if (!scale_tool_on_mouse_moved(viewport, mouse_position))
     {
       input_use_default_cursor();
     }
   }
-  else if (tool_state->active_tool == Tool_Rotate)
+  else if (active_tool == Tool_Rotate)
   {
     if (!rotate_tool_on_mouse_moved(viewport, mouse_position))
     {
@@ -165,7 +176,7 @@ void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton butto
   if (viewport->type == ViewportType_Perspective)
   {
     // Mouse look
-    if (button == MouseButton_Left)
+    if (button == MouseButton_Right)
     {
       vec2 delta;
       glm_vec2_sub(mouse_position, mouse_look_anchor, delta);
@@ -180,11 +191,16 @@ void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton butto
   {
     bool event_consumed = false;
 
-    if (tool_state->active_tool == Tool_Scale)
+    const enum Tool active_tool = get_active_tool();
+    if (active_tool == Tool_AddCube)
+    {
+      event_consumed = add_cube_tool_on_mouse_dragged(viewport, button, mouse_position);
+    }
+    else if (active_tool == Tool_Scale)
     {
       event_consumed = scale_tool_on_mouse_dragged(viewport, button, mouse_position);
     }
-    else if (tool_state->active_tool == Tool_Rotate)
+    else if (active_tool == Tool_Rotate)
     {
       event_consumed = rotate_tool_on_mouse_dragged(viewport, button, mouse_position);
     }
@@ -206,7 +222,18 @@ void viewport_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton
     viewport->is_mouse_looking = false;
   }
 
-  select_tool_on_mouse_drag_finished();
+  bool event_consumed = false;
+
+  const enum Tool active_tool = get_active_tool();
+  if (active_tool == Tool_AddCube)
+  {
+    event_consumed = add_cube_tool_on_mouse_drag_finished(viewport, button, mouse_position);
+  }
+
+  if (!event_consumed)
+  {
+    select_tool_on_mouse_drag_finished();
+  }
 
   input_use_default_cursor();
 }
@@ -354,6 +381,15 @@ void viewport_render(const struct Viewport* viewport)
     // Draw gizmos
     {
       draw_select_tool_gizmo(viewport);
+
+      {
+        bool is_cube_valid;
+        if (add_cube_tool_should_draw_gizmo(&is_cube_valid))
+        {
+          draw_add_cube_tool_gizmo(viewport, is_cube_valid);
+        }
+      }
+
       draw_move_tool_gizmo(viewport);
     }
 

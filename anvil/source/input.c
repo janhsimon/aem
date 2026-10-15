@@ -1,6 +1,7 @@
 #include "input.h"
 
 #include "gui/gui.h"
+#include "scene.h"
 #include "tool/tool_state.h"
 #include "viewport/viewport.h"
 
@@ -14,9 +15,11 @@
 #define KEY_CAMERA_STRAFE_LEFT GLFW_KEY_A
 #define KEY_CAMERA_STRAFE_RIGHT GLFW_KEY_D
 #define KEY_DUPLICATE GLFW_KEY_LEFT_SHIFT
+#define KEY_SLOW_CAMERA GLFW_KEY_LEFT_SHIFT
+#define KEY_ADD_CUBE_TOOL GLFW_KEY_C
 #define KEY_SCALE_TOOL GLFW_KEY_T
 #define KEY_ROTATE_TOOL GLFW_KEY_R
-#define KEY_VERTEX_EDIT_TOOL GLFW_KEY_V
+#define KEY_EDIT_VERTEX_TOOL GLFW_KEY_V
 #define KEY_TEXTURE_LOCK GLFW_KEY_L
 
 static vec2 mouse_position; // In screen (ie. 'window') coordinates
@@ -25,8 +28,6 @@ static GLFWcursor *pan_cursor = NULL, *move_cursor = NULL, *scale_cursors[4], *d
 
 static GLFWwindow* window = NULL;
 
-static struct ToolState* tool_state = NULL;
-
 static enum MouseButton pressed_mouse_button = MouseButton_None;
 static bool is_dragging = false;
 static struct Viewport* anchor_viewport = NULL;
@@ -34,12 +35,11 @@ static struct Viewport* anchor_viewport = NULL;
 static bool is_camera_forward_key_down = false, is_camera_backwards_key_down = false,
             is_camera_strafe_left_key_down = false, is_camera_strafe_right_key_down = false;
 
-static bool is_duplicate_key_down = false;
+static bool is_duplicate_key_down = false, is_slow_camera_key_down = false;
 
-bool load_input(struct GLFWwindow* window_, struct ToolState* tool_state_)
+bool load_input(struct GLFWwindow* window_)
 {
   window = window_;
-  tool_state = tool_state_;
 
   pan_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
   if (!pan_cursor)
@@ -220,7 +220,8 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
       is_camera_strafe_right_key_down = false;
     }
   }
-  else if (key == KEY_DUPLICATE)
+
+  if (key == KEY_DUPLICATE)
   {
     if (action == GLFW_PRESS)
     {
@@ -231,23 +232,40 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
       is_duplicate_key_down = false;
     }
   }
-  else if (action == GLFW_RELEASE)
+
+  if (key == KEY_SLOW_CAMERA)
   {
-    if (key == KEY_SCALE_TOOL)
+    if (action == GLFW_PRESS)
     {
-      tool_state->active_tool = Tool_Scale;
+      is_slow_camera_key_down = true;
+    }
+    else if (action == GLFW_RELEASE)
+    {
+      is_slow_camera_key_down = false;
+    }
+  }
+
+  if (action == GLFW_RELEASE)
+  {
+    if (key == KEY_ADD_CUBE_TOOL)
+    {
+      activate_tool(Tool_AddCube);
+    }
+    else if (key == KEY_SCALE_TOOL)
+    {
+      activate_tool(Tool_Scale);
     }
     else if (key == KEY_ROTATE_TOOL)
     {
-      tool_state->active_tool = Tool_Rotate;
+      activate_tool(Tool_Rotate);
     }
-    else if (key == KEY_VERTEX_EDIT_TOOL)
+    else if (key == KEY_EDIT_VERTEX_TOOL)
     {
-      tool_state->active_tool = Tool_VertexEdit;
+      activate_tool(Tool_EditVertex);
     }
     else if (key == KEY_TEXTURE_LOCK)
     {
-      tool_state->texture_lock = !tool_state->texture_lock;
+      set_texture_lock(!get_texture_lock());
     }
   }
 }
@@ -256,7 +274,8 @@ void input_get_camera_movement(vec3 move)
 {
   glm_vec3_zero(move);
 
-  if (!anchor_viewport || viewport_get_type(anchor_viewport) != ViewportType_Perspective)
+  if (!anchor_viewport || pressed_mouse_button != MouseButton_Right ||
+      viewport_get_type(anchor_viewport) != ViewportType_Perspective)
   {
     return;
   }
@@ -284,11 +303,21 @@ void input_get_camera_movement(vec3 move)
       move[0] = -1.0f;
     }
   }
+
+  if (is_slow_camera_key_down)
+  {
+    glm_vec3_scale(move, 0.1f, move);
+  }
 }
 
 bool input_is_duplicate_key_down()
 {
   return is_duplicate_key_down;
+}
+
+bool input_is_slow_camera_key_down()
+{
+  return is_slow_camera_key_down;
 }
 
 void input_use_default_cursor()

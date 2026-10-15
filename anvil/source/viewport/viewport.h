@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 struct Camera;
-struct ToolState;
 struct Viewport;
 
 enum ViewportType
@@ -22,8 +21,7 @@ bool make_viewport(struct Viewport** viewport,
                    uint32_t x,
                    uint32_t y,
                    uint32_t width,
-                   uint32_t height,
-                   struct ToolState* tool_state);
+                   uint32_t height);
 void destroy_viewport(struct Viewport* viewport);
 
 void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);

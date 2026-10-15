@@ -21,6 +21,12 @@ set(SOURCE
   source/tool/camera_tool.c
   source/tool/camera_tool.h
 
+  source/tool/add_cube_tool.c
+  source/tool/add_cube_tool.h
+
+  source/tool/add_cube_tool_gizmo.c
+  source/tool/add_cube_tool_gizmo.h
+
   source/tool/move_tool_gizmo.c
   source/tool/move_tool_gizmo.h
 
@@ -36,6 +42,7 @@ set(SOURCE
   source/tool/select_tool_gizmo.c
   source/tool/select_tool_gizmo.h
 
+  source/tool/tool_state.c
   source/tool/tool_state.h
 
   source/viewport/camera.c

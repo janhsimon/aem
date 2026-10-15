@@ -2,6 +2,7 @@
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
+#include "tool/add_cube_tool_gizmo.h"
 #include "tool/move_tool_gizmo.h"
 #include "tool/select_tool_gizmo.h"
 #include "tool/tool_state.h"
@@ -25,8 +26,6 @@ static int window_height = 800;
 static struct GLFWwindow* window = NULL;
 
 static struct Viewport* viewports[4] = { NULL, NULL, NULL, NULL };
-
-static struct ToolState tool_state;
 
 void file_open_callback()
 {
@@ -63,10 +62,6 @@ void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
 
 int main(int argc, char* argv[])
 {
-  // Initialize tool state
-  tool_state.active_tool = Tool_Scale;
-  tool_state.texture_lock = true;
-
   // Create window and load OpenGL
   {
     if (!glfwInit())
@@ -114,13 +109,18 @@ int main(int argc, char* argv[])
     glDisable(GL_CULL_FACE);
   }
 
-  if (!load_input(window, &tool_state))
+  init_tool_state();
+
+  if (!load_input(window))
   {
     printf("Failed to load input system\n");
     return EXIT_FAILURE;
   }
 
-  init_gui(window, &tool_state, file_open_callback);
+  if (!init_gui(window, file_open_callback))
+  {
+    return EXIT_FAILURE;
+  }
 
   if (!generate_grid())
   {
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 
   for (uint32_t viewport_index = 0; viewport_index < 4; ++viewport_index)
   {
-    if (!make_viewport(&viewports[viewport_index], viewport_index, 0, 0, 64, 64, &tool_state))
+    if (!make_viewport(&viewports[viewport_index], viewport_index, 0, 0, 64, 64))
     {
       printf("Failed to load viewport\n");
       return EXIT_FAILURE;
@@ -142,13 +142,19 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  if (!generate_move_tool_gizmo(&tool_state))
+  if (!generate_add_cube_tool_gizmo())
+  {
+    printf("Failed to generate add cube tool gizmo\n");
+    return EXIT_FAILURE;
+  }
+
+  if (!generate_move_tool_gizmo())
   {
     printf("Failed to generate move tool gizmo\n");
     return EXIT_FAILURE;
   }
 
-  if (!generate_scene(&tool_state))
+  if (!generate_scene())
   {
     printf("Failed to generate scene\n");
     return EXIT_FAILURE;
@@ -197,6 +203,7 @@ int main(int argc, char* argv[])
 
   destroy_scene();
   destroy_move_tool_gizmo();
+  destroy_add_cube_tool_gizmo();
   destroy_select_tool_gizmo();
   destroy_grid();
   destroy_gui();

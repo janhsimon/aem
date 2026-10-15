@@ -2,7 +2,10 @@
 
 #include "input.h"
 #include "main_menu.h"
+#include "tool/tool_state.h"
 #include "viewport/viewport.h"
+
+#include <util/util.h>
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
@@ -25,7 +28,9 @@ static ImGuiIO* io = NULL;
 
 static struct Viewport* hovered_viewport;
 
-void init_gui(struct GLFWwindow* window, struct ToolState* tool_state, void (*file_open_callback)())
+static GLuint icon_tex;
+
+bool init_gui(struct GLFWwindow* window, void (*file_open_callback)())
 {
   context = igCreateContext(NULL);
 
@@ -37,16 +42,23 @@ void init_gui(struct GLFWwindow* window, struct ToolState* tool_state, void (*fi
   if (!ImGui_ImplGlfw_InitForOpenGL(window, true))
   {
     printf("Failed to initialize ImGui backend");
-    return;
+    return false;
   }
 
   if (!ImGui_ImplOpenGL3_Init(glsl_version))
   {
     printf("Failed to initialize ImGui backend");
-    return;
+    return false;
   }
 
-  init_main_menu(tool_state, file_open_callback);
+  init_main_menu(file_open_callback);
+
+  if (!util_load_texture("textures/icons.png", UtilTextureWrapMode_ClampToEdge, &icon_tex))
+  {
+    return false;
+  }
+
+  return true;
 }
 
 // bool is_mouse_consumed()
@@ -139,6 +151,67 @@ static void render_viewport_gui(struct Viewport* viewport, const ImVec2 size, co
   igEndChild();
 }
 
+static bool toolbar_tool(enum Tool tool,
+                         const char* id,
+                         const char* label,
+                         ImTextureRef tex_ref,
+                         uint32_t sprite_index,
+                         uint32_t sprite_count,
+                         float width)
+{
+  const ImVec2 text_size = igCalcTextSize(label, NULL, false, -1.0f);
+
+  const float image_size = 32.0f;
+  const float padding = 5.0f;
+  const float spacing = 4.0f;
+  const float frame_height = padding * 2.0f + image_size + spacing + text_size.y;
+
+  // Colors for the complete button frame (selected tools stay visually pressed)
+  const ImVec4 active = (ImVec4){ 0.28f, 0.28f, 0.28f, 1.0f };
+  const ImVec4 hovered = (ImVec4){ 0.20f, 0.20f, 0.20f, 1.0f };
+  const ImVec4 normal = (get_active_tool() == tool) ? active : (ImVec4){ 0.0f, 0.0f, 0.0f, 0.0f };
+
+  igPushStyleColor_Vec4(ImGuiCol_Button, normal);
+  igPushStyleColor_Vec4(ImGuiCol_ButtonHovered, hovered);
+  igPushStyleColor_Vec4(ImGuiCol_ButtonActive, active);
+
+  // The button itself covers the entire row
+  const bool clicked = igButton(id, (ImVec2){ width, frame_height });
+
+  // Draw the image and text over the button
+  ImDrawList* draw_list = igGetWindowDrawList();
+
+  const ImU32 white = igGetColorU32_Vec4((ImVec4){ 1.0f, 1.0f, 1.0f, 1.0f });
+
+  // Get the screen rectangle of the button
+  const ImVec2 item_min = igGetItemRectMin();
+  const ImVec2 item_max = igGetItemRectMax();
+  const float item_center_x = (item_min.x + item_max.x) * 0.5f;
+
+  // Image
+  const float image_x = item_center_x - image_size * 0.5f;
+  const float image_y = item_min.y + padding;
+  {
+    const ImVec2 image_min = (ImVec2){ image_x, image_y };
+    const ImVec2 image_max = (ImVec2){ image_x + image_size, image_y + image_size };
+
+    const ImVec2 uv0 = (ImVec2){ (float)sprite_index / (float)sprite_count, 0.0f };
+    const ImVec2 uv1 = (ImVec2){ (float)(sprite_index + 1) / (float)sprite_count, 1.0f };
+
+    ImDrawList_AddImage(draw_list, tex_ref, image_min, image_max, uv0, uv1, white);
+  }
+
+  // Text
+  {
+    const ImVec2 text_position = (ImVec2){ item_center_x - text_size.x * 0.5f, image_y + image_size + spacing };
+    ImDrawList_AddText_Vec2(draw_list, text_position, white, label, NULL);
+  }
+
+  igPopStyleColor(3);
+
+  return clicked;
+}
+
 void update_gui(struct Viewport* viewports[4])
 {
   hovered_viewport = NULL;
@@ -165,12 +238,55 @@ void update_gui(struct Viewport* viewports[4])
 
   const ImVec2 avail = igGetContentRegionAvail();
 
+  const float toolbar_width = 64.0f;
   const float right_width = 400.0f;
-  const float viewport_width = avail.x - right_width;
+  const float viewport_width = avail.x - toolbar_width - right_width;
+
+  // Toolbar
+  {
+    ImTextureRef_c tex_ref;
+    tex_ref._TexID = (ImTextureID)icon_tex;
+    tex_ref._TexData = NULL;
+
+    igBeginChild_Str("Toolbar", (ImVec2){ toolbar_width, 0 }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
+
+    if (toolbar_tool(Tool_AddCube, "##CubeToolbarButton", "Cube", tex_ref, 0, 6, toolbar_width))
+    {
+      activate_tool(Tool_AddCube);
+    }
+
+    igSeparator();
+
+    if (toolbar_tool(Tool_Scale, "##ScaleToolbarButton", "Scale", tex_ref, 1, 6, toolbar_width))
+    {
+      activate_tool(Tool_Scale);
+    }
+
+    if (toolbar_tool(Tool_Rotate, "##RotateToolbarButton", "Rotate", tex_ref, 2, 6, toolbar_width))
+    {
+      activate_tool(Tool_Rotate);
+    }
+
+    if (toolbar_tool(Tool_EditVertex, "##VertexToolbarButton", "Vertex", tex_ref, 3, 6, toolbar_width))
+    {
+      activate_tool(Tool_EditVertex);
+    }
+
+    igSeparator();
+
+    if (toolbar_tool(Tool_ApplyTexture, "##TextureToolbarButton", "Texture", tex_ref, 4, 6, toolbar_width))
+    {
+      activate_tool(Tool_ApplyTexture);
+    }
+
+    igEndChild();
+  }
+
+  igSameLine(0, 0);
 
   // Viewport area
   {
-    igBeginChild_Str("ViewportArea", (ImVec2){ viewport_width, avail.y }, false, 0);
+    igBeginChild_Str("ViewportArea", (ImVec2){ viewport_width, avail.y }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
     const float half_w = viewport_width * 0.5f;
     const float half_h = avail.y * 0.5f;
@@ -190,7 +306,7 @@ void update_gui(struct Viewport* viewports[4])
 
   // Side panel
   {
-    igBeginChild_Str("SidePanel", (ImVec2){ 0, 0 }, true, 0);
+    igBeginChild_Str("SidePanel", (ImVec2){ right_width, 0 }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
 
     igEndChild();
   }
@@ -212,6 +328,8 @@ void render_gui()
 
 void destroy_gui()
 {
+  util_free_texture(icon_tex);
+
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   igDestroyContext(context);

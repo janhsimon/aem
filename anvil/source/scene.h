@@ -5,16 +5,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-struct ToolState;
 struct Viewport;
 
-bool generate_scene(struct ToolState* tool_state);
+bool generate_scene();
 void destroy_scene();
 
 void draw_scene(const mat4 world_matrix, const mat4 viewproj_matrix, bool perspective);
 
 void scene_deselect_all_blocks();
 
+uint32_t scene_get_last_added_block_index();
 enum SceneGetClosestBlockFilter
 {
   SceneGetClosestBlockFilter_All,
@@ -38,5 +38,6 @@ void scene_move_selection(vec3 first_vertex_position);
 void scene_scale_selection(vec3 new_min, vec3 new_max);
 void scene_rotate_selection(float degrees);
 
-// void scene_add_block(vec3 min, vec3 max);
+void scene_add_block(vec3 min, vec3 max); // In worldspace
 void scene_duplicate_selection();
+void scene_delete_selection();

@@ -3,10 +3,10 @@
 #include <stdbool.h>
 
 struct GLFWwindow;
-struct ToolState;
 struct Viewport;
 
-void init_gui(struct GLFWwindow* window, struct ToolState* tool_state, void (*file_open_callback)());
+bool init_gui(struct GLFWwindow* window, void (*file_open_callback)());
+void destroy_gui();
 
 // bool is_mouse_consumed();
 // bool is_keyboard_consumed();

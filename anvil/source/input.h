@@ -14,9 +14,8 @@ enum MouseButton
 };
 
 struct GLFWwindow;
-struct ToolState;
 
-bool load_input(struct GLFWwindow* window, struct ToolState* tool_state);
+bool load_input(struct GLFWwindow* window);
 void destroy_input();
 
 void input_mouse_button_callback(struct GLFWwindow* window, int button, int action, int mods);
@@ -26,6 +25,7 @@ void input_key_callback(struct GLFWwindow* window, int key, int scancode, int ac
 
 void input_get_camera_movement(vec3 move);
 bool input_is_duplicate_key_down();
+bool input_is_slow_camera_key_down();
 
 void input_use_default_cursor();
 void input_use_mouse_look_cursor();

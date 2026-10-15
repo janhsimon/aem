@@ -47,8 +47,6 @@ struct Block
   bool selected;
 };
 
-static struct ToolState* tool_state = NULL;
-
 static struct Vertex* vertices = NULL;
 
 static uint32_t block_count;
@@ -279,10 +277,8 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
   update_block_uvs(block_index);
 }
 
-bool generate_scene(struct ToolState* tool_state_)
+bool generate_scene()
 {
-  tool_state = tool_state_;
-
   add_block();
   set_block(0, (vec3){ -2.0f, 0.0f, -2.0f }, (vec3){ 2.0f, 4.0f, 2.0f });
 
@@ -484,6 +480,11 @@ void scene_deselect_all_blocks()
   {
     blocks[block_index].selected = false;
   }
+}
+
+uint32_t scene_get_last_added_block_index()
+{
+  return block_count - 1;
 }
 
 bool scene_get_closest_block_to(struct Viewport* viewport,
@@ -717,7 +718,7 @@ void scene_move_selection(vec3 first_vertex_position)
 
     glm_vec3_copy(relative_first_vertex_position, vertices[block_index * VERTEX_COUNT_PER_BLOCK].position);
 
-    if (!tool_state->texture_lock)
+    if (!get_texture_lock())
     {
       update_block_uvs(block_index);
     }
@@ -754,7 +755,7 @@ void scene_scale_selection(vec3 new_min, vec3 new_max)
       }
     }
 
-    if (!tool_state->texture_lock)
+    if (!get_texture_lock())
     {
       update_block_uvs(block_index);
     }
@@ -794,18 +795,18 @@ void scene_rotate_selection(float degrees)
                    vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position);
     }
 
-    if (!tool_state->texture_lock)
+    if (!get_texture_lock())
     {
       update_block_uvs(block_index);
     }
   }
 }
 
-// void scene_add_block(vec3 min, vec3 max)
-//{
-//   add_block();
-//   set_block(block_count - 1, min, max);
-// }
+void scene_add_block(vec3 min, vec3 max)
+{
+  add_block();
+  set_block(block_count - 1, min, max);
+}
 
 void scene_duplicate_selection()
 {
@@ -831,4 +832,22 @@ void scene_duplicate_selection()
   set_block(block_count - 1, min, max);
 
   blocks[block_count - 1].selected = true;
+}
+
+static void delete_block(uint32_t index)
+{
+  // TODO: Implement
+}
+
+void scene_delete_selection()
+{
+  for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+  {
+    if (!blocks[block_index].selected)
+    {
+      continue;
+    }
+
+    delete_block(block_index);
+  }
 }

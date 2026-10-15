@@ -5,14 +5,10 @@
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
 #include <cimgui/cimgui.h>
 
-static struct ToolState* tool_state = NULL;
-
 static void (*file_open_callback)() = NULL;
 
-void init_main_menu(struct ToolState* tool_state_, void (*file_open_callback_)())
+void init_main_menu(void (*file_open_callback_)())
 {
-  tool_state = tool_state_;
-
   file_open_callback = file_open_callback_;
 }
 
@@ -30,7 +26,7 @@ void update_main_menu()
       igEndMenu();
     }
 
-    if (igBeginMenu("Tool", true))
+    /*if (igBeginMenu("Tool", true))
     {
       if (igMenuItem_Bool("Scale", "T", tool_state->active_tool == Tool_Scale, true))
       {
@@ -42,19 +38,20 @@ void update_main_menu()
         tool_state->active_tool = Tool_Rotate;
       }
 
-      if (igMenuItem_Bool("Vertex edit", "V", tool_state->active_tool == Tool_VertexEdit, true))
+      if (igMenuItem_Bool("Vertex", "V", tool_state->active_tool == Tool_Vertex, true))
       {
-        tool_state->active_tool = Tool_VertexEdit;
+        tool_state->active_tool = Tool_Vertex;
       }
 
       igEndMenu();
-    }
+    }*/
 
     if (igBeginMenu("Texture", true))
     {
-      if (igMenuItem_Bool("Lock texture", "L", tool_state->texture_lock, true))
+      const bool texture_lock = get_texture_lock();
+      if (igMenuItem_Bool("Lock texture", "L", texture_lock, true))
       {
-        tool_state->texture_lock = !tool_state->texture_lock;
+        set_texture_lock(!texture_lock);
       }
 
       igEndMenu();
