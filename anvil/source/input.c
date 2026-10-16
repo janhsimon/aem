@@ -20,6 +20,7 @@
 #define KEY_SCALE_TOOL GLFW_KEY_T
 #define KEY_ROTATE_TOOL GLFW_KEY_R
 #define KEY_EDIT_VERTEX_TOOL GLFW_KEY_V
+#define KEY_DELETE_SELECTION GLFW_KEY_DELETE
 #define KEY_TEXTURE_LOCK GLFW_KEY_L
 
 static vec2 mouse_position; // In screen (ie. 'window') coordinates
@@ -262,6 +263,10 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     else if (key == KEY_EDIT_VERTEX_TOOL)
     {
       activate_tool(Tool_EditVertex);
+    }
+    else if (key == KEY_DELETE_SELECTION)
+    {
+      scene_delete_selection();
     }
     else if (key == KEY_TEXTURE_LOCK)
     {

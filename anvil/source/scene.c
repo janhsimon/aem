@@ -42,48 +42,35 @@ struct Vertex
   vec2 uv;
 };
 
+struct BlockVertices
+{
+  struct Vertex vertices[VERTEX_COUNT_PER_BLOCK];
+};
+
 struct Block
 {
   bool selected;
 };
 
-static struct Vertex* vertices = NULL;
-
-static uint32_t block_count;
-static struct Block* blocks = NULL;
+static struct Vector* vertices = NULL;
+static struct Vector* blocks = NULL;
 
 static GLuint texture;
 
-static uint32_t get_vertex_count()
-{
-  return block_count * VERTEX_COUNT_PER_BLOCK;
-}
-
 static void add_block()
 {
-  ++block_count;
+  struct Block block;
+  block.selected = false;
+  util_append_vector_element(blocks, &block);
 
-  if (!blocks)
-  {
-    blocks = malloc(sizeof(*blocks));
-  }
-  else
-  {
-    blocks = realloc(blocks, sizeof(*blocks) * block_count);
-  }
-  assert(blocks);
+  struct BlockVertices block_vertices;
+  util_append_vector_element(vertices, &block_vertices);
+}
 
-  if (!vertices)
-  {
-    vertices = malloc(sizeof(*vertices) * VERTEX_COUNT_PER_BLOCK);
-  }
-  else
-  {
-    vertices = realloc(vertices, sizeof(*vertices) * VERTEX_COUNT_PER_BLOCK * block_count);
-  }
-  assert(vertices);
-
-  blocks[block_count - 1].selected = false;
+static void delete_block(uint32_t index)
+{
+  util_remove_vector_element(blocks, index);
+  util_remove_vector_element(vertices, index);
 }
 
 static void snap_face_normal(vec3 in_normal, vec3 out_normal, vec3 out_u, vec3 out_v)
@@ -146,51 +133,54 @@ static void update_block_uvs(uint32_t block_index)
 {
   const float scale = 4.0f;
 
+  struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
   for (uint32_t face_index = 0; face_index < 6; ++face_index)
   {
     vec3 n, u, v;
-    snap_face_normal(vertices[block_index * VERTEX_COUNT_PER_BLOCK + face_index * 4 + 0].normal, n, u, v);
+    snap_face_normal(block_vertices->vertices[face_index * 4 + 0].normal, n, u, v);
 
     vec2 uv;
     for (uint32_t vertex_index = 0; vertex_index < 4; ++vertex_index)
     {
       const uint32_t index = face_index * 4 + vertex_index;
-      uv[0] = glm_vec3_dot(vertices[block_index * VERTEX_COUNT_PER_BLOCK + index].position, u) / scale;
-      uv[1] = glm_vec3_dot(vertices[block_index * VERTEX_COUNT_PER_BLOCK + index].position, v) / scale;
+      uv[0] = glm_vec3_dot(block_vertices->vertices[index].position, u) / scale;
+      uv[1] = glm_vec3_dot(block_vertices->vertices[index].position, v) / scale;
 
-      glm_vec2_copy(uv, vertices[block_index * VERTEX_COUNT_PER_BLOCK + index].uv);
+      glm_vec2_copy(uv, block_vertices->vertices[index].uv);
     }
   }
 }
 
 static void set_block(uint32_t block_index, vec3 min, vec3 max)
 {
+  struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+
   // Front
   {
-    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 0].position);
-    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 1].position);
-    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 2].position);
-    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 3].position);
+    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, block_vertices->vertices[0].position);
+    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, block_vertices->vertices[1].position);
+    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, block_vertices->vertices[2].position);
+    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, block_vertices->vertices[3].position);
 
     vec3 normal = { 0.0f, 0.0f, -1.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 0].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 1].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 2].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 3].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[0].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[1].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[2].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[3].normal);
   }
 
   // Left
   {
-    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 4].position);
-    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 5].position);
-    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 6].position);
-    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 7].position);
+    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, block_vertices->vertices[4].position);
+    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, block_vertices->vertices[5].position);
+    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, block_vertices->vertices[6].position);
+    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, block_vertices->vertices[7].position);
 
     vec3 normal = { -1.0f, 0.0f, 0.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 4].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 5].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 6].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 7].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[4].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[5].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[6].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[7].normal);
 
     /*glm_vec2_copy((vec2){ 0.0f, 0.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 4].uv);
     glm_vec2_copy((vec2){ 0.0f, 1.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 5].uv);
@@ -200,16 +190,16 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
 
   // Back
   {
-    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 8].position);
-    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 9].position);
-    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 10].position);
-    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 11].position);
+    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, block_vertices->vertices[8].position);
+    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, block_vertices->vertices[9].position);
+    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, block_vertices->vertices[10].position);
+    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, block_vertices->vertices[11].position);
 
     vec3 normal = { 0.0f, 0.0f, 1.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 8].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 9].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 10].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 11].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[8].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[9].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[10].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[11].normal);
 
     /*glm_vec2_copy((vec2){ 0.0f, 0.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 8].uv);
     glm_vec2_copy((vec2){ 0.0f, 1.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 9].uv);
@@ -219,16 +209,16 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
 
   // Right
   {
-    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 12].position);
-    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 13].position);
-    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 14].position);
-    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 15].position);
+    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, block_vertices->vertices[12].position);
+    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, block_vertices->vertices[13].position);
+    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, block_vertices->vertices[14].position);
+    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, block_vertices->vertices[15].position);
 
     vec3 normal = { 1.0f, 0.0f, 0.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 12].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 13].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 14].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 15].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[12].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[13].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[14].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[15].normal);
 
     /*glm_vec2_copy((vec2){ 0.0f, 0.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 12].uv);
     glm_vec2_copy((vec2){ 0.0f, 1.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 13].uv);
@@ -238,16 +228,16 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
 
   // Top
   {
-    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 16].position);
-    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 17].position);
-    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 18].position);
-    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 19].position);
+    glm_vec3_copy((vec3){ min[0], max[1], min[2] }, block_vertices->vertices[16].position);
+    glm_vec3_copy((vec3){ min[0], max[1], max[2] }, block_vertices->vertices[17].position);
+    glm_vec3_copy((vec3){ max[0], max[1], max[2] }, block_vertices->vertices[18].position);
+    glm_vec3_copy((vec3){ max[0], max[1], min[2] }, block_vertices->vertices[19].position);
 
     vec3 normal = { 0.0f, 1.0f, 0.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 16].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 17].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 18].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 19].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[16].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[17].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[18].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[19].normal);
 
     /*glm_vec2_copy((vec2){ 0.0f, 0.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 16].uv);
     glm_vec2_copy((vec2){ 0.0f, 1.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 17].uv);
@@ -257,16 +247,16 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
 
   // Bottom
   {
-    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 20].position);
-    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 21].position);
-    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 22].position);
-    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 23].position);
+    glm_vec3_copy((vec3){ min[0], min[1], min[2] }, block_vertices->vertices[20].position);
+    glm_vec3_copy((vec3){ min[0], min[1], max[2] }, block_vertices->vertices[21].position);
+    glm_vec3_copy((vec3){ max[0], min[1], max[2] }, block_vertices->vertices[22].position);
+    glm_vec3_copy((vec3){ max[0], min[1], min[2] }, block_vertices->vertices[23].position);
 
     vec3 normal = { 0.0f, -1.0f, 0.0f };
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 20].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 21].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 22].normal);
-    glm_vec3_copy(normal, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 23].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[20].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[21].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[22].normal);
+    glm_vec3_copy(normal, block_vertices->vertices[23].normal);
 
     /*glm_vec2_copy((vec2){ 0.0f, 0.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 20].uv);
     glm_vec2_copy((vec2){ 0.0f, 1.0f }, vertices[block_index * VERTEX_COUNT_PER_BLOCK + 21].uv);
@@ -279,8 +269,8 @@ static void set_block(uint32_t block_index, vec3 min, vec3 max)
 
 bool generate_scene()
 {
-  add_block();
-  set_block(0, (vec3){ -2.0f, 0.0f, -2.0f }, (vec3){ 2.0f, 4.0f, 2.0f });
+  blocks = util_make_vector(sizeof(struct Block), 1000);
+  vertices = util_make_vector(sizeof(struct BlockVertices), 1000 * VERTEX_COUNT_PER_BLOCK);
 
   // Generate scene vertex array
   {
@@ -291,7 +281,8 @@ bool generate_scene()
     {
       glGenBuffers(1, &vertex_buffer);
       glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-      glBufferData(GL_ARRAY_BUFFER, sizeof(*vertices) * get_vertex_count(), vertices, GL_DYNAMIC_DRAW);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(struct BlockVertices) * util_get_vector_element_count(blocks),
+                   util_get_vector_raw_data(vertices), GL_DYNAMIC_DRAW);
     }
 
     // Make an index buffer for drawing a block
@@ -359,6 +350,9 @@ bool generate_scene()
 
 void destroy_scene()
 {
+  util_destroy_vector(vertices);
+  util_destroy_vector(blocks);
+
   util_free_texture(texture);
 
   glDeleteProgram(shader_program);
@@ -374,12 +368,15 @@ void draw_scene(const mat4 world_matrix, const mat4 viewproj_matrix, bool perspe
   glBindVertexArray(vertex_array);
 
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(*vertices) * get_vertex_count(), vertices, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(struct BlockVertices) * util_get_vector_element_count(blocks),
+               util_get_vector_raw_data(vertices), GL_DYNAMIC_DRAW);
 
   glUseProgram(shader_program);
 
   glUniformMatrix4fv(world_uniform_location, 1, GL_FALSE, (float*)world_matrix);
   glUniformMatrix4fv(viewproj_uniform_location, 1, GL_FALSE, (float*)viewproj_matrix);
+
+  const uint32_t block_count = util_get_vector_element_count(blocks);
 
   if (perspective)
   {
@@ -402,7 +399,8 @@ void draw_scene(const mat4 world_matrix, const mat4 viewproj_matrix, bool perspe
     // Unselected
     for (uint32_t block_index = 0; block_index < block_count; ++block_index)
     {
-      if (blocks[block_index].selected)
+      const struct Block* block = util_get_vector_element(blocks, block_index);
+      if (block->selected)
       {
         continue;
       }
@@ -424,7 +422,8 @@ void draw_scene(const mat4 world_matrix, const mat4 viewproj_matrix, bool perspe
     // Selected
     for (uint32_t block_index = 0; block_index < block_count; ++block_index)
     {
-      if (!blocks[block_index].selected)
+      const struct Block* block = util_get_vector_element(blocks, block_index);
+      if (!block->selected)
       {
         continue;
       }
@@ -450,7 +449,7 @@ static float distance_point_segment(vec2 p, vec2 a, vec2 b)
   vec2 ap;
   glm_vec2_sub(p, a, ap);
 
-  float ab_len_sq = ab[0] * ab[0] + ab[1] * ab[1];
+  const float ab_len_sq = ab[0] * ab[0] + ab[1] * ab[1];
 
   if (ab_len_sq < 0.0001f)
   {
@@ -476,14 +475,17 @@ static float distance_point_segment(vec2 p, vec2 a, vec2 b)
 
 void scene_deselect_all_blocks()
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    blocks[block_index].selected = false;
+    struct Block* block = util_get_vector_element(blocks, block_index);
+    block->selected = false;
   }
 }
 
 uint32_t scene_get_last_added_block_index()
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   return block_count - 1;
 }
 
@@ -512,24 +514,27 @@ bool scene_get_closest_block_to(struct Viewport* viewport,
   viewport_get_resolution(viewport, &w, &h);
   vec2 viewport_res = { w, h };
 
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   bool block_found = false;
   *out_distance = -1.0f;
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (filter == SceneGetClosestBlockFilter_OnlySelected && !blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (filter == SceneGetClosestBlockFilter_OnlySelected && !block->selected)
     {
       continue;
     }
-    else if (filter == SceneGetClosestBlockFilter_OnlyUnselected && blocks[block_index].selected)
+    else if (filter == SceneGetClosestBlockFilter_OnlyUnselected && block->selected)
     {
       continue;
     }
 
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
     for (uint32_t index = 36; index < 60; index += 2)
     {
       vec3 a, b;
-      glm_vec3_copy(vertices[block_index * VERTEX_COUNT_PER_BLOCK + indices[index]].position, a);
-      glm_vec3_copy(vertices[block_index * VERTEX_COUNT_PER_BLOCK + indices[index + 1]].position, b);
+      glm_vec3_copy(block_vertices->vertices[indices[index]].position, a);
+      glm_vec3_copy(block_vertices->vertices[indices[index + 1]].position, b);
 
       vec2 proj_a, proj_b;
       camera_world_to_screen(viewport_get_camera(viewport), a, proj_a);
@@ -550,12 +555,14 @@ bool scene_get_closest_block_to(struct Viewport* viewport,
 
 bool scene_is_block_selected(uint32_t block_index)
 {
-  return blocks[block_index].selected;
+  const struct Block* block = util_get_vector_element(blocks, block_index);
+  return block->selected;
 }
 
 void scene_select_block(uint32_t block_index)
 {
-  blocks[block_index].selected = true;
+  struct Block* block = util_get_vector_element(blocks, block_index);
+  block->selected = true;
 }
 
 static void get_block_minmax(struct Vertex vertices[VERTEX_COUNT_PER_BLOCK], vec3 out_min, vec3 out_max)
@@ -584,10 +591,12 @@ static void get_block_minmax(struct Vertex vertices[VERTEX_COUNT_PER_BLOCK], vec
 
 void scene_select_blocks_in_bbox(vec3 min, vec3 max)
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
     vec3 block_min, block_max;
-    get_block_minmax(&vertices[block_index * VERTEX_COUNT_PER_BLOCK], block_min, block_max);
+    get_block_minmax(block_vertices->vertices, block_min, block_max);
 
     bool block_inside = true;
     for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
@@ -608,9 +617,11 @@ void scene_select_blocks_in_bbox(vec3 min, vec3 max)
 
 bool scene_has_selection()
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (block->selected)
     {
       return true;
     }
@@ -621,21 +632,23 @@ bool scene_has_selection()
 
 void scene_get_selection_bbox_world(vec3 min, vec3 max)
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   bool first_selected_block = true;
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    const struct Block* block = &blocks[block_index];
+    const struct Block* block = util_get_vector_element(blocks, block_index);
     if (block->selected)
     {
+      struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
       if (first_selected_block)
       {
-        get_block_minmax(&vertices[block_index * VERTEX_COUNT_PER_BLOCK], min, max);
+        get_block_minmax(block_vertices->vertices, min, max);
         first_selected_block = false;
       }
       else
       {
         vec3 block_min, block_max;
-        get_block_minmax(&vertices[block_index * VERTEX_COUNT_PER_BLOCK], block_min, block_max);
+        get_block_minmax(block_vertices->vertices, block_min, block_max);
 
         for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
         {
@@ -656,14 +669,17 @@ void scene_get_selection_bbox_world(vec3 min, vec3 max)
 
 void scene_get_selection_first_vertex(vec3 v)
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
 
-    glm_vec3_copy(vertices[block_index * VERTEX_COUNT_PER_BLOCK].position, v);
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+    glm_vec3_copy(block_vertices->vertices[0].position, v);
     return;
   }
 }
@@ -671,26 +687,33 @@ void scene_get_selection_first_vertex(vec3 v)
 void scene_move_selection(vec3 first_vertex_position)
 {
   // Find the anchor of the first selected block
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   uint32_t first_selected_block_index;
   vec3 first_anchor;
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
 
     first_selected_block_index = block_index;
-    glm_vec3_copy(vertices[block_index * VERTEX_COUNT_PER_BLOCK].position, first_anchor);
+
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+    glm_vec3_copy(block_vertices->vertices[0].position, first_anchor);
     break;
   }
 
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
+
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
 
     vec3 relative_first_vertex_position;
     if (block_index == first_selected_block_index)
@@ -699,8 +722,9 @@ void scene_move_selection(vec3 first_vertex_position)
     }
     else
     {
+
       vec3 block_anchor;
-      glm_vec3_copy(vertices[block_index * VERTEX_COUNT_PER_BLOCK].position, block_anchor);
+      glm_vec3_copy(block_vertices->vertices[0].position, block_anchor);
 
       vec3 first_to_block;
       glm_vec3_sub(block_anchor, first_anchor, first_to_block);
@@ -710,13 +734,11 @@ void scene_move_selection(vec3 first_vertex_position)
     for (uint32_t vertex_index = 1; vertex_index < VERTEX_COUNT_PER_BLOCK; ++vertex_index)
     {
       vec3 v;
-      glm_vec3_sub(vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position,
-                   vertices[block_index * VERTEX_COUNT_PER_BLOCK].position, v);
-      glm_vec3_add(relative_first_vertex_position, v,
-                   vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position);
+      glm_vec3_sub(block_vertices->vertices[vertex_index].position, block_vertices->vertices[0].position, v);
+      glm_vec3_add(relative_first_vertex_position, v, block_vertices->vertices[vertex_index].position);
     }
 
-    glm_vec3_copy(relative_first_vertex_position, vertices[block_index * VERTEX_COUNT_PER_BLOCK].position);
+    glm_vec3_copy(relative_first_vertex_position, block_vertices->vertices[0].position);
 
     if (!get_texture_lock())
     {
@@ -730,12 +752,16 @@ void scene_scale_selection(vec3 new_min, vec3 new_max)
   vec3 old_min, old_max;
   scene_get_selection_bbox_world(old_min, old_max);
 
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
+
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
 
     for (uint32_t vertex_index = 0; vertex_index < VERTEX_COUNT_PER_BLOCK; ++vertex_index)
     {
@@ -743,13 +769,13 @@ void scene_scale_selection(vec3 new_min, vec3 new_max)
       {
         if (old_min[axis_index] < old_max[axis_index])
         {
-          float norm = vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position[axis_index];
+          float norm = block_vertices->vertices[vertex_index].position[axis_index];
           norm -= old_min[axis_index];
           norm /= (old_max[axis_index] - old_min[axis_index]);
 
           assert(norm >= 0.0f && norm <= 1.0f);
 
-          vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position[axis_index] =
+          block_vertices->vertices[vertex_index].position[axis_index] =
             new_min[axis_index] + (new_max[axis_index] - new_min[axis_index]) * norm;
         }
       }
@@ -764,18 +790,22 @@ void scene_scale_selection(vec3 new_min, vec3 new_max)
 
 void scene_rotate_selection(float degrees)
 {
+  const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
+
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
 
     // Find the center of the block vertices
     vec3 center;
     {
       vec3 min, max;
-      get_block_minmax(&vertices[block_index * VERTEX_COUNT_PER_BLOCK], min, max);
+      get_block_minmax(block_vertices->vertices, min, max);
       glm_vec3_add(min, max, center);
       glm_vec3_scale(center, 0.5f, center);
     }
@@ -783,16 +813,15 @@ void scene_rotate_selection(float degrees)
     for (uint32_t vertex_index = 0; vertex_index < VERTEX_COUNT_PER_BLOCK; ++vertex_index)
     {
       // Move to rotate around the center
-      glm_vec3_sub(vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position, center,
-                   vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position);
+      glm_vec3_sub(block_vertices->vertices[vertex_index].position, center,
+                   block_vertices->vertices[vertex_index].position);
 
       // Rotate
-      glm_vec3_rotate(vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position, glm_rad(degrees),
-                      GLM_YUP);
+      glm_vec3_rotate(block_vertices->vertices[vertex_index].position, glm_rad(degrees), GLM_YUP);
 
       // Move back to original position
-      glm_vec3_add(vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position, center,
-                   vertices[block_index * VERTEX_COUNT_PER_BLOCK + vertex_index].position);
+      glm_vec3_add(block_vertices->vertices[vertex_index].position, center,
+                   block_vertices->vertices[vertex_index].position);
     }
 
     if (!get_texture_lock())
@@ -805,49 +834,87 @@ void scene_rotate_selection(float degrees)
 void scene_add_block(vec3 min, vec3 max)
 {
   add_block();
-  set_block(block_count - 1, min, max);
+  set_block(util_get_vector_element_count(blocks) - 1, min, max);
 }
+
+// void scene_duplicate_selection()
+//{
+//   // Find the first selected block
+//   const uint32_t block_count = util_get_vector_element_count(blocks);
+//   uint32_t selected_block_index;
+//   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+//   {
+//     const struct Block* block = util_get_vector_element(blocks, block_index);
+//     if (!block->selected)
+//     {
+//       continue;
+//     }
+//
+//     selected_block_index = block_index;
+//     break;
+//   }
+//
+//   // Deselect the selected block, add a new block, copy the vertices and select that
+//   struct Block* selected_block = util_get_vector_element(blocks, selected_block_index);
+//
+//   selected_block->selected = false;
+//
+//   add_block();
+//
+//   struct BlockVertices* block_vertices = util_get_vector_element(vertices, selected_block_index);
+//   vec3 min, max;
+//   get_block_minmax(block_vertices->vertices, min, max);
+//
+//   set_block(block_count, min, max);
+//
+//   struct Block* duplicated_block = util_get_vector_element(blocks, block_count);
+//   duplicated_block->selected = true;
+// }
 
 void scene_duplicate_selection()
 {
-  uint32_t selected_block;
-  for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+  // Find the first selected block
+  const uint32_t original_block_count = util_get_vector_element_count(blocks);
+  for (uint32_t block_index = 0; block_index < original_block_count; ++block_index)
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
     {
       continue;
     }
 
-    selected_block = block_index;
-    break;
+    // Deselect the selected block, add a new block, copy the vertices and select that
+    struct Block* selected_block = util_get_vector_element(blocks, block_index);
+
+    selected_block->selected = false;
+
+    add_block();
+    const uint32_t duplicated_block_index = util_get_vector_element_count(blocks) - 1;
+
+    struct BlockVertices* original_block_vertices = util_get_vector_element(vertices, block_index);
+    vec3 min, max;
+    get_block_minmax(original_block_vertices->vertices, min, max);
+
+    set_block(duplicated_block_index, min, max);
+
+    struct Block* duplicated_block = util_get_vector_element(blocks, duplicated_block_index);
+    duplicated_block->selected = true;
   }
-
-  blocks[selected_block].selected = false;
-
-  add_block();
-
-  vec3 min, max;
-  get_block_minmax(&vertices[selected_block * VERTEX_COUNT_PER_BLOCK], min, max);
-
-  set_block(block_count - 1, min, max);
-
-  blocks[block_count - 1].selected = true;
-}
-
-static void delete_block(uint32_t index)
-{
-  // TODO: Implement
 }
 
 void scene_delete_selection()
 {
-  for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+  uint32_t block_index = 0;
+  while (block_index < util_get_vector_element_count(blocks))
   {
-    if (!blocks[block_index].selected)
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (block->selected)
     {
-      continue;
+      delete_block(block_index);
     }
-
-    delete_block(block_index);
+    else
+    {
+      ++block_index;
+    }
   }
 }

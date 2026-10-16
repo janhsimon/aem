@@ -3,9 +3,11 @@
 #include <glad/gl.h>
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct AEMModel;
 struct AEMTexture;
+struct Vector;
 
 // Filenames
 char* util_filename_from_filepath(char* filepath);   // Converter
@@ -39,3 +41,12 @@ enum UtilTextureWrapMode
 bool util_load_texture(const char* filepath, enum UtilTextureWrapMode wrap_mode, GLuint* texture);
 void util_free_texture(GLuint texture);
 GLuint util_load_model_texture(const struct AEMModel* model, const struct AEMTexture* texture);
+
+// Vectors
+struct Vector* util_make_vector(uint32_t element_size, uint32_t initial_capacity);
+void util_destroy_vector(struct Vector* vector);
+void util_append_vector_element(struct Vector* vector, const void* new_element);
+void util_remove_vector_element(struct Vector* vector, uint32_t element_index);
+uint32_t util_get_vector_element_count(const struct Vector* vector);
+void* util_get_vector_element(struct Vector* vector, uint32_t element_index);
+void* util_get_vector_raw_data(struct Vector* vector);

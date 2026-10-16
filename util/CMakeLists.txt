@@ -8,6 +8,7 @@ set(SOURCE
   shader.c
   text.c
   texture.c
+  vector.c
 )
 
 set(DEPENDENCIES
