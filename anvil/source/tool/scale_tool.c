@@ -183,7 +183,11 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
     {
       if (!scene_is_block_selected(closest_block_index))
       {
-        scene_deselect_all_blocks();
+        if (!input_is_add_to_selection_key_down())
+        {
+          scene_deselect_all_blocks();
+        }
+
         scene_select_block(closest_block_index);
       }
 

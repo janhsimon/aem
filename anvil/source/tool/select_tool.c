@@ -23,7 +23,10 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     return false;
   }
 
-  scene_deselect_all_blocks();
+  if (!input_is_add_to_selection_key_down())
+  {
+    scene_deselect_all_blocks();
+  }
 
   vec3 temp;
   camera_screen_to_world_2d(viewport_get_camera(viewport), mouse_position, temp);
@@ -64,8 +67,6 @@ void select_tool_on_mouse_drag_finished()
   {
     return;
   }
-
-  scene_deselect_all_blocks();
 
   mat4 viewproj;
   {

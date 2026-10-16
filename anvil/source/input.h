@@ -25,6 +25,7 @@ void input_key_callback(struct GLFWwindow* window, int key, int scancode, int ac
 
 void input_get_camera_movement(vec3 move);
 bool input_is_duplicate_key_down();
+bool input_is_add_to_selection_key_down();
 bool input_is_slow_camera_key_down();
 
 void input_use_default_cursor();

@@ -15,6 +15,7 @@
 #define KEY_CAMERA_STRAFE_LEFT GLFW_KEY_A
 #define KEY_CAMERA_STRAFE_RIGHT GLFW_KEY_D
 #define KEY_DUPLICATE GLFW_KEY_LEFT_SHIFT
+#define KEY_ADD_TO_SELECTION GLFW_KEY_LEFT_SHIFT
 #define KEY_SLOW_CAMERA GLFW_KEY_LEFT_SHIFT
 #define KEY_ADD_CUBE_TOOL GLFW_KEY_C
 #define KEY_SCALE_TOOL GLFW_KEY_T
@@ -36,7 +37,7 @@ static struct Viewport* anchor_viewport = NULL;
 static bool is_camera_forward_key_down = false, is_camera_backwards_key_down = false,
             is_camera_strafe_left_key_down = false, is_camera_strafe_right_key_down = false;
 
-static bool is_duplicate_key_down = false, is_slow_camera_key_down = false;
+static bool is_duplicate_key_down = false, is_add_to_selection_key_down = false, is_slow_camera_key_down = false;
 
 bool load_input(struct GLFWwindow* window_)
 {
@@ -234,6 +235,18 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     }
   }
 
+  if (key == KEY_ADD_TO_SELECTION)
+  {
+    if (action == GLFW_PRESS)
+    {
+      is_add_to_selection_key_down = true;
+    }
+    else if (action == GLFW_RELEASE)
+    {
+      is_add_to_selection_key_down = false;
+    }
+  }
+
   if (key == KEY_SLOW_CAMERA)
   {
     if (action == GLFW_PRESS)
@@ -318,6 +331,11 @@ void input_get_camera_movement(vec3 move)
 bool input_is_duplicate_key_down()
 {
   return is_duplicate_key_down;
+}
+
+bool input_is_add_to_selection_key_down()
+{
+  return is_add_to_selection_key_down;
 }
 
 bool input_is_slow_camera_key_down()
