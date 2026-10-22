@@ -87,6 +87,11 @@ static void render_viewport_gui(struct Viewport* viewport, const ImVec2 size, co
   igBeginChild_Str(title, size, true, 0);
 
   const ImVec2 avail = igGetContentRegionAvail();
+  if (avail.x <= 0.0f || avail.y <= 0.0f)
+  {
+    igEndChild();
+    return;
+  }
 
   viewport_set_resolution(viewport, (uint32_t)avail.x, (uint32_t)avail.y);
 
