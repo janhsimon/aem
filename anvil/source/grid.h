@@ -10,6 +10,7 @@ bool has_grid_size_tooltip();
 const char* get_grid_size_label();
 const char* get_grid_size_tooltip();
 float get_current_grid_size();
+float get_min_grid_size();
 bool get_render_3d_grid();
 
 void set_render_3d_grid(bool toggle);

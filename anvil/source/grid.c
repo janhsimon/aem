@@ -60,6 +60,11 @@ float get_current_grid_size()
   return grid_sizes[grid_size_index];
 }
 
+float get_min_grid_size()
+{
+  return grid_sizes[0];
+}
+
 bool get_render_3d_grid()
 {
   return render_3d_grid;
