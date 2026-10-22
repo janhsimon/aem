@@ -1,5 +1,6 @@
 #include "scale_tool.h"
 
+#include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
@@ -353,9 +354,7 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
     glm_vec3_add(mouse_pos_world, move_delta, m);
 
     // Snap to grid
-    m[0] = roundf(m[0]);
-    m[1] = roundf(m[1]);
-    m[2] = roundf(m[2]);
+    grid_snap(m, m);
     scene_move_selection(m);
 
     return true;
@@ -369,9 +368,7 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
 
     // Snapping
-    mouse_pos_world[0] = roundf(mouse_pos_world[0]);
-    mouse_pos_world[1] = roundf(mouse_pos_world[1]);
-    mouse_pos_world[2] = roundf(mouse_pos_world[2]);
+    grid_snap(mouse_pos_world, mouse_pos_world);
 
     vec3 bbox_min_world, bbox_max_world;
     scene_get_selection_bbox_world(bbox_min_world, bbox_max_world);
@@ -401,15 +398,17 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
       }
     }
 
+    const float grid_size = get_current_grid_size() * 2.0f;
+
     // Left
     if (scale_control_point_index == CONTROL_POINT_LEFT || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||
         scale_control_point_index == CONTROL_POINT_TOP_LEFT)
     {
       bbox_max_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
 
-      if (bbox_max_world[axis_index_horizontal] < bbox_min_world[axis_index_horizontal] + 0.1f)
+      if (bbox_max_world[axis_index_horizontal] < bbox_min_world[axis_index_horizontal] + grid_size)
       {
-        bbox_max_world[axis_index_horizontal] = bbox_min_world[axis_index_horizontal] + 0.1f;
+        bbox_max_world[axis_index_horizontal] = bbox_min_world[axis_index_horizontal] + grid_size;
       }
     }
 
@@ -419,9 +418,9 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
     {
       bbox_min_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
 
-      if (bbox_min_world[axis_index_horizontal] > bbox_max_world[axis_index_horizontal] - 0.1f)
+      if (bbox_min_world[axis_index_horizontal] > bbox_max_world[axis_index_horizontal] - grid_size)
       {
-        bbox_min_world[axis_index_horizontal] = bbox_max_world[axis_index_horizontal] - 0.1f;
+        bbox_min_world[axis_index_horizontal] = bbox_max_world[axis_index_horizontal] - grid_size;
       }
     }
 
@@ -431,9 +430,9 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
     {
       bbox_max_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
 
-      if (bbox_max_world[axis_index_vertical] < bbox_min_world[axis_index_vertical] + 0.1f)
+      if (bbox_max_world[axis_index_vertical] < bbox_min_world[axis_index_vertical] + grid_size)
       {
-        bbox_max_world[axis_index_vertical] = bbox_min_world[axis_index_vertical] + 0.1f;
+        bbox_max_world[axis_index_vertical] = bbox_min_world[axis_index_vertical] + grid_size;
       }
     }
 
@@ -443,9 +442,9 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
     {
       bbox_min_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
 
-      if (bbox_min_world[axis_index_vertical] > bbox_max_world[axis_index_vertical] - 0.1f)
+      if (bbox_min_world[axis_index_vertical] > bbox_max_world[axis_index_vertical] - grid_size)
       {
-        bbox_min_world[axis_index_vertical] = bbox_max_world[axis_index_vertical] - 0.1f;
+        bbox_min_world[axis_index_vertical] = bbox_max_world[axis_index_vertical] - grid_size;
       }
     }
 

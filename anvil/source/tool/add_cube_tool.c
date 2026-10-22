@@ -1,5 +1,6 @@
 #include "add_cube_tool.h"
 
+#include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
@@ -73,13 +74,8 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
     glm_vec3_copy(mouse_pos_world, bbox_max);
 
     // Snap to grid
-    bbox_min[0] = roundf(bbox_min[0] /*- 0.5f*/);
-    bbox_min[1] = roundf(bbox_min[1] /*- 0.5f*/);
-    bbox_min[2] = roundf(bbox_min[2] /*- 0.5f*/);
-
-    bbox_max[0] = roundf(bbox_max[0]) /*+ 0.5f*/;
-    bbox_max[1] = roundf(bbox_max[1]) /*+ 0.5f*/;
-    bbox_max[2] = roundf(bbox_max[2]) /*+ 0.5f*/;
+    grid_snap(bbox_min, bbox_min);
+    grid_snap(bbox_max, bbox_max);
 
     // Extend depth-component of volume
     {
@@ -89,7 +85,7 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
       {
         if (camera_forward[i] != 0.0f)
         {
-          bbox_min[i] -= 1.0f;
+          bbox_min[i] -= get_current_grid_size();
         }
       }
     }
@@ -103,19 +99,8 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
     glm_vec3_copy(mouse_pos_world, bbox_max);
 
-    for (int i = 0; i < 3; ++i)
-    {
-      // Snap to grid
-      bbox_min[i] = roundf(bbox_min[i]);
-      bbox_max[i] = roundf(bbox_max[i]);
-
-      // Ensure non-zero volume
-      /*const float delta = bbox_max[i] - bbox_min[i];
-      if (delta == 0.0f)
-      {
-        bbox_max[i] += 1.0f;
-      }*/
-    }
+    grid_snap(bbox_min, bbox_min);
+    grid_snap(bbox_max, bbox_max);
   }
 
   return true;
@@ -128,7 +113,7 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
   // Check if the cube is valid (ie. has a non-zero volume)
   for (int i = 0; i < 3; ++i)
   {
-    if (fabsf(bbox_max[i] - bbox_min[i]) < 0.1f)
+    if (fabsf(bbox_max[i] - bbox_min[i]) < get_current_grid_size())
     {
       return true;
     }
@@ -164,7 +149,7 @@ bool add_cube_tool_should_draw_gizmo(bool* is_cube_valid)
   *is_cube_valid = true;
   for (int i = 0; i < 3; ++i)
   {
-    if (fabsf(bbox_max[i] - bbox_min[i]) < 0.1f)
+    if (fabsf(bbox_max[i] - bbox_min[i]) < get_current_grid_size())
     {
       *is_cube_valid = false;
       break;

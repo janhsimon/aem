@@ -1,5 +1,6 @@
 #include "gui.h"
 
+#include "grid.h"
 #include "input.h"
 #include "main_menu.h"
 #include "tool/tool_state.h"
@@ -240,7 +241,9 @@ void update_gui(struct Viewport* viewports[4])
 
   const float toolbar_width = 64.0f;
   const float right_width = 400.0f;
-  const float viewport_width = avail.x - toolbar_width - right_width;
+  const float bottombar_height = 30.0f;
+  const float viewport_width = avail.x - toolbar_width - right_width - VIEWPORT_SPACING;
+  const float viewport_height = avail.y - bottombar_height - VIEWPORT_SPACING;
 
   // Toolbar
   {
@@ -248,7 +251,8 @@ void update_gui(struct Viewport* viewports[4])
     tex_ref._TexID = (ImTextureID)icon_tex;
     tex_ref._TexData = NULL;
 
-    igBeginChild_Str("Toolbar", (ImVec2){ toolbar_width, 0 }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
+    igBeginChild_Str("Toolbar", (ImVec2){ toolbar_width, viewport_height }, ImGuiChildFlags_None,
+                     ImGuiWindowFlags_None);
 
     if (toolbar_tool(Tool_AddCube, "##CubeToolbarButton", "Cube", tex_ref, 0, 6, toolbar_width))
     {
@@ -286,10 +290,11 @@ void update_gui(struct Viewport* viewports[4])
 
   // Viewport area
   {
-    igBeginChild_Str("ViewportArea", (ImVec2){ viewport_width, avail.y }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
+    igBeginChild_Str("ViewportArea", (ImVec2){ viewport_width, viewport_height }, ImGuiChildFlags_None,
+                     ImGuiWindowFlags_None);
 
     const float half_w = viewport_width * 0.5f;
-    const float half_h = avail.y * 0.5f;
+    const float half_h = viewport_height * 0.5f;
 
     render_viewport_gui(viewports[0], (ImVec2){ half_w, half_h }, "TopLeftViewport");
     igSameLine(0, VIEWPORT_SPACING);
@@ -306,14 +311,44 @@ void update_gui(struct Viewport* viewports[4])
 
   // Side panel
   {
-    igBeginChild_Str("SidePanel", (ImVec2){ right_width, 0 }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
+    igBeginChild_Str("SidePanel", (ImVec2){ right_width, viewport_height }, ImGuiChildFlags_None,
+                     ImGuiWindowFlags_None);
+
+    igEndChild();
+  }
+
+  igPopStyleVar(2);
+
+  // Bottom bar
+  {
+    igBeginChild_Str("BottomPanel", (ImVec2){ 0, bottombar_height }, ImGuiChildFlags_None, ImGuiWindowFlags_None);
+
+    if (igBeginTable("BottomRow", 3, ImGuiTableFlags_None, (ImVec2){ 0, 0 }, 0.0f))
+    {
+      igTableNextColumn();
+      igTableNextColumn();
+      igTableNextColumn();
+
+      int new_grid_size_index = get_grid_size_index();
+      if (igSliderInt("##GridSize", &new_grid_size_index, 0, get_grid_size_count() - 1, get_grid_size_label(),
+                      ImGuiSliderFlags_None))
+      {
+        grid_set_index(new_grid_size_index);
+      }
+      if (has_grid_size_tooltip() && igIsItemHovered(ImGuiHoveredFlags_None))
+      {
+        igBeginTooltip();
+        igText(get_grid_size_tooltip());
+        igEndTooltip();
+      }
+
+      igEndTable();
+    }
 
     igEndChild();
   }
 
   igEnd();
-
-  igPopStyleVar(2);
 
 #ifdef SHOW_DEMO_WINDOW
   igShowDemoWindow(NULL);

@@ -1,5 +1,6 @@
 #include "input.h"
 
+#include "grid.h"
 #include "gui/gui.h"
 #include "scene.h"
 #include "tool/tool_state.h"
@@ -22,7 +23,10 @@
 #define KEY_ROTATE_TOOL GLFW_KEY_R
 #define KEY_EDIT_VERTEX_TOOL GLFW_KEY_V
 #define KEY_DELETE_SELECTION GLFW_KEY_DELETE
+#define KEY_GRID_SIZE_DOWN GLFW_KEY_LEFT_BRACKET
+#define KEY_GRID_SIZE_UP GLFW_KEY_RIGHT_BRACKET
 #define KEY_TEXTURE_LOCK GLFW_KEY_L
+#define KEY_TOGGLE_RENDER_3D_GRID GLFW_KEY_G
 
 static vec2 mouse_position; // In screen (ie. 'window') coordinates
 
@@ -259,7 +263,7 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     }
   }
 
-  if (action == GLFW_RELEASE)
+  if (action == GLFW_PRESS)
   {
     if (key == KEY_ADD_CUBE_TOOL)
     {
@@ -281,9 +285,21 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     {
       scene_delete_selection();
     }
+    else if (key == KEY_GRID_SIZE_DOWN)
+    {
+      grid_size_down();
+    }
+    else if (key == KEY_GRID_SIZE_UP)
+    {
+      grid_size_up();
+    }
     else if (key == KEY_TEXTURE_LOCK)
     {
       set_texture_lock(!get_texture_lock());
+    }
+    else if (key == KEY_TOGGLE_RENDER_3D_GRID)
+    {
+      set_render_3d_grid(!get_render_3d_grid());
     }
   }
 }

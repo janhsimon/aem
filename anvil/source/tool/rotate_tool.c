@@ -1,5 +1,6 @@
 #include "rotate_tool.h"
 
+#include "grid.h"
 #include "input.h"
 #include "scene.h"
 #include "viewport/camera.h"
@@ -325,10 +326,7 @@ bool rotate_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
     glm_vec3_add(mouse_pos_world, move_delta, m);
 
     // Snap to grid
-    m[0] = roundf(m[0]);
-    m[1] = roundf(m[1]);
-    m[2] = roundf(m[2]);
-    scene_move_selection(m);
+    grid_snap(m, m);
 
     return true;
   }

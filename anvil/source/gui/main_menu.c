@@ -1,5 +1,6 @@
 #include "main_menu.h"
 
+#include "grid.h"
 #include "tool/tool_state.h"
 
 #define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
@@ -26,32 +27,23 @@ void update_main_menu()
       igEndMenu();
     }
 
-    /*if (igBeginMenu("Tool", true))
-    {
-      if (igMenuItem_Bool("Scale", "T", tool_state->active_tool == Tool_Scale, true))
-      {
-        tool_state->active_tool = Tool_Scale;
-      }
-
-      if (igMenuItem_Bool("Rotate", "R", tool_state->active_tool == Tool_Rotate, true))
-      {
-        tool_state->active_tool = Tool_Rotate;
-      }
-
-      if (igMenuItem_Bool("Vertex", "V", tool_state->active_tool == Tool_Vertex, true))
-      {
-        tool_state->active_tool = Tool_Vertex;
-      }
-
-      igEndMenu();
-    }*/
-
     if (igBeginMenu("Texture", true))
     {
       const bool texture_lock = get_texture_lock();
       if (igMenuItem_Bool("Lock texture", "L", texture_lock, true))
       {
         set_texture_lock(!texture_lock);
+      }
+
+      igEndMenu();
+    }
+
+    if (igBeginMenu("View", true))
+    {
+      const bool render_3d_grid = get_render_3d_grid();
+      if (igMenuItem_Bool("Show 3D grid", "G", render_3d_grid, true))
+      {
+        set_render_3d_grid(!render_3d_grid);
       }
 
       igEndMenu();
