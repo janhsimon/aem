@@ -20,4 +20,4 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
 
 void add_cube_tool_get_bbox(vec3 min, vec3 max);
 
-bool add_cube_tool_should_draw_gizmo(bool* is_cube_valid);
+bool add_cube_tool_should_draw_gizmo();

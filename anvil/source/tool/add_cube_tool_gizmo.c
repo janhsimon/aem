@@ -77,7 +77,7 @@ void destroy_add_cube_tool_gizmo()
   glDeleteVertexArrays(1, &vertex_array);
 }
 
-void draw_add_cube_tool_gizmo(const struct Viewport* viewport, bool is_cube_valid)
+void draw_add_cube_tool_gizmo(const struct Viewport* viewport)
 {
   if (viewport_get_type(viewport) == ViewportType_Perspective)
   {
@@ -105,14 +105,7 @@ void draw_add_cube_tool_gizmo(const struct Viewport* viewport, bool is_cube_vali
     glUseProgram(shader_program);
     glUniform2fv(viewport_size_uniform_location, 1, (float*)viewport_size);
 
-    if (is_cube_valid)
-    {
-      glUniform3f(color_uniform_location, 1.0f, 1.0f, 0.0f);
-    }
-    else
-    {
-      glUniform3f(color_uniform_location, 1.0f, 0.0f, 0.0f);
-    }
+    glUniform3f(color_uniform_location, 1.0f, 1.0f, 1.0f);
 
     glDrawArrays(GL_LINE_LOOP, 0, 4);
   }

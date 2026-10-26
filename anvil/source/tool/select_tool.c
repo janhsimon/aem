@@ -1,5 +1,6 @@
 #include "select_tool.h"
 
+#include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
@@ -31,6 +32,8 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
   vec3 temp;
   camera_screen_to_world_2d(viewport_get_camera(viewport), mouse_position, temp);
 
+  grid_snap(temp, temp);
+
   vec2 mouse_position_clip;
   camera_world_to_clip(viewport_get_camera(viewport), temp, mouse_position_clip);
 
@@ -51,6 +54,8 @@ bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
 
   vec3 temp;
   camera_screen_to_world_2d(viewport_get_camera(viewport), mouse_position, temp);
+
+  grid_snap(temp, temp);
 
   vec2 mouse_position_clip;
   camera_world_to_clip(viewport_get_camera(viewport), temp, mouse_position_clip);

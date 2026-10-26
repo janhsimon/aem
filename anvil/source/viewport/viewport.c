@@ -383,10 +383,9 @@ void viewport_render(const struct Viewport* viewport)
       draw_select_tool_gizmo(viewport);
 
       {
-        bool is_cube_valid;
-        if (add_cube_tool_should_draw_gizmo(&is_cube_valid))
+        if (add_cube_tool_should_draw_gizmo())
         {
-          draw_add_cube_tool_gizmo(viewport, is_cube_valid);
+          draw_add_cube_tool_gizmo(viewport);
         }
       }
 

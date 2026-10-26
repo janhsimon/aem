@@ -119,7 +119,7 @@ void draw_select_tool_gizmo(const struct Viewport* viewport)
   {
     glUseProgram(shader_program);
     glUniform2fv(viewport_size_uniform_location, 1, (float*)viewport_size);
-    glUniform3f(color_uniform_location, 1.0f, 1.0f, 1.0f);
+    glUniform3f(color_uniform_location, 1.0f, 1.0f, 0.0f);
     glDrawArrays(GL_LINE_LOOP, 0, 4);
   }
 }

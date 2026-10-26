@@ -16,18 +16,18 @@
 
 static bool is_adding = false;
 
-static vec3 bbox_min, bbox_max; // Bounding box of new cube in world space
+static vec3 bbox_from, bbox_to; // Bounding box of new cube in world space
 
 void add_cube_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
 {
-  vec2 bbox_min_clip, bbox_max_clip;
-  camera_world_to_clip(camera, bbox_min, bbox_min_clip);
-  camera_world_to_clip(camera, bbox_max, bbox_max_clip);
+  vec2 bbox_from_clip, bbox_to_clip;
+  camera_world_to_clip(camera, bbox_from, bbox_from_clip);
+  camera_world_to_clip(camera, bbox_to, bbox_to_clip);
 
-  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_min_clip[1] }, corners[0]);
-  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_min_clip[1] }, corners[1]);
-  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_max_clip[1] }, corners[2]);
-  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_max_clip[1] }, corners[3]);
+  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
+  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
+  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
+  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
 }
 
 void add_cube_tool_on_tool_activate()
@@ -67,15 +67,9 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
     // Make initial new cube bbox
     struct Camera* camera = viewport_get_camera(viewport);
 
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    glm_vec3_copy(mouse_pos_world, bbox_min);
-    glm_vec3_copy(mouse_pos_world, bbox_max);
-
-    // Snap to grid
-    grid_snap(bbox_min, bbox_min);
-    grid_snap(bbox_max, bbox_max);
+    camera_screen_to_world_2d(camera, mouse_position, bbox_from);
+    grid_snap(bbox_from, bbox_from); // Snap to grid
+    glm_vec3_copy(bbox_from, bbox_to);
 
     // Extend depth-component of volume
     {
@@ -85,7 +79,7 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
       {
         if (camera_forward[i] != 0.0f)
         {
-          bbox_min[i] -= get_current_grid_size();
+          bbox_from[i] -= get_current_grid_size() * 2.0f;
         }
       }
     }
@@ -97,10 +91,34 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
 
     vec3 mouse_pos_world;
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-    glm_vec3_copy(mouse_pos_world, bbox_max);
+    glm_vec3_copy(mouse_pos_world, bbox_to);
 
-    grid_snap(bbox_min, bbox_min);
-    grid_snap(bbox_max, bbox_max);
+    vec3 unsnapped_to;
+    glm_vec3_copy(bbox_to, unsnapped_to);
+
+    grid_snap(bbox_to, bbox_to);
+
+    const float min_grid_size = get_min_grid_size() * 2.0f;
+
+    vec3 camera_forward;
+    camera_get_forward(camera, camera_forward);
+    for (int i = 0; i < 3; ++i)
+    {
+      if (camera_forward[i] == 0.0f)
+      {
+        if (fabsf(bbox_to[i] - bbox_from[i]) < min_grid_size)
+        {
+          if (unsnapped_to[i] < bbox_from[i])
+          {
+            bbox_to[i] = bbox_from[i] - min_grid_size;
+          }
+          else
+          {
+            bbox_to[i] = bbox_from[i] + min_grid_size;
+          }
+        }
+      }
+    }
   }
 
   return true;
@@ -110,25 +128,8 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
 {
   is_adding = false;
 
-  // Check if the cube is valid (ie. has a non-zero volume)
-  for (int i = 0; i < 3; ++i)
-  {
-    if (fabsf(bbox_max[i] - bbox_min[i]) < get_current_grid_size())
-    {
-      return true;
-    }
-  }
-
-  // Correct min vs max
-  for (int i = 0; i < 3; ++i)
-  {
-    if (bbox_min[i] > bbox_max[i])
-    {
-      const float temp = bbox_max[i];
-      bbox_max[i] = bbox_min[i];
-      bbox_min[i] = temp;
-    }
-  }
+  vec3 bbox_min, bbox_max;
+  add_cube_tool_get_bbox(bbox_min, bbox_max);
 
   scene_add_block(bbox_min, bbox_max);
   scene_select_block(scene_get_last_added_block_index());
@@ -140,21 +141,22 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
 
 void add_cube_tool_get_bbox(vec3 min, vec3 max)
 {
-  glm_vec3_copy(bbox_min, min);
-  glm_vec3_copy(bbox_max, max);
-}
-
-bool add_cube_tool_should_draw_gizmo(bool* is_cube_valid)
-{
-  *is_cube_valid = true;
   for (int i = 0; i < 3; ++i)
   {
-    if (fabsf(bbox_max[i] - bbox_min[i]) < get_current_grid_size())
+    if (bbox_from[i] < bbox_to[i])
     {
-      *is_cube_valid = false;
-      break;
+      min[i] = bbox_from[i];
+      max[i] = bbox_to[i];
+    }
+    else
+    {
+      min[i] = bbox_to[i];
+      max[i] = bbox_from[i];
     }
   }
+}
 
+bool add_cube_tool_should_draw_gizmo()
+{
   return get_active_tool() == Tool_AddCube && is_adding;
 }
