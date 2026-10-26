@@ -124,23 +124,9 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
   return true;
 }
 
-bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+static void add_cube_tool_get_bbox(vec3 min, vec3 max)
 {
-  is_adding = false;
-
-  vec3 bbox_min, bbox_max;
-  add_cube_tool_get_bbox(bbox_min, bbox_max);
-
-  scene_add_block(bbox_min, bbox_max);
-  scene_select_block(scene_get_last_added_block_index());
-
-  activate_tool(Tool_Scale);
-
-  return true;
-}
-
-void add_cube_tool_get_bbox(vec3 min, vec3 max)
-{
+  // Fix the bounding box
   for (int i = 0; i < 3; ++i)
   {
     if (bbox_from[i] < bbox_to[i])
@@ -154,6 +140,21 @@ void add_cube_tool_get_bbox(vec3 min, vec3 max)
       max[i] = bbox_from[i];
     }
   }
+}
+
+bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+{
+  is_adding = false;
+
+  vec3 bbox_min, bbox_max;
+  add_cube_tool_get_bbox(bbox_min, bbox_max);
+
+  scene_add_block(bbox_min, bbox_max);
+  scene_select_block(scene_get_last_added_block_index());
+
+  activate_tool(Tool_Scale);
+
+  return true;
 }
 
 bool add_cube_tool_should_draw_gizmo()

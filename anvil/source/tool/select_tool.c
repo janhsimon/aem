@@ -14,8 +14,20 @@
 
 #define SELECTION_RADIUS 6.0f
 
-static struct Viewport* selection_viewport = NULL;
-static vec2 selection_rect_min, selection_rect_max; // In clip space
+static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in
+static vec3 bbox_from, bbox_to;                    // Bounding box of selection rectangle in world space
+
+void select_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
+{
+  vec2 bbox_from_clip, bbox_to_clip;
+  camera_world_to_clip(camera, bbox_from, bbox_from_clip);
+  camera_world_to_clip(camera, bbox_to, bbox_to_clip);
+
+  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
+  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
+  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
+  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
+}
 
 bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
@@ -29,16 +41,28 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     scene_deselect_all_blocks();
   }
 
-  vec3 temp;
-  camera_screen_to_world_2d(viewport_get_camera(viewport), mouse_position, temp);
+  // Make initial selection bbox
+  struct Camera* camera = viewport_get_camera(viewport);
 
-  grid_snap(temp, temp);
+  camera_screen_to_world_2d(camera, mouse_position, bbox_from);
+  grid_snap(bbox_from, bbox_from); // Snap to grid
+  glm_vec3_copy(bbox_from, bbox_to);
 
-  vec2 mouse_position_clip;
-  camera_world_to_clip(viewport_get_camera(viewport), temp, mouse_position_clip);
+  // Extend depth-component of volume to near-infinity
+  {
+    vec3 camera_forward;
+    camera_get_forward(camera, camera_forward);
+    for (int i = 0; i < 3; ++i)
+    {
+      if (camera_forward[i] != 0.0f)
+      {
+        bbox_from[i] = -FLT_MAX;
+        bbox_to[i] = FLT_MAX;
+      }
+    }
+  }
 
-  glm_vec2_copy(mouse_position_clip, selection_rect_min);
-  glm_vec2_copy(mouse_position_clip, selection_rect_max);
+  selection_viewport = viewport;
 
   return true;
 }
@@ -50,20 +74,35 @@ bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
     return false;
   }
 
-  selection_viewport = viewport;
+  // Extend selection bbox
+  struct Camera* camera = viewport_get_camera(viewport);
 
-  vec3 temp;
-  camera_screen_to_world_2d(viewport_get_camera(viewport), mouse_position, temp);
+  vec3 mouse_pos_world;
+  camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
+  glm_vec3_copy(mouse_pos_world, bbox_to);
 
-  grid_snap(temp, temp);
-
-  vec2 mouse_position_clip;
-  camera_world_to_clip(viewport_get_camera(viewport), temp, mouse_position_clip);
-
-  glm_vec2_copy(mouse_position_clip, selection_rect_max);
+  grid_snap(bbox_to, bbox_to);
 
   input_use_draw_cursor();
   return true;
+}
+
+static void select_tool_get_bbox(vec2 min, vec2 max)
+{
+  // Fix the bounding box
+  for (int i = 0; i < 3; ++i)
+  {
+    if (bbox_from[i] < bbox_to[i])
+    {
+      min[i] = bbox_from[i];
+      max[i] = bbox_to[i];
+    }
+    else
+    {
+      min[i] = bbox_to[i];
+      max[i] = bbox_from[i];
+    }
+  }
 }
 
 void select_tool_on_mouse_drag_finished()
@@ -73,48 +112,9 @@ void select_tool_on_mouse_drag_finished()
     return;
   }
 
-  mat4 viewproj;
-  {
-    mat4 view, proj;
-    camera_calc_view_matrix(viewport_get_camera(selection_viewport), view);
-    camera_calc_proj_matrix(viewport_get_camera(selection_viewport), proj);
-
-    glm_mat4_mul(proj, view, viewproj);
-    glm_mat4_inv(viewproj, viewproj);
-  }
-
-  vec3 rect_min_world, rect_max_world;
-  glm_mat4_mulv3(viewproj, selection_rect_min, 1.0f, rect_min_world);
-  glm_mat4_mulv3(viewproj, selection_rect_max, 1.0f, rect_max_world);
-
-  // Fix the world-space bounding box
-  for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
-  {
-    if (rect_min_world[axis_index] > rect_max_world[axis_index])
-    {
-      const float swap = rect_min_world[axis_index];
-      rect_min_world[axis_index] = rect_max_world[axis_index];
-      rect_max_world[axis_index] = swap;
-    }
-  }
-
-  if (viewport_get_type(selection_viewport) == ViewportType_Top)
-  {
-    rect_min_world[1] = -FLT_MAX;
-    rect_max_world[1] = FLT_MAX;
-  }
-  else if (viewport_get_type(selection_viewport) == ViewportType_Front)
-  {
-    rect_min_world[2] = -FLT_MAX;
-    rect_max_world[2] = FLT_MAX;
-  }
-  else if (viewport_get_type(selection_viewport) == ViewportType_Left)
-  {
-    rect_min_world[0] = -FLT_MAX;
-    rect_max_world[0] = FLT_MAX;
-  }
-
-  scene_select_blocks_in_bbox(rect_min_world, rect_max_world);
+  vec3 bbox_min, bbox_max;
+  select_tool_get_bbox(bbox_min, bbox_max);
+  scene_select_blocks_in_bbox(bbox_min, bbox_max);
 
   selection_viewport = NULL;
 }
@@ -122,10 +122,4 @@ void select_tool_on_mouse_drag_finished()
 struct Viewport* select_tool_get_active_viewport()
 {
   return selection_viewport;
-}
-
-void select_tool_get_rect(vec2 min, vec2 max)
-{
-  glm_vec2_copy(selection_rect_min, min);
-  glm_vec2_copy(selection_rect_max, max);
 }

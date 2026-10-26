@@ -93,22 +93,7 @@ void draw_select_tool_gizmo(const struct Viewport* viewport)
     glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
   }
 
-  vec2 min, max;
-  select_tool_get_rect(min, max);
-
-  {
-    vertices[0][0] = min[0];
-    vertices[0][1] = min[1];
-
-    vertices[1][0] = max[0];
-    vertices[1][1] = min[1];
-
-    vertices[2][0] = max[0];
-    vertices[2][1] = max[1];
-
-    vertices[3][0] = min[0];
-    vertices[3][1] = max[1];
-  }
+  select_tool_calc_selection_corners(camera, vertices);
 
   glBindVertexArray(vertex_array);
 
