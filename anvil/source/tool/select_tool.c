@@ -10,6 +10,8 @@
 #include <cglm/mat4.h>
 #include <cglm/vec2.h>
 
+#define NEAR_INFINITY 32768.0f
+
 static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in
 static vec3 bbox_from, bbox_to;                    // Bounding box of selection rectangle in world space
 
@@ -52,8 +54,8 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     {
       if (camera_forward[i] != 0.0f)
       {
-        bbox_from[i] = -FLT_MAX;
-        bbox_to[i] = FLT_MAX;
+        bbox_from[i] = -NEAR_INFINITY;
+        bbox_to[i] = NEAR_INFINITY;
       }
     }
   }
