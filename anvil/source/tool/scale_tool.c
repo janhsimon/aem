@@ -398,7 +398,7 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
       }
     }
 
-    const float min_grid_size = get_min_grid_size() * 2.0f;
+    const float min_grid_size = get_min_grid_size();
 
     // Left
     if (scale_control_point_index == CONTROL_POINT_LEFT || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||

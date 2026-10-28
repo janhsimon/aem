@@ -98,7 +98,7 @@ void grid_set_index(int index)
 
 void grid_snap(vec3 in, vec3 out)
 {
-  const float scaler = grid_sizes[grid_size_index] * 2.0f;
+  const float scaler = grid_sizes[grid_size_index];
   out[0] = roundf(in[0] / scaler) * scaler;
   out[1] = roundf(in[1] / scaler) * scaler;
   out[2] = roundf(in[2] / scaler) * scaler;
@@ -110,21 +110,23 @@ bool generate_grid()
 
   float vertices[VERTEX_COUNT * 5];
 
-  vertices[0 * 3 + 0] = -GRID_EXTENTS;
+  const float half_grid = GRID_EXTENTS * 0.5f;
+
+  vertices[0 * 3 + 0] = -half_grid;
   vertices[0 * 3 + 1] = 0.0f;
-  vertices[0 * 3 + 2] = -GRID_EXTENTS;
+  vertices[0 * 3 + 2] = -half_grid;
 
-  vertices[1 * 3 + 0] = -GRID_EXTENTS;
+  vertices[1 * 3 + 0] = -half_grid;
   vertices[1 * 3 + 1] = 0.0f;
-  vertices[1 * 3 + 2] = +GRID_EXTENTS;
+  vertices[1 * 3 + 2] = +half_grid;
 
-  vertices[2 * 3 + 0] = +GRID_EXTENTS;
+  vertices[2 * 3 + 0] = +half_grid;
   vertices[2 * 3 + 1] = 0.0f;
-  vertices[2 * 3 + 2] = -GRID_EXTENTS;
+  vertices[2 * 3 + 2] = -half_grid;
 
-  vertices[3 * 3 + 0] = +GRID_EXTENTS;
+  vertices[3 * 3 + 0] = +half_grid;
   vertices[3 * 3 + 1] = 0.0f;
-  vertices[3 * 3 + 2] = +GRID_EXTENTS;
+  vertices[3 * 3 + 2] = +half_grid;
 
   // Generate grid overlay vertex array
   {

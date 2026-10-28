@@ -751,7 +751,7 @@ void scene_nudge_selection(const struct Viewport* viewport, vec2 direction)
 {
   vec3 nudge;
   {
-    const float amount = get_current_grid_size() * 2.0f;
+    const float amount = get_current_grid_size();
     struct Camera* camera = viewport_get_camera(viewport);
 
     vec3 right;

@@ -76,7 +76,7 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
       {
         if (camera_forward[i] != 0.0f)
         {
-          bbox_from[i] -= get_current_grid_size() * 2.0f;
+          bbox_from[i] -= get_current_grid_size();
         }
       }
     }
@@ -95,7 +95,7 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
 
     grid_snap(bbox_to, bbox_to);
 
-    const float min_grid_size = get_min_grid_size() * 2.0f;
+    const float min_grid_size = get_min_grid_size();
 
     vec3 camera_forward;
     camera_get_forward(camera, camera_forward);
