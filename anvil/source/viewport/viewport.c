@@ -23,6 +23,7 @@
 #include <glad/gl.h>
 
 #define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f
+#define MOUSE_DRAG_PAN_BORDER_SIZE 100 // In pixels
 
 struct Viewport
 {
@@ -215,6 +216,82 @@ void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton butto
   }
 }
 
+void viewport_on_mouse_drag_tick(const struct Viewport* viewport,
+                                 enum MouseButton button,
+                                 vec2 mouse_position,
+                                 float delta_time)
+{
+  if (viewport->type == ViewportType_Perspective || button != MouseButton_Left)
+  {
+    return;
+  }
+
+  vec2 viewport_pos, viewport_size;
+  {
+    uint32_t x, y, w, h;
+    viewport_get_position(viewport, &x, &y);
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  vec2 d;
+  glm_vec2_sub(mouse_position, viewport_pos, d);
+
+  struct Camera* camera = viewport_get_camera(viewport);
+
+  vec3 pan = GLM_VEC3_ZERO_INIT;
+
+  for (int i = 0; i < 2; ++i)
+  {
+    if (d[i] < 0.0f)
+    {
+      if (d[i] < -MOUSE_DRAG_PAN_BORDER_SIZE)
+      {
+        d[i] = -MOUSE_DRAG_PAN_BORDER_SIZE;
+      }
+
+      vec3 dir;
+      if (i == 0)
+      {
+        camera_get_right(camera, dir);
+      }
+      else if (i == 1)
+      {
+        camera_get_up(camera, dir);
+        glm_vec3_negate(dir);
+      }
+
+      glm_vec3_scale(dir, d[i] * delta_time, dir);
+      glm_vec3_add(pan, dir, pan);
+    }
+    else if (d[i] > viewport_size[i])
+    {
+      d[i] -= viewport_size[i];
+      if (d[i] > MOUSE_DRAG_PAN_BORDER_SIZE)
+      {
+        d[i] = MOUSE_DRAG_PAN_BORDER_SIZE;
+      }
+
+      vec3 dir;
+      if (i == 0)
+      {
+        camera_get_right(camera, dir);
+      }
+      else if (i == 1)
+      {
+        camera_get_up(camera, dir);
+        glm_vec3_negate(dir);
+      }
+
+      glm_vec3_scale(dir, d[i] * delta_time, dir);
+      glm_vec3_add(pan, dir, pan);
+    }
+  }
+
+  camera_pan_2d(camera, pan);
+}
+
 void viewport_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (viewport->is_mouse_looking)
@@ -291,6 +368,7 @@ void viewport_get_resolution(const struct Viewport* viewport, uint32_t* width, u
   *width = viewport->width;
   *height = viewport->height;
 }
+
 void viewport_set_resolution(struct Viewport* viewport, uint32_t width, uint32_t height)
 {
   viewport->width = width;

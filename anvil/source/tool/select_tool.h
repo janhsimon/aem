@@ -13,4 +13,4 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
 bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 void select_tool_on_mouse_drag_finished();
 
-struct Viewport* select_tool_get_active_viewport();
+struct Viewport* select_tool_get_active_viewport(); // NULL is not currently selecting

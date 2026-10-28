@@ -290,3 +290,13 @@ void camera_get_forward(struct Camera* camera, vec3 forward)
 {
   glm_vec3_copy(camera->transform[2], forward);
 }
+
+void camera_get_right(struct Camera* camera, vec3 right)
+{
+  glm_vec3_copy(camera->transform[0], right);
+}
+
+void camera_get_up(struct Camera* camera, vec3 up)
+{
+  glm_vec3_copy(camera->transform[1], up);
+}

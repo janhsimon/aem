@@ -172,6 +172,8 @@ int main(int argc, char* argv[])
       const float delta_time = (float)(now_time - prev_time);
       prev_time = now_time;
 
+      input_tick_callback(delta_time);
+
       update_gui(viewports);
     }
 

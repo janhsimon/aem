@@ -18,6 +18,7 @@ struct GLFWwindow;
 bool load_input(struct GLFWwindow* window);
 void destroy_input();
 
+void input_tick_callback(float delta_time);
 void input_mouse_button_callback(struct GLFWwindow* window, int button, int action, int mods);
 void input_mouse_position_callback(struct GLFWwindow* window, double x, double y);
 void input_mouse_scroll_callback(struct GLFWwindow* window, double x, double y);

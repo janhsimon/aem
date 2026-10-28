@@ -23,3 +23,5 @@ void camera_calc_view_matrix(struct Camera* camera, mat4 view_matrix);
 void camera_calc_proj_matrix(struct Camera* camera, mat4 proj_matrix);
 
 void camera_get_forward(struct Camera* camera, vec3 forward);
+void camera_get_right(struct Camera* camera, vec3 right);
+void camera_get_up(struct Camera* camera, vec3 up);

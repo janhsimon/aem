@@ -10,10 +10,6 @@
 #include <cglm/mat4.h>
 #include <cglm/vec2.h>
 
-#include <stdint.h>
-
-#define SELECTION_RADIUS 6.0f
-
 static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in
 static vec3 bbox_from, bbox_to;                    // Bounding box of selection rectangle in world space
 

@@ -28,6 +28,10 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
 void viewport_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 void viewport_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position);
 void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
+void viewport_on_mouse_drag_tick(const struct Viewport* viewport,
+                                 enum MouseButton button,
+                                 vec2 mouse_position,
+                                 float delta_time);
 void viewport_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 void viewport_on_mouse_scrolled(struct Viewport* viewport, vec2 mouse_position, float delta);
 

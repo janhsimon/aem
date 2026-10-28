@@ -11,9 +11,6 @@
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
 
-#include <assert.h>
-#include <stdint.h>
-
 static bool is_adding = false;
 
 static vec3 bbox_from, bbox_to; // Bounding box of new cube in world space

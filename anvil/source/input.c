@@ -36,7 +36,7 @@ static GLFWwindow* window = NULL;
 
 static enum MouseButton pressed_mouse_button = MouseButton_None;
 static bool is_dragging = false;
-static struct Viewport* anchor_viewport = NULL;
+static struct Viewport* clicked_viewport = NULL;
 
 static bool is_camera_forward_key_down = false, is_camera_backwards_key_down = false,
             is_camera_strafe_left_key_down = false, is_camera_strafe_right_key_down = false;
@@ -90,6 +90,16 @@ void destroy_input()
   glfwDestroyCursor(pan_cursor);
 }
 
+void input_tick_callback(float delta_time)
+{
+  if (!clicked_viewport)
+  {
+    return;
+  }
+
+  viewport_on_mouse_drag_tick(clicked_viewport, pressed_mouse_button, mouse_position, delta_time);
+}
+
 void input_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
   if (action == GLFW_PRESS)
@@ -99,7 +109,7 @@ void input_mouse_button_callback(GLFWwindow* window, int button, int action, int
     {
       if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT || button == GLFW_MOUSE_BUTTON_MIDDLE)
       {
-        anchor_viewport = hovered_viewport;
+        clicked_viewport = hovered_viewport;
 
         if (button == GLFW_MOUSE_BUTTON_LEFT)
         {
@@ -114,7 +124,7 @@ void input_mouse_button_callback(GLFWwindow* window, int button, int action, int
           pressed_mouse_button = MouseButton_Middle;
         }
 
-        viewport_on_mouse_button_pressed(anchor_viewport, pressed_mouse_button, mouse_position);
+        viewport_on_mouse_button_pressed(clicked_viewport, pressed_mouse_button, mouse_position);
       }
     }
   }
@@ -127,16 +137,16 @@ void input_mouse_button_callback(GLFWwindow* window, int button, int action, int
     {
       if (!is_dragging)
       {
-        viewport_on_mouse_button_clicked(anchor_viewport, pressed_mouse_button, mouse_position);
+        viewport_on_mouse_button_clicked(clicked_viewport, pressed_mouse_button, mouse_position);
       }
       else
       {
-        viewport_on_mouse_drag_finished(anchor_viewport, pressed_mouse_button, mouse_position);
+        viewport_on_mouse_drag_finished(clicked_viewport, pressed_mouse_button, mouse_position);
         is_dragging = false;
       }
 
       pressed_mouse_button = MouseButton_None;
-      anchor_viewport = NULL;
+      clicked_viewport = NULL;
     }
   }
 }
@@ -160,15 +170,15 @@ void input_mouse_position_callback(GLFWwindow* window, double x, double y)
       is_dragging = true;
     }
 
-    viewport_on_mouse_dragged(anchor_viewport, pressed_mouse_button, mouse_position);
+    viewport_on_mouse_dragged(clicked_viewport, pressed_mouse_button, mouse_position);
   }
 }
 
 void input_mouse_scroll_callback(GLFWwindow* window, double x, double y)
 {
-  if (anchor_viewport)
+  if (clicked_viewport)
   {
-    viewport_on_mouse_scrolled(anchor_viewport, mouse_position, (float)y);
+    viewport_on_mouse_scrolled(clicked_viewport, mouse_position, (float)y);
   }
   else
   {
@@ -308,8 +318,8 @@ void input_get_camera_movement(vec3 move)
 {
   glm_vec3_zero(move);
 
-  if (!anchor_viewport || pressed_mouse_button != MouseButton_Right ||
-      viewport_get_type(anchor_viewport) != ViewportType_Perspective)
+  if (!clicked_viewport || pressed_mouse_button != MouseButton_Right ||
+      viewport_get_type(clicked_viewport) != ViewportType_Perspective)
   {
     return;
   }
