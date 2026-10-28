@@ -75,7 +75,19 @@ bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
 
   vec3 mouse_pos_world;
   camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-  glm_vec3_copy(mouse_pos_world, bbox_to);
+
+  // Only override the correct axes
+  {
+    vec3 camera_forward;
+    camera_get_forward(camera, camera_forward);
+    for (int i = 0; i < 3; ++i)
+    {
+      if (camera_forward[i] == 0.0f)
+      {
+        bbox_to[i] = mouse_pos_world[i];
+      }
+    }
+  }
 
   grid_snap(bbox_to, bbox_to);
 
@@ -83,7 +95,7 @@ bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
   return true;
 }
 
-static void select_tool_get_bbox(vec2 min, vec2 max)
+static void select_tool_get_bbox(vec3 min, vec3 max)
 {
   // Fix the bounding box
   for (int i = 0; i < 3; ++i)

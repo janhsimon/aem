@@ -873,40 +873,6 @@ void scene_add_block(vec3 min, vec3 max)
   set_block(util_get_vector_element_count(blocks) - 1, min, max);
 }
 
-// void scene_duplicate_selection()
-//{
-//   // Find the first selected block
-//   const uint32_t block_count = util_get_vector_element_count(blocks);
-//   uint32_t selected_block_index;
-//   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
-//   {
-//     const struct Block* block = util_get_vector_element(blocks, block_index);
-//     if (!block->selected)
-//     {
-//       continue;
-//     }
-//
-//     selected_block_index = block_index;
-//     break;
-//   }
-//
-//   // Deselect the selected block, add a new block, copy the vertices and select that
-//   struct Block* selected_block = util_get_vector_element(blocks, selected_block_index);
-//
-//   selected_block->selected = false;
-//
-//   add_block();
-//
-//   struct BlockVertices* block_vertices = util_get_vector_element(vertices, selected_block_index);
-//   vec3 min, max;
-//   get_block_minmax(block_vertices->vertices, min, max);
-//
-//   set_block(block_count, min, max);
-//
-//   struct Block* duplicated_block = util_get_vector_element(blocks, block_count);
-//   duplicated_block->selected = true;
-// }
-
 void scene_duplicate_selection()
 {
   // Find the first selected block
