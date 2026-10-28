@@ -35,6 +35,7 @@ void scene_get_selection_bbox_world(vec3 min, vec3 max);
 void scene_get_selection_first_vertex(vec3 v);
 
 void scene_move_selection(vec3 first_vertex_position);
+void scene_nudge_selection(const struct Viewport* viewport, vec2 direction);
 void scene_scale_selection(vec3 new_min, vec3 new_max);
 void scene_rotate_selection(float degrees);
 

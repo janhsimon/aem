@@ -1,5 +1,6 @@
 #include "scene.h"
 
+#include "grid.h"
 #include "tool/tool_state.h"
 #include "viewport/camera.h"
 #include "viewport/viewport.h"
@@ -722,7 +723,6 @@ void scene_move_selection(vec3 first_vertex_position)
     }
     else
     {
-
       vec3 block_anchor;
       glm_vec3_copy(block_vertices->vertices[0].position, block_anchor);
 
@@ -743,6 +743,42 @@ void scene_move_selection(vec3 first_vertex_position)
     if (!get_texture_lock())
     {
       update_block_uvs(block_index);
+    }
+  }
+}
+
+void scene_nudge_selection(const struct Viewport* viewport, vec2 direction)
+{
+  vec3 nudge;
+  {
+    const float amount = get_current_grid_size() * 2.0f;
+    struct Camera* camera = viewport_get_camera(viewport);
+
+    vec3 right;
+    camera_get_right(camera, right);
+    glm_vec3_scale(right, direction[0] * amount, right);
+
+    vec3 up;
+    camera_get_up(camera, up);
+    glm_vec3_scale(up, direction[1] * amount, up);
+
+    glm_vec3_add(right, up, nudge);
+  }
+
+  const uint32_t block_count = util_get_vector_element_count(blocks);
+  for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+  {
+    const struct Block* block = util_get_vector_element(blocks, block_index);
+    if (!block->selected)
+    {
+      continue;
+    }
+
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+    for (uint32_t vertex_index = 0; vertex_index < VERTEX_COUNT_PER_BLOCK; ++vertex_index)
+    {
+      glm_vec3_add(block_vertices->vertices[vertex_index].position, nudge,
+                   block_vertices->vertices[vertex_index].position);
     }
   }
 }

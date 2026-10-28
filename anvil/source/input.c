@@ -15,6 +15,10 @@
 #define KEY_CAMERA_BACKWARDS GLFW_KEY_S
 #define KEY_CAMERA_STRAFE_LEFT GLFW_KEY_A
 #define KEY_CAMERA_STRAFE_RIGHT GLFW_KEY_D
+#define KEY_NUDGE_SELECTION_UP GLFW_KEY_UP
+#define KEY_NUDGE_SELECTION_DOWN GLFW_KEY_DOWN
+#define KEY_NUDGE_SELECTION_LEFT GLFW_KEY_LEFT
+#define KEY_NUDGE_SELECTION_RIGHT GLFW_KEY_RIGHT
 #define KEY_DUPLICATE GLFW_KEY_LEFT_SHIFT
 #define KEY_ADD_TO_SELECTION GLFW_KEY_LEFT_SHIFT
 #define KEY_SLOW_CAMERA GLFW_KEY_LEFT_SHIFT
@@ -275,7 +279,35 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
 
   if (action == GLFW_PRESS)
   {
-    if (key == KEY_ADD_CUBE_TOOL)
+    if (key == KEY_NUDGE_SELECTION_UP)
+    {
+      if (!is_dragging)
+      {
+        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, 1.0f });
+      }
+    }
+    else if (key == KEY_NUDGE_SELECTION_DOWN)
+    {
+      if (!is_dragging)
+      {
+        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, -1.0f });
+      }
+    }
+    else if (key == KEY_NUDGE_SELECTION_LEFT)
+    {
+      if (!is_dragging)
+      {
+        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ -1.0f, 0.0f });
+      }
+    }
+    else if (key == KEY_NUDGE_SELECTION_RIGHT)
+    {
+      if (!is_dragging)
+      {
+        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 1.0f, 0.0f });
+      }
+    }
+    else if (key == KEY_ADD_CUBE_TOOL)
     {
       activate_tool(Tool_AddCube);
     }
