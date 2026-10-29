@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cglm/types.h>
+
 #include <stdbool.h>
 
 enum Tool
@@ -14,7 +16,9 @@ enum Tool
 void init_tool_state();
 
 enum Tool get_active_tool();
+void get_last_selection_bbox(vec3 from, vec3 to);
 bool get_texture_lock();
 
 void activate_tool(enum Tool tool);
+void set_last_selection_bbox(vec3 from, vec3 to);
 void set_texture_lock(bool lock);

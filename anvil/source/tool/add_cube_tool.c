@@ -65,30 +65,45 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
     struct Camera* camera = viewport_get_camera(viewport);
 
     camera_screen_to_world_2d(camera, mouse_position, bbox_from);
-    grid_snap(bbox_from, bbox_from); // Snap to grid
     glm_vec3_copy(bbox_from, bbox_to);
 
     // Extend depth-component of volume
     {
+      vec3 last_selection_bbox_min, last_selection_bbox_max;
+      get_last_selection_bbox(last_selection_bbox_min, last_selection_bbox_max);
       vec3 camera_forward;
       camera_get_forward(camera, camera_forward);
       for (int i = 0; i < 3; ++i)
       {
         if (camera_forward[i] != 0.0f)
         {
-          bbox_from[i] -= get_current_grid_size();
+          bbox_from[i] = last_selection_bbox_min[i];
+          bbox_to[i] = last_selection_bbox_max[i];
         }
       }
     }
+
+    // Snap to grid
+    grid_snap(bbox_from, bbox_from);
+    grid_snap(bbox_to, bbox_to);
   }
   else
   {
     // Extend new cube bbox
     struct Camera* camera = viewport_get_camera(viewport);
 
+    vec3 camera_forward;
+    camera_get_forward(camera, camera_forward);
+
     vec3 mouse_pos_world;
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-    glm_vec3_copy(mouse_pos_world, bbox_to);
+    for (int i = 0; i < 3; ++i)
+    {
+      if (camera_forward[i] == 0.0f)
+      {
+        bbox_to[i] = mouse_pos_world[i];
+      }
+    }
 
     vec3 unsnapped_to;
     glm_vec3_copy(bbox_to, unsnapped_to);
@@ -96,9 +111,6 @@ bool add_cube_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton 
     grid_snap(bbox_to, bbox_to);
 
     const float min_grid_size = get_min_grid_size();
-
-    vec3 camera_forward;
-    camera_get_forward(camera, camera_forward);
     for (int i = 0; i < 3; ++i)
     {
       if (camera_forward[i] == 0.0f)

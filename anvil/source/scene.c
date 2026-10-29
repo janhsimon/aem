@@ -476,6 +476,13 @@ static float distance_point_segment(vec2 p, vec2 a, vec2 b)
 
 void scene_deselect_all_blocks()
 {
+  if (scene_has_selection())
+  {
+    vec3 selection_min, selection_max;
+    scene_get_selection_bbox_world(selection_min, selection_max);
+    set_last_selection_bbox(selection_min, selection_max);
+  }
+
   const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
