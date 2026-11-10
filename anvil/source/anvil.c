@@ -2,10 +2,8 @@
 #include "gui/gui.h"
 #include "input.h"
 #include "scene.h"
-#include "tool/add_cube_tool_gizmo.h"
-#include "tool/move_tool_gizmo.h"
-#include "tool/select_tool_gizmo.h"
 #include "tool/tool_state.h"
+#include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
 #include <aem/model.h>
@@ -136,21 +134,9 @@ int main(int argc, char* argv[])
     }
   }
 
-  if (!generate_select_tool_gizmo())
+  if (!generate_viewport_gizmo())
   {
-    printf("Failed to generate select tool gizmo\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!generate_add_cube_tool_gizmo())
-  {
-    printf("Failed to generate add cube tool gizmo\n");
-    return EXIT_FAILURE;
-  }
-
-  if (!generate_move_tool_gizmo())
-  {
-    printf("Failed to generate move tool gizmo\n");
+    printf("Failed to generate viewport gizmo\n");
     return EXIT_FAILURE;
   }
 
@@ -204,9 +190,7 @@ int main(int argc, char* argv[])
   }
 
   destroy_scene();
-  destroy_move_tool_gizmo();
-  destroy_add_cube_tool_gizmo();
-  destroy_select_tool_gizmo();
+  destroy_viewport_gizmo();
   destroy_grid();
   destroy_gui();
   destroy_input();

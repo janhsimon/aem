@@ -7,13 +7,10 @@
 #include "input.h"
 #include "scene.h"
 #include "tool/add_cube_tool.h"
-#include "tool/add_cube_tool_gizmo.h"
 #include "tool/camera_tool.h"
-#include "tool/move_tool_gizmo.h"
 #include "tool/rotate_tool.h"
 #include "tool/scale_tool.h"
 #include "tool/select_tool.h"
-#include "tool/select_tool_gizmo.h"
 #include "tool/tool_state.h"
 
 #include <cglm/affine.h>
@@ -458,16 +455,17 @@ void viewport_render(const struct Viewport* viewport)
 
     // Draw gizmos
     {
-      draw_select_tool_gizmo(viewport);
+      select_tool_draw_gizmo(viewport);
 
+      const enum Tool active_tool = get_active_tool();
+      if (active_tool == Tool_AddCube)
       {
-        if (add_cube_tool_should_draw_gizmo())
-        {
-          draw_add_cube_tool_gizmo(viewport);
-        }
+        add_cube_tool_draw_gizmo(viewport);
       }
-
-      draw_move_tool_gizmo(viewport);
+      else if (active_tool == Tool_Scale)
+      {
+        scale_tool_draw_gizmo(viewport);
+      }
     }
 
     glEnable(GL_DEPTH_TEST);

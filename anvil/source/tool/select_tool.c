@@ -5,6 +5,7 @@
 #include "input.h"
 #include "scene.h"
 #include "viewport/camera.h"
+#include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
 #include <cglm/mat4.h>
@@ -12,20 +13,8 @@
 
 #define NEAR_INFINITY 32768.0f
 
-static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in
+static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in, if any
 static vec3 bbox_from, bbox_to;                    // Bounding box of selection rectangle in world space
-
-void select_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
-{
-  vec2 bbox_from_clip, bbox_to_clip;
-  camera_world_to_clip(camera, bbox_from, bbox_from_clip);
-  camera_world_to_clip(camera, bbox_to, bbox_to_clip);
-
-  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
-  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
-  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
-  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
-}
 
 bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
@@ -129,7 +118,36 @@ void select_tool_on_mouse_drag_finished()
   selection_viewport = NULL;
 }
 
-struct Viewport* select_tool_get_active_viewport()
+void select_tool_draw_gizmo(const struct Viewport* viewport)
 {
-  return selection_viewport;
+  if (selection_viewport != viewport)
+  {
+    return;
+  }
+
+  // Get the selection corners in clip space
+  vec2 corners[4];
+  {
+    struct Camera* camera = viewport_get_camera(viewport);
+
+    vec2 bbox_from_clip, bbox_to_clip;
+    camera_world_to_clip(camera, bbox_from, bbox_from_clip);
+    camera_world_to_clip(camera, bbox_to, bbox_to_clip);
+
+    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
+    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
+    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
+    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
+  }
+
+  // Get the viewport size
+  vec2 viewport_size;
+  {
+    uint32_t w, h;
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  // Draw a dashed selection rectangle
+  viewport_gizmo_draw_dashed_rect(corners, viewport_size, (vec3){ 1.0f, 1.0f, 0.0f });
 }

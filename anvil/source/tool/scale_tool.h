@@ -4,11 +4,7 @@
 
 #include <stdbool.h>
 
-struct Camera;
 struct Viewport;
-
-void scale_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4]);
-void scale_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corners[4], vec2 out_control_points[8]);
 
 // Returns true if the function consumed the event
 bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
@@ -17,3 +13,5 @@ bool scale_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position);
 bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 
 void scale_tool_reanchor(struct Viewport* viewport, vec2 mouse_position);
+
+void scale_tool_draw_gizmo(const struct Viewport* viewport);

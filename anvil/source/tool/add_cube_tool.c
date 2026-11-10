@@ -6,6 +6,7 @@
 #include "scene.h"
 #include "tool_state.h"
 #include "viewport/camera.h"
+#include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
 #include <cglm/vec2.h>
@@ -14,18 +15,6 @@
 static bool is_adding = false;
 
 static vec3 bbox_from, bbox_to; // Bounding box of new cube in world space
-
-void add_cube_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
-{
-  vec2 bbox_from_clip, bbox_to_clip;
-  camera_world_to_clip(camera, bbox_from, bbox_from_clip);
-  camera_world_to_clip(camera, bbox_to, bbox_to_clip);
-
-  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
-  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
-  glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
-  glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
-}
 
 void add_cube_tool_on_tool_activate()
 {
@@ -153,6 +142,11 @@ static void add_cube_tool_get_bbox(vec3 min, vec3 max)
 
 bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
+  if (!is_adding)
+  {
+    return false;
+  }
+
   is_adding = false;
 
   vec3 bbox_min, bbox_max;
@@ -166,7 +160,36 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
   return true;
 }
 
-bool add_cube_tool_should_draw_gizmo()
+void add_cube_tool_draw_gizmo(const struct Viewport* viewport)
 {
-  return get_active_tool() == Tool_AddCube && is_adding;
+  if (!is_adding)
+  {
+    return;
+  }
+
+  // Get the selection corners in clip space
+  vec2 corners[4];
+  {
+    struct Camera* camera = viewport_get_camera(viewport);
+
+    vec2 bbox_from_clip, bbox_to_clip;
+    camera_world_to_clip(camera, bbox_from, bbox_from_clip);
+    camera_world_to_clip(camera, bbox_to, bbox_to_clip);
+
+    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
+    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
+    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
+    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
+  }
+
+  // Get the viewport size
+  vec2 viewport_size;
+  {
+    uint32_t w, h;
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  // Draw a dashed rectangle for the new cube
+  viewport_gizmo_draw_dashed_rect(corners, viewport_size, (vec3){ 1.0f, 1.0f, 1.0f });
 }

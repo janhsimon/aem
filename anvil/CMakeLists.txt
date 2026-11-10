@@ -24,12 +24,6 @@ set(SOURCE
   source/tool/add_cube_tool.c
   source/tool/add_cube_tool.h
 
-  source/tool/add_cube_tool_gizmo.c
-  source/tool/add_cube_tool_gizmo.h
-
-  source/tool/move_tool_gizmo.c
-  source/tool/move_tool_gizmo.h
-
   source/tool/rotate_tool.c
   source/tool/rotate_tool.h
 
@@ -39,30 +33,30 @@ set(SOURCE
   source/tool/select_tool.c
   source/tool/select_tool.h
 
-  source/tool/select_tool_gizmo.c
-  source/tool/select_tool_gizmo.h
-
   source/tool/tool_state.c
   source/tool/tool_state.h
 
   source/viewport/camera.c
   source/viewport/camera.h
 
-  source/viewport/viewport.c
-  source/viewport/viewport.h
-
   source/viewport/framebuffer.c
   source/viewport/framebuffer.h
+
+  source/viewport/gizmo.c
+  source/viewport/gizmo.h
+
+  source/viewport/viewport.c
+  source/viewport/viewport.h
 
   shaders/grid.vert.glsl
   shaders/grid.frag.glsl
 
-  shaders/scale_tool_line.vert.glsl
-  shaders/scale_tool_line.geo.glsl
-  shaders/scale_tool_line.frag.glsl
+  shaders/gizmo_line.vert.glsl
+  shaders/gizmo_line.geo.glsl
+  shaders/gizmo_line.frag.glsl
 
-  shaders/scale_tool_point.vert.glsl
-  shaders/scale_tool_point.frag.glsl
+  shaders/gizmo_point.vert.glsl
+  shaders/gizmo_point.frag.glsl
 
   shaders/scene.vert.glsl
   shaders/scene.frag.glsl

@@ -5,6 +5,7 @@
 #include "input.h"
 #include "scene.h"
 #include "viewport/camera.h"
+#include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
 #include <cglm/vec2.h>
@@ -29,7 +30,7 @@ static bool is_moving, is_scaling;
 static uint32_t scale_control_point_index;
 static vec3 move_delta;
 
-void scale_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
+static void calc_selection_corners_clip(struct Camera* camera, vec2 out_selection_corners[4])
 {
   vec3 bbox_min_world, bbox_max_world;
   scene_get_selection_bbox_world(bbox_min_world, bbox_max_world);
@@ -38,20 +39,23 @@ void scale_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
   camera_world_to_clip(camera, bbox_min_world, bbox_min_clip);
   camera_world_to_clip(camera, bbox_max_world, bbox_max_clip);
 
-  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_min_clip[1] }, corners[0]);
-  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_min_clip[1] }, corners[1]);
-  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_max_clip[1] }, corners[2]);
-  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_max_clip[1] }, corners[3]);
+  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_min_clip[1] }, out_selection_corners[0]);
+  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_min_clip[1] }, out_selection_corners[1]);
+  glm_vec2_copy((vec2){ bbox_max_clip[0], bbox_max_clip[1] }, out_selection_corners[2]);
+  glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_max_clip[1] }, out_selection_corners[3]);
 }
 
-void scale_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corners[4], vec2 out_control_points[8])
+static void calc_control_points_clip(struct Camera* camera, vec2 viewport_size, vec2 out_control_points[8])
 {
+  vec2 corners[4];
+  calc_selection_corners_clip(camera, corners);
+
   // Determine center between corners
   vec2 center = GLM_VEC2_ZERO_INIT;
   {
     for (uint32_t corner_index = 0; corner_index < 4; ++corner_index)
     {
-      glm_vec2_add(center, in_corners[corner_index], center);
+      glm_vec2_add(center, corners[corner_index], center);
     }
 
     glm_vec2_scale(center, 0.25f, center);
@@ -65,7 +69,7 @@ void scale_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corne
   // Set corner control points, nudged away from center
   for (uint32_t corner_index = 0; corner_index < 4; ++corner_index)
   {
-    glm_vec2_copy(in_corners[corner_index], out_control_points[corner_index]);
+    glm_vec2_copy(corners[corner_index], out_control_points[corner_index]);
 
     vec2 center_to_corner;
     glm_vec2_sub(out_control_points[corner_index], center, center_to_corner);
@@ -97,10 +101,18 @@ void scale_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corne
   }
 }
 
-static void
-corners_to_control_points_screen(vec2 viewport_pos, vec2 viewport_size, vec2 in_corners[4], vec2 out_control_points[8])
+static void calc_control_points_screen(struct Viewport* viewport, vec2 out_control_points[8])
 {
-  scale_tool_corners_to_control_points_clip(viewport_size, in_corners, out_control_points);
+  vec2 viewport_pos, viewport_size;
+  {
+    uint32_t x, y, w, h;
+    viewport_get_position(viewport, &x, &y);
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  calc_control_points_clip(viewport_get_camera(viewport), viewport_size, out_control_points);
 
   // Transform from clip to screen space
   for (uint32_t control_point_index = 0; control_point_index < 8; ++control_point_index)
@@ -121,25 +133,11 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
     return false;
   }
 
-  struct Camera* camera = viewport_get_camera(viewport);
-
   // Check for control points first
   if (scene_has_selection())
   {
-    vec2 corners[4];
-    scale_tool_calc_selection_corners(camera, corners);
-
-    vec2 viewport_pos, viewport_size;
-    {
-      uint32_t x, y, w, h;
-      viewport_get_position(viewport, &x, &y);
-      viewport_get_resolution(viewport, &w, &h);
-      glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
-      glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
-    }
-
     vec2 control_points[8];
-    corners_to_control_points_screen(viewport_pos, viewport_size, corners, control_points);
+    calc_control_points_screen(viewport, control_points);
 
     for (uint32_t control_point_index = 0; control_point_index < 8; ++control_point_index)
     {
@@ -204,6 +202,8 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
 
   // Start a move
   {
+    struct Camera* camera = viewport_get_camera(viewport);
+
     vec3 mouse_pos_world;
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
 
@@ -231,20 +231,8 @@ bool scale_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseBut
 
   // Check for control points
   {
-    vec2 corners[4];
-    scale_tool_calc_selection_corners(viewport_get_camera(viewport), corners);
-
-    vec2 viewport_pos, viewport_size;
-    {
-      uint32_t x, y, w, h;
-      viewport_get_position(viewport, &x, &y);
-      viewport_get_resolution(viewport, &w, &h);
-      glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
-      glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
-    }
-
     vec2 control_points[8];
-    corners_to_control_points_screen(viewport_pos, viewport_size, corners, control_points);
+    calc_control_points_screen(viewport, control_points);
 
     for (uint32_t control_point_index = 0; control_point_index < 8; ++control_point_index)
     {
@@ -268,22 +256,8 @@ bool scale_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
   // Check for corner control points
   if (scene_has_selection())
   {
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    vec2 corners[4];
-    scale_tool_calc_selection_corners(camera, corners);
-
-    vec2 viewport_pos, viewport_size;
-    {
-      uint32_t x, y, w, h;
-      viewport_get_position(viewport, &x, &y);
-      viewport_get_resolution(viewport, &w, &h);
-      glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
-      glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
-    }
-
     vec2 control_points[8];
-    corners_to_control_points_screen(viewport_pos, viewport_size, corners, control_points);
+    calc_control_points_screen(viewport, control_points);
 
     for (uint32_t control_point_index = 0; control_point_index < 8; ++control_point_index)
     {
@@ -481,4 +455,36 @@ void scale_tool_reanchor(struct Viewport* viewport, vec2 mouse_position)
   vec3 anchor;
   scene_get_selection_first_vertex(anchor);
   glm_vec3_sub(anchor, mouse_pos_world, move_delta);
+}
+
+void scale_tool_draw_gizmo(const struct Viewport* viewport)
+{
+  if (!scene_has_selection())
+  {
+    return;
+  }
+
+  struct Camera* camera = viewport_get_camera(viewport);
+
+  // Get the viewport size
+  vec2 viewport_size;
+  {
+    uint32_t w, h;
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  // Draw a dashed rectangle (visible when multiple blocks are selected simultaneously)
+  {
+    vec2 corners[4];
+    calc_selection_corners_clip(camera, corners);
+    viewport_gizmo_draw_dashed_rect(corners, viewport_size, (vec3){ 1.0f, 0.0f, 0.0f });
+  }
+
+  // Draw the control points
+  {
+    vec2 control_points[8];
+    calc_control_points_clip(viewport_get_camera(viewport), viewport_size, control_points);
+    viewport_gizmo_draw_control_points(control_points, 8);
+  }
 }
