@@ -26,7 +26,7 @@
 #define CONTROL_POINT_TOP 6
 #define CONTROL_POINT_RIGHT 7
 
-static bool is_moving, is_scaling;
+static bool is_moving, is_moving_first_frame, is_scaling;
 static uint32_t scale_control_point_index;
 static vec3 move_delta;
 
@@ -126,7 +126,7 @@ static void calc_control_points_screen(struct Viewport* viewport, vec2 out_contr
 
 bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  is_moving = is_scaling = false;
+  is_moving = is_moving_first_frame = is_scaling = false;
 
   if (button != MouseButton_Left)
   {
@@ -228,12 +228,7 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
     map_get_selection_first_vertex(anchor);
     glm_vec3_sub(anchor, mouse_pos_world, move_delta);
 
-    if (input_is_duplicate_key_down())
-    {
-      map_duplicate_selection();
-    }
-
-    is_moving = true;
+    is_moving = is_moving_first_frame = true;
   }
 
   return true;
@@ -339,6 +334,16 @@ bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton but
 
   if (is_moving)
   {
+    if (is_moving_first_frame)
+    {
+      if (input_is_duplicate_key_down())
+      {
+        map_duplicate_selection();
+      }
+
+      is_moving_first_frame = false;
+    }
+
     struct Camera* camera = viewport_get_camera(viewport);
 
     vec3 mouse_pos_world;
