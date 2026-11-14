@@ -93,7 +93,7 @@ static bool load_lit_shader_program(const GLuint vertex_shader)
 
 bool generate_map_renderer()
 {
-  // Generate scene vertex array
+  // Generate map vertex array
   {
     glGenVertexArrays(1, &vertex_array);
     glBindVertexArray(vertex_array);

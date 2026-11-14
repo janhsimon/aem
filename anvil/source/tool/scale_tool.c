@@ -165,6 +165,18 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
     // Check if the mouse position is inside the selection bbox
     if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
     {
+      // Check if an unselected block is close AND the add to selection key is down, then add that block in
+      if (input_is_add_to_selection_key_down())
+      {
+        const bool block_found =
+          map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
+                                   MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
+        if (block_found && distance < SELECTION_RADIUS)
+        {
+          map_select_block(closest_block_index);
+        }
+      }
+
       input_use_move_cursor();
       ready_for_move = true;
     }
