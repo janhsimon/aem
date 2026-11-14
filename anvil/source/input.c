@@ -2,7 +2,7 @@
 
 #include "grid.h"
 #include "gui/gui.h"
-#include "scene.h"
+#include "map/map.h"
 #include "tool/tool_state.h"
 #include "viewport/viewport.h"
 
@@ -283,28 +283,28 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     {
       if (!is_dragging)
       {
-        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, 1.0f });
+        map_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, 1.0f });
       }
     }
     else if (key == KEY_NUDGE_SELECTION_DOWN)
     {
       if (!is_dragging)
       {
-        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, -1.0f });
+        map_nudge_selection(gui_get_hovered_viewport(), (vec2){ 0.0f, -1.0f });
       }
     }
     else if (key == KEY_NUDGE_SELECTION_LEFT)
     {
       if (!is_dragging)
       {
-        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ -1.0f, 0.0f });
+        map_nudge_selection(gui_get_hovered_viewport(), (vec2){ -1.0f, 0.0f });
       }
     }
     else if (key == KEY_NUDGE_SELECTION_RIGHT)
     {
       if (!is_dragging)
       {
-        scene_nudge_selection(gui_get_hovered_viewport(), (vec2){ 1.0f, 0.0f });
+        map_nudge_selection(gui_get_hovered_viewport(), (vec2){ 1.0f, 0.0f });
       }
     }
     else if (key == KEY_ADD_CUBE_TOOL)
@@ -325,7 +325,7 @@ void input_key_callback(GLFWwindow* window, int key, int scancode, int action, i
     }
     else if (key == KEY_DELETE_SELECTION)
     {
-      scene_delete_selection();
+      map_delete_selection();
     }
     else if (key == KEY_GRID_SIZE_DOWN)
     {

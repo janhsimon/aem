@@ -1,9 +1,9 @@
-#include "select_tool.h"
+#include "box_select_tool.h"
 
 #include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
-#include "scene.h"
+#include "map/map.h"
 #include "viewport/camera.h"
 #include "viewport/gizmo.h"
 #include "viewport/viewport.h"
@@ -16,7 +16,7 @@
 static struct Viewport* selection_viewport = NULL; // The viewport that is being selected in, if any
 static vec3 bbox_from, bbox_to;                    // Bounding box of selection rectangle in world space
 
-bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+bool box_select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (button != MouseButton_Left)
   {
@@ -25,7 +25,7 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
 
   if (!input_is_add_to_selection_key_down())
   {
-    scene_deselect_all_blocks();
+    map_deselect_all_blocks();
   }
 
   // Make initial selection bbox
@@ -54,7 +54,7 @@ bool select_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
   return true;
 }
 
-bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+bool box_select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (button != MouseButton_Left)
   {
@@ -86,7 +86,7 @@ bool select_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
   return true;
 }
 
-static void select_tool_get_bbox(vec3 min, vec3 max)
+static void get_bbox(vec3 min, vec3 max)
 {
   // Fix the bounding box
   for (int i = 0; i < 3; ++i)
@@ -104,7 +104,7 @@ static void select_tool_get_bbox(vec3 min, vec3 max)
   }
 }
 
-void select_tool_on_mouse_drag_finished()
+void box_select_tool_on_mouse_drag_finished()
 {
   if (!selection_viewport)
   {
@@ -112,13 +112,13 @@ void select_tool_on_mouse_drag_finished()
   }
 
   vec3 bbox_min, bbox_max;
-  select_tool_get_bbox(bbox_min, bbox_max);
-  scene_select_blocks_in_bbox(bbox_min, bbox_max);
+  get_bbox(bbox_min, bbox_max);
+  map_select_blocks_in_bbox(bbox_min, bbox_max);
 
   selection_viewport = NULL;
 }
 
-void select_tool_draw_gizmo(const struct Viewport* viewport)
+void box_select_tool_draw_gizmo(const struct Viewport* viewport)
 {
   if (selection_viewport != viewport)
   {
@@ -149,5 +149,5 @@ void select_tool_draw_gizmo(const struct Viewport* viewport)
   }
 
   // Draw a dashed selection rectangle
-  viewport_gizmo_draw_dashed_rect(corners, viewport_size, (vec3){ 1.0f, 1.0f, 0.0f });
+  viewport_gizmo_draw_rect(corners, viewport_size, LineDrawMode_Dashed, (vec3){ 1.0f, 1.0f, 0.0f });
 }

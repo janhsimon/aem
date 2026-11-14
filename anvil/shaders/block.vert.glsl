@@ -1,6 +1,5 @@
 #version 330 core
 
-uniform mat4 world;
 uniform mat4 viewproj;
 
 layout(location = 0) in vec3 in_position;
@@ -12,7 +11,7 @@ out vec2 uv;
 
 void main()
 {
-  normal = (world * vec4(in_normal, 1)).xyz;
+  normal = in_normal;
   uv = in_uv;
-  gl_Position = viewproj * world * vec4(in_position, 1);
+  gl_Position = viewproj * vec4(in_position, 1);
 }

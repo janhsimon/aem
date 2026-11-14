@@ -10,8 +10,17 @@
 #define CONTROL_POINT_RADIUS 8.0f
 
 static GLuint vertex_array, vertex_buffer;
-static GLuint line_shader_program, point_shader_program;
-static GLint viewport_size_uniform_location, color_uniform_location;
+static GLuint solid_line_shader_program, dashed_line_shader_program, point_shader_program;
+
+static struct
+{
+  GLint color;
+} solid_line_uniforms;
+
+static struct
+{
+  GLint viewport_size, color;
+} dashed_line_uniforms;
 
 bool generate_viewport_gizmo()
 {
@@ -28,32 +37,64 @@ bool generate_viewport_gizmo()
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), 0);
   }
 
-  // Generate line shader program
+  // Generate line shader programs
   {
-    GLuint vertex_shader, geometry_shader, fragment_shader;
-    if (!util_load_shader("shaders/gizmo_line.vert.glsl", GL_VERTEX_SHADER, &vertex_shader) ||
-        !util_load_shader("shaders/gizmo_line.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
-        !util_load_shader("shaders/gizmo_line.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+    GLuint vertex_shader;
+    if (!util_load_shader("shaders/gizmo_line.vert.glsl", GL_VERTEX_SHADER, &vertex_shader))
     {
       return false;
     }
 
-    if (!util_generate_shader_program(vertex_shader, fragment_shader, &geometry_shader, &line_shader_program))
+    // Solid lines
     {
-      return false;
+      GLuint fragment_shader;
+      if (!util_load_shader("shaders/gizmo_solid_line.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+      {
+        return false;
+      }
+
+      if (!util_generate_shader_program(vertex_shader, fragment_shader, NULL, &solid_line_shader_program))
+      {
+        return false;
+      }
+
+      glDeleteShader(fragment_shader);
+
+      // Retrieve uniform locations
+      {
+        glUseProgram(solid_line_shader_program);
+
+        solid_line_uniforms.color = util_get_uniform_location(solid_line_shader_program, "color");
+      }
+    }
+
+    // Dashed lines
+    {
+      GLuint geometry_shader, fragment_shader;
+      if (!util_load_shader("shaders/gizmo_dashed_line.geo.glsl", GL_GEOMETRY_SHADER, &geometry_shader) ||
+          !util_load_shader("shaders/gizmo_dashed_line.frag.glsl", GL_FRAGMENT_SHADER, &fragment_shader))
+      {
+        return false;
+      }
+
+      if (!util_generate_shader_program(vertex_shader, fragment_shader, &geometry_shader, &dashed_line_shader_program))
+      {
+        return false;
+      }
+
+      glDeleteShader(geometry_shader);
+      glDeleteShader(fragment_shader);
+
+      // Retrieve uniform locations
+      {
+        glUseProgram(dashed_line_shader_program);
+
+        dashed_line_uniforms.viewport_size = util_get_uniform_location(dashed_line_shader_program, "viewport_size");
+        dashed_line_uniforms.color = util_get_uniform_location(dashed_line_shader_program, "color");
+      }
     }
 
     glDeleteShader(vertex_shader);
-    glDeleteShader(geometry_shader);
-    glDeleteShader(fragment_shader);
-
-    // Retrieve uniform locations
-    {
-      glUseProgram(line_shader_program);
-
-      viewport_size_uniform_location = util_get_uniform_location(line_shader_program, "viewport_size");
-      color_uniform_location = util_get_uniform_location(line_shader_program, "color");
-    }
   }
 
   // Generate point shader program
@@ -79,22 +120,58 @@ bool generate_viewport_gizmo()
 
 void destroy_viewport_gizmo()
 {
-  glDeleteProgram(line_shader_program);
+  glDeleteProgram(solid_line_shader_program);
+  glDeleteProgram(dashed_line_shader_program);
   glDeleteProgram(point_shader_program);
   glDeleteBuffers(1, &vertex_buffer);
   glDeleteVertexArrays(1, &vertex_array);
 }
 
-void viewport_gizmo_draw_dashed_rect(vec2* corners, vec2 viewport_size, vec3 color)
+void viewport_gizmo_draw_line(vec2* points,
+                              uint32_t point_count,
+                              vec2 viewport_size,
+                              enum LineDrawMode mode,
+                              vec3 color)
 {
   glBindVertexArray(vertex_array);
 
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(corners) * 4, corners, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(*points) * point_count, points, GL_DYNAMIC_DRAW);
 
-  glUseProgram(line_shader_program);
-  glUniform2fv(viewport_size_uniform_location, 1, (float*)viewport_size);
-  glUniform3fv(color_uniform_location, 1, (float*)color);
+  if (mode == LineDrawMode_Solid)
+  {
+    glUseProgram(solid_line_shader_program);
+    glUniform3fv(solid_line_uniforms.color, 1, (float*)color);
+  }
+  else if (mode == LineDrawMode_Dashed)
+  {
+    glUseProgram(dashed_line_shader_program);
+    glUniform2fv(dashed_line_uniforms.viewport_size, 1, (float*)viewport_size);
+    glUniform3fv(dashed_line_uniforms.color, 1, (float*)color);
+  }
+
+  glDrawArrays(GL_LINE_STRIP, 0, point_count);
+}
+
+void viewport_gizmo_draw_rect(vec2* corners, vec2 viewport_size, enum LineDrawMode mode, vec3 color)
+{
+  glBindVertexArray(vertex_array);
+
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(*corners) * 4, corners, GL_DYNAMIC_DRAW);
+
+  if (mode == LineDrawMode_Solid)
+  {
+    glUseProgram(solid_line_shader_program);
+    glUniform3fv(solid_line_uniforms.color, 1, (float*)color);
+  }
+  else if (mode == LineDrawMode_Dashed)
+  {
+    glUseProgram(dashed_line_shader_program);
+    glUniform2fv(dashed_line_uniforms.viewport_size, 1, (float*)viewport_size);
+    glUniform3fv(dashed_line_uniforms.color, 1, (float*)color);
+  }
+
   glDrawArrays(GL_LINE_LOOP, 0, 4);
 }
 

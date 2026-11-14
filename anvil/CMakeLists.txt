@@ -9,29 +9,34 @@ set(SOURCE
   source/input.c
   source/input.h
 
-  source/scene.c
-  source/scene.h
-
   source/gui/gui.c
   source/gui/gui.h
 
   source/gui/main_menu.c
   source/gui/main_menu.h
 
-  source/tool/camera_tool.c
-  source/tool/camera_tool.h
+  source/map/map.c
+  source/map/map.h
 
+  source/map/map_data.h
+
+  source/map/map_renderer.c
+  source/map/map_renderer.h
+  
   source/tool/add_cube_tool.c
   source/tool/add_cube_tool.h
+
+  source/tool/box_select_tool.c
+  source/tool/box_select_tool.h
+
+  source/tool/camera_tool.c
+  source/tool/camera_tool.h
 
   source/tool/rotate_tool.c
   source/tool/rotate_tool.h
 
   source/tool/scale_tool.c
   source/tool/scale_tool.h
-
-  source/tool/select_tool.c
-  source/tool/select_tool.h
 
   source/tool/tool_state.c
   source/tool/tool_state.h
@@ -52,14 +57,16 @@ set(SOURCE
   shaders/grid.frag.glsl
 
   shaders/gizmo_line.vert.glsl
-  shaders/gizmo_line.geo.glsl
-  shaders/gizmo_line.frag.glsl
+  shaders/gizmo_solid_line.frag.glsl
+  shaders/gizmo_dashed_line.geo.glsl
+  shaders/gizmo_dashed_line.frag.glsl
 
   shaders/gizmo_point.vert.glsl
   shaders/gizmo_point.frag.glsl
 
-  shaders/scene.vert.glsl
-  shaders/scene.frag.glsl
+  shaders/block.vert.glsl
+  shaders/block_wireframe.frag.glsl
+  shaders/block_lit.frag.glsl
 )
 
 set(DEPENDENCIES

@@ -1,7 +1,8 @@
 #include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
-#include "scene.h"
+#include "map/map.h"
+#include "map/map_renderer.h"
 #include "tool/tool_state.h"
 #include "viewport/gizmo.h"
 #include "viewport/viewport.h"
@@ -140,9 +141,11 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  if (!generate_scene())
+  generate_map();
+
+  if (!generate_map_renderer())
   {
-    printf("Failed to generate scene\n");
+    printf("Failed to generate map renderer\n");
     return EXIT_FAILURE;
   }
 
@@ -189,7 +192,8 @@ int main(int argc, char* argv[])
     destroy_viewport(viewports[viewport_index]);
   }
 
-  destroy_scene();
+  destroy_map_renderer();
+  destroy_map();
   destroy_viewport_gizmo();
   destroy_grid();
   destroy_gui();

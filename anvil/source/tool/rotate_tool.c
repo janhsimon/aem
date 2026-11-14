@@ -2,7 +2,7 @@
 
 #include "grid.h"
 #include "input.h"
-#include "scene.h"
+#include "map/map.h"
 #include "viewport/camera.h"
 #include "viewport/viewport.h"
 
@@ -27,7 +27,7 @@ static vec3 move_delta;
 void rotate_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
 {
   vec3 bbox_min_world, bbox_max_world;
-  scene_get_selection_bbox_world(bbox_min_world, bbox_max_world);
+  map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
 
   vec2 bbox_min_clip, bbox_max_clip;
   camera_world_to_clip(camera, bbox_min_world, bbox_min_clip);
@@ -106,7 +106,7 @@ bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
   struct Camera* camera = viewport_get_camera(viewport);
 
   // Check for control points first
-  if (scene_has_selection())
+  if (map_has_selection())
   {
     vec2 corners[4];
     rotate_tool_calc_selection_corners(camera, corners);
@@ -146,36 +146,53 @@ bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     float distance;
     uint32_t closest_block_index;
 
-    // Prioritize finding any selected block in range
+    // Check if the mouse position is inside the selection bbox
+    if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
     {
-      const bool selected_block_found =
-        scene_get_closest_block_to(viewport, mouse_position, SceneGetClosestBlockFilter_OnlySelected,
-                                   &closest_block_index, &distance);
-      if (!selected_block_found || distance > SELECTION_RADIUS)
-      {
-        // If there was no selected block close by, fallback to the closest unselected block
-        if (!scene_get_closest_block_to(viewport, mouse_position, SceneGetClosestBlockFilter_OnlyUnselected,
-                                        &closest_block_index, &distance))
-        {
-          return false;
-        }
-      }
-    }
-
-    if (distance <= SELECTION_RADIUS)
-    {
-      if (!scene_is_block_selected(closest_block_index))
-      {
-        if (!input_is_add_to_selection_key_down())
-        {
-          scene_deselect_all_blocks();
-        }
-
-        scene_select_block(closest_block_index);
-      }
-
       input_use_move_cursor();
       ready_for_move = true;
+    }
+    else
+    {
+      // Prioritize finding any selected block in range (center or edge count equally)
+      // If nothing is close enough, try to find the closest unselected block center (ignoring edges)
+      // And if there's no unselected center close enough, try to find a unselected edge that is
+      // Return false if absolutely nothing is close enough
+      {
+        bool block_found =
+          map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
+                                   MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
+        if (!block_found || distance > SELECTION_RADIUS)
+        {
+          block_found =
+            map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
+                                     MapGetClosestBlockAreaFilter_OnlyCenter, &closest_block_index, &distance);
+          if (!block_found || distance > SELECTION_RADIUS)
+          {
+            if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
+                                          MapGetClosestBlockAreaFilter_OnlyEdges, &closest_block_index, &distance))
+            {
+              return false;
+            }
+          }
+        }
+      }
+
+      if (distance <= SELECTION_RADIUS)
+      {
+        if (!map_is_block_selected(closest_block_index))
+        {
+          if (!input_is_add_to_selection_key_down())
+          {
+            map_deselect_all_blocks();
+          }
+
+          map_select_block(closest_block_index);
+        }
+
+        input_use_move_cursor();
+        ready_for_move = true;
+      }
     }
   }
 
@@ -190,12 +207,12 @@ bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
 
     vec3 anchor;
-    scene_get_selection_first_vertex(anchor);
+    map_get_selection_first_vertex(anchor);
     glm_vec3_sub(anchor, mouse_pos_world, move_delta);
 
     if (input_is_duplicate_key_down())
     {
-      scene_duplicate_selection();
+      map_duplicate_selection();
     }
 
     is_moving = true;
@@ -248,7 +265,7 @@ bool rotate_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseBu
 bool rotate_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
 {
   // Check for corner control points
-  if (scene_has_selection())
+  if (map_has_selection())
   {
     struct Camera* camera = viewport_get_camera(viewport);
 
@@ -293,8 +310,8 @@ bool rotate_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
 
   float distance;
   uint32_t closest_block_index;
-  if (!scene_get_closest_block_to(viewport, mouse_position, SceneGetClosestBlockFilter_All, &closest_block_index,
-                                  &distance))
+  if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
+                                MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance))
   {
     return false;
   }
@@ -310,7 +327,7 @@ bool rotate_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
 
 bool rotate_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  if (button != MouseButton_Left || !scene_has_selection)
+  if (button != MouseButton_Left || !map_has_selection)
   {
     return false;
   }
@@ -334,9 +351,9 @@ bool rotate_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
   if (is_rotating)
   {
     vec3 bbox_min_world, bbox_max_world;
-    scene_get_selection_bbox_world(bbox_min_world, bbox_max_world);
+    map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
 
-    scene_rotate_selection(1.0f);
+    map_rotate_selection(1.0f);
 
     return true;
   }

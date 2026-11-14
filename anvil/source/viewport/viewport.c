@@ -5,12 +5,12 @@
 #include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
-#include "scene.h"
+#include "map/map_renderer.h"
 #include "tool/add_cube_tool.h"
+#include "tool/box_select_tool.h"
 #include "tool/camera_tool.h"
 #include "tool/rotate_tool.h"
 #include "tool/scale_tool.h"
-#include "tool/select_tool.h"
 #include "tool/tool_state.h"
 
 #include <cglm/affine.h>
@@ -109,7 +109,7 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
 
     if (!event_consumed)
     {
-      if (!select_tool_on_mouse_button_pressed(viewport, button, mouse_position))
+      if (!box_select_tool_on_mouse_button_pressed(viewport, button, mouse_position))
       {
         camera_tool_on_mouse_button_pressed(viewport, button, mouse_position);
       }
@@ -205,7 +205,7 @@ void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton butto
 
     if (!event_consumed)
     {
-      if (!select_tool_on_mouse_dragged(viewport, button, mouse_position))
+      if (!box_select_tool_on_mouse_dragged(viewport, button, mouse_position))
       {
         camera_tool_on_mouse_dragged(viewport, button, mouse_position);
       }
@@ -306,7 +306,7 @@ void viewport_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton
 
   if (!event_consumed)
   {
-    select_tool_on_mouse_drag_finished();
+    box_select_tool_on_mouse_drag_finished();
   }
 
   input_use_default_cursor();
@@ -393,6 +393,8 @@ bool viewport_is_mouse_looking(const struct Viewport* viewport)
 
 void viewport_render(const struct Viewport* viewport)
 {
+  struct Camera* camera = viewport_get_camera(viewport);
+
   mat4 view_matrix, proj_matrix, viewproj_matrix;
   camera_calc_view_matrix(viewport->camera, view_matrix);
   camera_calc_proj_matrix(viewport->camera, proj_matrix);
@@ -403,14 +405,17 @@ void viewport_render(const struct Viewport* viewport)
   glClearColor(BACKGROUND_COLOR, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  vec2 viewport_size;
+  {
+    uint32_t x, y;
+    viewport_get_resolution(viewport, &x, &y);
+    glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_size);
+  }
+
   const bool is_perspective_viewport = (viewport->type == ViewportType_Perspective);
   if (is_perspective_viewport)
   {
-    // Draw scene
-    {
-      mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-      draw_scene(world_matrix, viewproj_matrix, is_perspective_viewport);
-    }
+    draw_map(camera, viewport_size, viewproj_matrix, DrawMapMode_Lit);
 
     glDepthMask(GL_FALSE);
 
@@ -447,15 +452,11 @@ void viewport_render(const struct Viewport* viewport)
       draw_grid(worldviewproj_matrix, fade_edges);
     }
 
-    // Draw scene
-    {
-      mat4 world_matrix = GLM_MAT4_IDENTITY_INIT;
-      draw_scene(world_matrix, viewproj_matrix, is_perspective_viewport);
-    }
+    draw_map(camera, viewport_size, viewproj_matrix, DrawMapMode_Wireframe);
 
     // Draw gizmos
     {
-      select_tool_draw_gizmo(viewport);
+      box_select_tool_draw_gizmo(viewport);
 
       const enum Tool active_tool = get_active_tool();
       if (active_tool == Tool_AddCube)

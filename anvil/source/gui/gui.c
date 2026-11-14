@@ -245,7 +245,7 @@ void update_gui(struct Viewport* viewports[4])
   const ImVec2 avail = igGetContentRegionAvail();
 
   const float toolbar_width = 64.0f;
-  const float right_width = 400.0f;
+  const float right_width = 300.0f;
   const float bottombar_height = 30.0f;
   const float viewport_width = avail.x - toolbar_width - right_width - VIEWPORT_SPACING;
   const float viewport_height = avail.y - bottombar_height - VIEWPORT_SPACING;

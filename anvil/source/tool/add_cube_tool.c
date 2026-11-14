@@ -3,7 +3,7 @@
 #include "grid.h"
 #include "gui/gui.h"
 #include "input.h"
-#include "scene.h"
+#include "map/map.h"
 #include "tool_state.h"
 #include "viewport/camera.h"
 #include "viewport/gizmo.h"
@@ -18,7 +18,7 @@ static vec3 bbox_from, bbox_to; // Bounding box of new cube in world space
 
 void add_cube_tool_on_tool_activate()
 {
-  scene_deselect_all_blocks();
+  map_deselect_all_blocks();
 }
 
 bool add_cube_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
@@ -152,8 +152,8 @@ bool add_cube_tool_on_mouse_drag_finished(struct Viewport* viewport, enum MouseB
   vec3 bbox_min, bbox_max;
   add_cube_tool_get_bbox(bbox_min, bbox_max);
 
-  scene_add_block(bbox_min, bbox_max);
-  scene_select_block(scene_get_last_added_block_index());
+  map_add_block(bbox_min, bbox_max);
+  map_select_block(map_get_last_added_block_index());
 
   activate_tool(Tool_Scale);
 
@@ -191,5 +191,5 @@ void add_cube_tool_draw_gizmo(const struct Viewport* viewport)
   }
 
   // Draw a dashed rectangle for the new cube
-  viewport_gizmo_draw_dashed_rect(corners, viewport_size, (vec3){ 1.0f, 1.0f, 1.0f });
+  viewport_gizmo_draw_rect(corners, viewport_size, LineDrawMode_Dashed, (vec3){ 1.0f, 1.0f, 1.0f });
 }
