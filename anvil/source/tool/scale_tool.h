@@ -12,6 +12,4 @@ bool scale_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseBut
 bool scale_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position);
 bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 
-void scale_tool_reanchor(struct Viewport* viewport, vec2 mouse_position);
-
 void scale_tool_draw_gizmo(const struct Viewport* viewport);

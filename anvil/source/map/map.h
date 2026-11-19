@@ -16,6 +16,7 @@ void* map_get_raw_vertex_data();
 void map_get_block_color(uint32_t block_index, vec3 color);
 void map_get_block_center(uint32_t block_index, vec3 center);
 
+void map_deselect_block(uint32_t block_index);
 void map_deselect_all_blocks();
 
 uint32_t map_get_last_added_block_index();

@@ -1,4 +1,4 @@
-#include "camera_tool.h"
+#include "camera_behavior.h"
 
 #include "input.h"
 #include "viewport/camera.h"
@@ -8,7 +8,7 @@
 
 static vec3 pan_anchor; // In world space
 
-void camera_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+void camera_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (button != MouseButton_Middle)
   {
@@ -19,7 +19,7 @@ void camera_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
   input_use_pan_cursor();
 }
 
-void camera_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
+void camera_behavior_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (button != MouseButton_Middle)
   {
@@ -37,7 +37,7 @@ void camera_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton bu
   camera_pan_2d(camera, delta);
 }
 
-void camera_tool_on_mouse_scrolled(struct Viewport* viewport, vec2 mouse_position, float delta)
+void camera_behavior_on_mouse_scrolled(struct Viewport* viewport, vec2 mouse_position, float delta)
 {
   struct Camera* camera = viewport_get_camera(viewport);
   camera_zoom_2d(camera, mouse_position, -delta);

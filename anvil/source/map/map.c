@@ -82,6 +82,12 @@ void map_get_block_center(uint32_t block_index, vec3 center)
   glm_vec3_scale(center, 0.5f, center);
 }
 
+void map_deselect_block(uint32_t block_index)
+{
+  struct Block* block = util_get_vector_element(blocks, block_index);
+  block->selected = false;
+}
+
 void map_deselect_all_blocks()
 {
   if (map_has_selection())
@@ -94,8 +100,7 @@ void map_deselect_all_blocks()
   const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    struct Block* block = util_get_vector_element(blocks, block_index);
-    block->selected = false;
+    map_deselect_block(block_index);
   }
 }
 

@@ -7,10 +7,11 @@
 #include "input.h"
 #include "map/map_renderer.h"
 #include "tool/add_cube_tool.h"
-#include "tool/box_select_tool.h"
-#include "tool/camera_tool.h"
+#include "tool/camera_behavior.h"
+#include "tool/move_behavior.h"
 #include "tool/rotate_tool.h"
 #include "tool/scale_tool.h"
+#include "tool/select_behavior.h"
 #include "tool/tool_state.h"
 
 #include <cglm/affine.h>
@@ -98,21 +99,31 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
     {
       event_consumed = add_cube_tool_on_mouse_button_pressed(viewport, button, mouse_position);
     }
-    else if (active_tool == Tool_Scale)
+    else
     {
-      event_consumed = scale_tool_on_mouse_button_pressed(viewport, button, mouse_position);
-    }
-    else if (active_tool == Tool_Rotate)
-    {
-      event_consumed = rotate_tool_on_mouse_button_pressed(viewport, button, mouse_position);
+      if (active_tool == Tool_Scale)
+      {
+        event_consumed = scale_tool_on_mouse_button_pressed(viewport, button, mouse_position);
+      }
+      else if (active_tool == Tool_Rotate)
+      {
+        event_consumed = rotate_tool_on_mouse_button_pressed(viewport, button, mouse_position);
+      }
+
+      if (!event_consumed)
+      {
+        event_consumed = select_behavior_on_mouse_button_pressed(viewport, button, mouse_position);
+
+        if (!event_consumed)
+        {
+          event_consumed = move_behavior_on_mouse_button_pressed(viewport, button, mouse_position);
+        }
+      }
     }
 
     if (!event_consumed)
     {
-      if (!box_select_tool_on_mouse_button_pressed(viewport, button, mouse_position))
-      {
-        camera_tool_on_mouse_button_pressed(viewport, button, mouse_position);
-      }
+      camera_behavior_on_mouse_button_pressed(viewport, button, mouse_position);
     }
   }
 }
@@ -130,6 +141,8 @@ void viewport_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButto
     {
       rotate_tool_on_mouse_button_clicked(viewport, button, mouse_position);
     }
+
+    move_behavior_on_mouse_button_clicked();
   }
   else if (viewport->is_mouse_looking)
   {
@@ -153,18 +166,24 @@ void viewport_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
       input_use_default_cursor();
     }
   }
-  else if (active_tool == Tool_Scale)
+  else
   {
-    if (!scale_tool_on_mouse_moved(viewport, mouse_position))
+    bool event_consumed = false;
+    if (active_tool == Tool_Scale)
     {
-      input_use_default_cursor();
+      event_consumed = scale_tool_on_mouse_moved(viewport, mouse_position);
     }
-  }
-  else if (active_tool == Tool_Rotate)
-  {
-    if (!rotate_tool_on_mouse_moved(viewport, mouse_position))
+    else if (active_tool == Tool_Rotate)
     {
-      input_use_default_cursor();
+      event_consumed = scale_tool_on_mouse_moved(viewport, mouse_position);
+    }
+
+    if (!event_consumed)
+    {
+      if (!select_behavior_on_mouse_moved(viewport, mouse_position))
+      {
+        input_use_default_cursor();
+      }
     }
   }
 }
@@ -194,21 +213,31 @@ void viewport_on_mouse_dragged(struct Viewport* viewport, enum MouseButton butto
     {
       event_consumed = add_cube_tool_on_mouse_dragged(viewport, button, mouse_position);
     }
-    else if (active_tool == Tool_Scale)
+    else
     {
-      event_consumed = scale_tool_on_mouse_dragged(viewport, button, mouse_position);
-    }
-    else if (active_tool == Tool_Rotate)
-    {
-      event_consumed = rotate_tool_on_mouse_dragged(viewport, button, mouse_position);
+      if (active_tool == Tool_Scale)
+      {
+        event_consumed = scale_tool_on_mouse_dragged(viewport, button, mouse_position);
+      }
+      else if (active_tool == Tool_Rotate)
+      {
+        event_consumed = rotate_tool_on_mouse_dragged(viewport, button, mouse_position);
+      }
+
+      if (!event_consumed)
+      {
+        event_consumed = move_behavior_on_mouse_dragged(viewport, button, mouse_position);
+
+        if (!event_consumed)
+        {
+          event_consumed = select_behavior_on_mouse_dragged(viewport, button, mouse_position);
+        }
+      }
     }
 
     if (!event_consumed)
     {
-      if (!box_select_tool_on_mouse_dragged(viewport, button, mouse_position))
-      {
-        camera_tool_on_mouse_dragged(viewport, button, mouse_position);
-      }
+      camera_behavior_on_mouse_dragged(viewport, button, mouse_position);
     }
   }
 }
@@ -306,7 +335,8 @@ void viewport_on_mouse_drag_finished(struct Viewport* viewport, enum MouseButton
 
   if (!event_consumed)
   {
-    box_select_tool_on_mouse_drag_finished();
+    select_behavior_on_mouse_drag_finished();
+    move_behavior_on_mouse_drag_finished();
   }
 
   input_use_default_cursor();
@@ -316,8 +346,8 @@ void viewport_on_mouse_scrolled(struct Viewport* viewport, vec2 mouse_position, 
 {
   if (viewport->type != ViewportType_Perspective)
   {
-    camera_tool_on_mouse_scrolled(viewport, mouse_position, delta);
-    scale_tool_reanchor(viewport, mouse_position);
+    camera_behavior_on_mouse_scrolled(viewport, mouse_position, delta);
+    move_behavior_reanchor(viewport, mouse_position);
   }
 }
 
@@ -456,7 +486,7 @@ void viewport_render(const struct Viewport* viewport)
 
     // Draw gizmos
     {
-      box_select_tool_draw_gizmo(viewport);
+      select_behavior_draw_gizmo(viewport);
 
       const enum Tool active_tool = get_active_tool();
       if (active_tool == Tool_AddCube)
@@ -466,6 +496,10 @@ void viewport_render(const struct Viewport* viewport)
       else if (active_tool == Tool_Scale)
       {
         scale_tool_draw_gizmo(viewport);
+      }
+      else if (active_tool == Tool_Rotate)
+      {
+        rotate_tool_draw_gizmo(viewport);
       }
     }
 

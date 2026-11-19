@@ -4,6 +4,7 @@
 #include "input.h"
 #include "map/map.h"
 #include "viewport/camera.h"
+#include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
 #include <cglm/vec2.h>
@@ -12,7 +13,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#define SELECTION_RADIUS 6.0f
+#define CONTROL_POINT_SELECTION_RADIUS 5.0f
 #define CONTROL_POINT_DISTANCE 15.0f
 
 #define CONTROL_POINT_BOTTOM_RIGHT 0
@@ -20,11 +21,10 @@
 #define CONTROL_POINT_TOP_LEFT 2
 #define CONTROL_POINT_TOP_RIGHT 3
 
-static bool is_moving, is_rotating;
+static bool is_rotating;
 static uint32_t rotate_control_point_index;
-static vec3 move_delta;
 
-void rotate_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
+static void rotate_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
 {
   vec3 bbox_min_world, bbox_max_world;
   map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
@@ -39,7 +39,8 @@ void rotate_tool_calc_selection_corners(struct Camera* camera, vec2 corners[4])
   glm_vec2_copy((vec2){ bbox_min_clip[0], bbox_max_clip[1] }, corners[3]);
 }
 
-void rotate_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corners[4], vec2 out_control_points[4])
+static void
+rotate_tool_corners_to_control_points_clip(vec2 viewport_size, vec2 in_corners[4], vec2 out_control_points[4])
 {
   // Determine center between corners
   vec2 center = GLM_VEC2_ZERO_INIT;
@@ -96,16 +97,16 @@ corners_to_control_points_screen(vec2 viewport_pos, vec2 viewport_size, vec2 in_
 
 bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  is_moving = is_rotating = false;
-
   if (button != MouseButton_Left)
   {
     return false;
   }
 
+  is_rotating = false;
+
   struct Camera* camera = viewport_get_camera(viewport);
 
-  // Check for control points first
+  // Check control points
   if (map_has_selection())
   {
     vec2 corners[4];
@@ -129,7 +130,7 @@ bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_SELECTION_RADIUS)
       {
         is_rotating = true;
         rotate_control_point_index = control_point_index;
@@ -138,87 +139,7 @@ bool rotate_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBu
     }
   }
 
-  // Check if an unselected block is close and, if so, select it first
-  // This is to enable the user to select and drag a block with one motion
-  // Instead of having to click first, release the mouse button and then drag
-  bool ready_for_move = false;
-  {
-    float distance;
-    uint32_t closest_block_index;
-
-    // Check if the mouse position is inside the selection bbox
-    if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
-    {
-      input_use_move_cursor();
-      ready_for_move = true;
-    }
-    else
-    {
-      // Prioritize finding any selected block in range (center or edge count equally)
-      // If nothing is close enough, try to find the closest unselected block center (ignoring edges)
-      // And if there's no unselected center close enough, try to find a unselected edge that is
-      // Return false if absolutely nothing is close enough
-      {
-        bool block_found =
-          map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
-                                   MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
-        if (!block_found || distance > SELECTION_RADIUS)
-        {
-          block_found =
-            map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                     MapGetClosestBlockAreaFilter_OnlyCenter, &closest_block_index, &distance);
-          if (!block_found || distance > SELECTION_RADIUS)
-          {
-            if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                          MapGetClosestBlockAreaFilter_OnlyEdges, &closest_block_index, &distance))
-            {
-              return false;
-            }
-          }
-        }
-      }
-
-      if (distance <= SELECTION_RADIUS)
-      {
-        if (!map_is_block_selected(closest_block_index))
-        {
-          if (!input_is_add_to_selection_key_down())
-          {
-            map_deselect_all_blocks();
-          }
-
-          map_select_block(closest_block_index);
-        }
-
-        input_use_move_cursor();
-        ready_for_move = true;
-      }
-    }
-  }
-
-  if (!ready_for_move)
-  {
-    return false;
-  }
-
-  // Start a move
-  {
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    vec3 anchor;
-    map_get_selection_first_vertex(anchor);
-    glm_vec3_sub(anchor, mouse_pos_world, move_delta);
-
-    if (input_is_duplicate_key_down())
-    {
-      map_duplicate_selection();
-    }
-
-    is_moving = true;
-  }
-
-  return true;
+  return false;
 }
 
 bool rotate_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
@@ -251,7 +172,7 @@ bool rotate_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseBu
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_SELECTION_RADIUS)
       {
         // Consume the mouse click
         return true;
@@ -290,7 +211,7 @@ bool rotate_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_DISTANCE)
       {
         // / shape
         if (control_point_index == CONTROL_POINT_TOP_LEFT || control_point_index == CONTROL_POINT_BOTTOM_RIGHT)
@@ -308,55 +229,51 @@ bool rotate_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
     }
   }
 
-  float distance;
-  uint32_t closest_block_index;
-  if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
-                                MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance))
-  {
-    return false;
-  }
-
-  if (distance > SELECTION_RADIUS)
-  {
-    return false;
-  }
-
-  input_use_move_cursor();
-  return true;
+  return false;
 }
 
 bool rotate_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  if (button != MouseButton_Left || !map_has_selection)
+  if (button != MouseButton_Left || !is_rotating)
   {
     return false;
   }
 
-  if (is_moving)
+  vec3 bbox_min_world, bbox_max_world;
+  map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
+
+  map_rotate_selection(1.0f);
+
+  return true;
+}
+
+void rotate_tool_draw_gizmo(const struct Viewport* viewport)
+{
+  if (!map_has_selection())
   {
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    vec3 m;
-    glm_vec3_add(mouse_pos_world, move_delta, m);
-
-    // Snap to grid
-    grid_snap(m, m);
-
-    return true;
+    return;
   }
 
-  if (is_rotating)
+  struct Camera* camera = viewport_get_camera(viewport);
+
+  // Get the viewport size
+  vec2 viewport_size;
   {
-    vec3 bbox_min_world, bbox_max_world;
-    map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
-
-    map_rotate_selection(1.0f);
-
-    return true;
+    uint32_t w, h;
+    viewport_get_resolution(viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
   }
 
-  return false;
+  vec2 corners[4];
+  rotate_tool_calc_selection_corners(camera, corners);
+
+  // Draw a dashed rectangle (visible when multiple blocks are selected simultaneously)
+  viewport_gizmo_draw_rect(corners, viewport_size, LineDrawMode_Dashed, (vec3){ 1.0f, 0.0f, 0.0f });
+
+  // Draw the control points
+  {
+    vec2 control_points[4];
+    rotate_tool_corners_to_control_points_clip(viewport_size, corners, control_points);
+    viewport_gizmo_draw_control_points(control_points, 4);
+  }
 }

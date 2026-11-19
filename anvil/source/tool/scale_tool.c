@@ -1,7 +1,6 @@
 #include "scale_tool.h"
 
 #include "grid.h"
-#include "gui/gui.h"
 #include "input.h"
 #include "map/map.h"
 #include "viewport/camera.h"
@@ -14,7 +13,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-#define SELECTION_RADIUS 6.0f
+#define CONTROL_POINT_SELECTION_RADIUS 5.0f
 #define CONTROL_POINT_DISTANCE 15.0f
 
 #define CONTROL_POINT_BOTTOM_RIGHT 0
@@ -26,9 +25,8 @@
 #define CONTROL_POINT_TOP 6
 #define CONTROL_POINT_RIGHT 7
 
-static bool is_moving, is_moving_first_frame, is_scaling;
+static bool is_scaling;
 static uint32_t scale_control_point_index;
-static vec3 move_delta;
 
 static void calc_selection_corners_clip(struct Camera* camera, vec2 out_selection_corners[4])
 {
@@ -126,14 +124,14 @@ static void calc_control_points_screen(struct Viewport* viewport, vec2 out_contr
 
 bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  is_moving = is_moving_first_frame = is_scaling = false;
-
   if (button != MouseButton_Left)
   {
     return false;
   }
 
-  // Check for control points first
+  is_scaling = false;
+
+  // Check control points
   if (map_has_selection())
   {
     vec2 control_points[8];
@@ -145,7 +143,7 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_SELECTION_RADIUS)
       {
         is_scaling = true;
         scale_control_point_index = control_point_index;
@@ -154,96 +152,7 @@ bool scale_tool_on_mouse_button_pressed(struct Viewport* viewport, enum MouseBut
     }
   }
 
-  // Check if an unselected block is close and, if so, select it first
-  // This is to enable the user to select and drag a block with one motion
-  // Instead of having to click first, release the mouse button and then drag
-  bool ready_for_move = false;
-  {
-    float distance;
-    uint32_t closest_block_index;
-
-    // Check if the mouse position is inside the selection bbox
-    if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
-    {
-      // Check if an unselected block is close AND the add to selection key is down, then add that block in
-      if (input_is_add_to_selection_key_down())
-      {
-        const bool block_found =
-          map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                   MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
-        if (block_found && distance < SELECTION_RADIUS)
-        {
-          map_select_block(closest_block_index);
-        }
-      }
-
-      input_use_move_cursor();
-      ready_for_move = true;
-    }
-    else
-    {
-      // Prioritize finding any selected block in range (center or edge count equally)
-      // If nothing is close enough, try to find the closest unselected block center (ignoring edges)
-      // And if there's no unselected center close enough, try to find a unselected edge that is
-      // Return false if absolutely nothing is close enough
-      {
-        bool block_found =
-          map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
-                                   MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
-        if (!block_found || distance > SELECTION_RADIUS)
-        {
-          block_found =
-            map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                     MapGetClosestBlockAreaFilter_OnlyCenter, &closest_block_index, &distance);
-          if (!block_found || distance > SELECTION_RADIUS)
-          {
-            if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                          MapGetClosestBlockAreaFilter_OnlyEdges, &closest_block_index, &distance))
-            {
-              return false;
-            }
-          }
-        }
-      }
-
-      if (distance <= SELECTION_RADIUS)
-      {
-        if (!map_is_block_selected(closest_block_index))
-        {
-          if (!input_is_add_to_selection_key_down())
-          {
-            map_deselect_all_blocks();
-          }
-
-          map_select_block(closest_block_index);
-        }
-
-        input_use_move_cursor();
-        ready_for_move = true;
-      }
-    }
-  }
-
-  if (!ready_for_move)
-  {
-    return false;
-  }
-
-  // Start a move
-  {
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    vec3 anchor;
-    map_get_selection_first_vertex(anchor);
-    glm_vec3_sub(anchor, mouse_pos_world, move_delta);
-
-    is_moving = is_moving_first_frame = true;
-  }
-
-  return true;
+  return false;
 }
 
 bool scale_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
@@ -264,7 +173,7 @@ bool scale_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseBut
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_SELECTION_RADIUS)
       {
         // Consume the mouse click
         return true;
@@ -289,7 +198,7 @@ bool scale_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
       glm_vec2_sub(mouse_position, control_points[control_point_index], v);
 
       const float dist = glm_vec2_norm(v);
-      if (dist < 5.0f)
+      if (dist < CONTROL_POINT_SELECTION_RADIUS)
       {
         // - shape
         if (control_point_index == CONTROL_POINT_LEFT || control_point_index == CONTROL_POINT_RIGHT)
@@ -317,171 +226,14 @@ bool scale_tool_on_mouse_moved(struct Viewport* viewport, vec2 mouse_position)
     }
   }
 
-  if (!map_is_mouse_in_selection_bbox(viewport, mouse_position))
-  {
-    float distance;
-    uint32_t closest_block_index;
-    if (!map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
-                                  MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance))
-    {
-      return false;
-    }
-
-    if (distance > SELECTION_RADIUS)
-    {
-      return false;
-    }
-  }
-
-  input_use_move_cursor();
-  return true;
+  return false;
 }
 
 bool scale_tool_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
-  if (button != MouseButton_Left || !map_has_selection)
+  if (button != MouseButton_Left || !is_scaling)
   {
     return false;
-  }
-
-  if (is_moving)
-  {
-    if (is_moving_first_frame)
-    {
-      if (input_is_duplicate_key_down())
-      {
-        map_duplicate_selection();
-      }
-
-      is_moving_first_frame = false;
-    }
-
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    vec3 m;
-    glm_vec3_add(mouse_pos_world, move_delta, m);
-
-    // Snap to grid
-    grid_snap(m, m);
-    map_move_selection(m);
-
-    return true;
-  }
-
-  if (is_scaling)
-  {
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    vec3 mouse_pos_world;
-    camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
-
-    // Snapping
-    grid_snap(mouse_pos_world, mouse_pos_world);
-
-    vec3 bbox_min_world, bbox_max_world;
-    map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
-
-    uint32_t axis_index_horizontal, axis_index_vertical;
-    {
-      const enum ViewportType type = viewport_get_type(viewport);
-      if (type == ViewportType_Top)
-      {
-        axis_index_horizontal = 0;
-        axis_index_vertical = 2;
-      }
-      else if (type == ViewportType_Front)
-      {
-        axis_index_horizontal = 0;
-        axis_index_vertical = 1;
-      }
-      else if (type == ViewportType_Left)
-      {
-        axis_index_horizontal = 2;
-        axis_index_vertical = 1;
-      }
-      else
-      {
-        assert(false);
-        return false;
-      }
-    }
-
-    const float min_grid_size = get_min_grid_size();
-
-    // Left
-    if (scale_control_point_index == CONTROL_POINT_LEFT || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||
-        scale_control_point_index == CONTROL_POINT_TOP_LEFT)
-    {
-      bbox_max_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
-
-      if (bbox_max_world[axis_index_horizontal] < bbox_min_world[axis_index_horizontal] + min_grid_size)
-      {
-        bbox_max_world[axis_index_horizontal] = bbox_min_world[axis_index_horizontal] + min_grid_size;
-      }
-    }
-
-    // Right
-    if (scale_control_point_index == CONTROL_POINT_RIGHT || scale_control_point_index == CONTROL_POINT_BOTTOM_RIGHT ||
-        scale_control_point_index == CONTROL_POINT_TOP_RIGHT)
-    {
-      bbox_min_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
-
-      if (bbox_min_world[axis_index_horizontal] > bbox_max_world[axis_index_horizontal] - min_grid_size)
-      {
-        bbox_min_world[axis_index_horizontal] = bbox_max_world[axis_index_horizontal] - min_grid_size;
-      }
-    }
-
-    // Top
-    if (scale_control_point_index == CONTROL_POINT_TOP || scale_control_point_index == CONTROL_POINT_TOP_LEFT ||
-        scale_control_point_index == CONTROL_POINT_TOP_RIGHT)
-    {
-      bbox_max_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
-
-      if (bbox_max_world[axis_index_vertical] < bbox_min_world[axis_index_vertical] + min_grid_size)
-      {
-        bbox_max_world[axis_index_vertical] = bbox_min_world[axis_index_vertical] + min_grid_size;
-      }
-    }
-
-    // Bottom
-    if (scale_control_point_index == CONTROL_POINT_BOTTOM || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||
-        scale_control_point_index == CONTROL_POINT_BOTTOM_RIGHT)
-    {
-      bbox_min_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
-
-      if (bbox_min_world[axis_index_vertical] > bbox_max_world[axis_index_vertical] - min_grid_size)
-      {
-        bbox_min_world[axis_index_vertical] = bbox_max_world[axis_index_vertical] - min_grid_size;
-      }
-    }
-
-    // Fix up the bounding box
-    for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
-    {
-      if (bbox_min_world[axis_index] > bbox_max_world[axis_index])
-      {
-        const float swap = bbox_min_world[axis_index];
-        bbox_min_world[axis_index] = bbox_max_world[axis_index];
-        bbox_max_world[axis_index] = swap;
-      }
-    }
-
-    map_scale_selection(bbox_min_world, bbox_max_world);
-    return true;
-  }
-
-  return false;
-}
-
-void scale_tool_reanchor(struct Viewport* viewport, vec2 mouse_position)
-{
-  if (!is_moving)
-  {
-    return;
   }
 
   struct Camera* camera = viewport_get_camera(viewport);
@@ -489,9 +241,100 @@ void scale_tool_reanchor(struct Viewport* viewport, vec2 mouse_position)
   vec3 mouse_pos_world;
   camera_screen_to_world_2d(camera, mouse_position, mouse_pos_world);
 
-  vec3 anchor;
-  map_get_selection_first_vertex(anchor);
-  glm_vec3_sub(anchor, mouse_pos_world, move_delta);
+  // Snapping
+  grid_snap(mouse_pos_world, mouse_pos_world);
+
+  vec3 bbox_min_world, bbox_max_world;
+  map_get_selection_bbox_world(bbox_min_world, bbox_max_world);
+
+  uint32_t axis_index_horizontal, axis_index_vertical;
+  {
+    const enum ViewportType type = viewport_get_type(viewport);
+    if (type == ViewportType_Top)
+    {
+      axis_index_horizontal = 0;
+      axis_index_vertical = 2;
+    }
+    else if (type == ViewportType_Front)
+    {
+      axis_index_horizontal = 0;
+      axis_index_vertical = 1;
+    }
+    else if (type == ViewportType_Left)
+    {
+      axis_index_horizontal = 2;
+      axis_index_vertical = 1;
+    }
+    else
+    {
+      assert(false);
+      return false;
+    }
+  }
+
+  const float min_grid_size = get_min_grid_size();
+
+  // Left
+  if (scale_control_point_index == CONTROL_POINT_LEFT || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||
+      scale_control_point_index == CONTROL_POINT_TOP_LEFT)
+  {
+    bbox_max_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
+
+    if (bbox_max_world[axis_index_horizontal] < bbox_min_world[axis_index_horizontal] + min_grid_size)
+    {
+      bbox_max_world[axis_index_horizontal] = bbox_min_world[axis_index_horizontal] + min_grid_size;
+    }
+  }
+
+  // Right
+  if (scale_control_point_index == CONTROL_POINT_RIGHT || scale_control_point_index == CONTROL_POINT_BOTTOM_RIGHT ||
+      scale_control_point_index == CONTROL_POINT_TOP_RIGHT)
+  {
+    bbox_min_world[axis_index_horizontal] = mouse_pos_world[axis_index_horizontal];
+
+    if (bbox_min_world[axis_index_horizontal] > bbox_max_world[axis_index_horizontal] - min_grid_size)
+    {
+      bbox_min_world[axis_index_horizontal] = bbox_max_world[axis_index_horizontal] - min_grid_size;
+    }
+  }
+
+  // Top
+  if (scale_control_point_index == CONTROL_POINT_TOP || scale_control_point_index == CONTROL_POINT_TOP_LEFT ||
+      scale_control_point_index == CONTROL_POINT_TOP_RIGHT)
+  {
+    bbox_max_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
+
+    if (bbox_max_world[axis_index_vertical] < bbox_min_world[axis_index_vertical] + min_grid_size)
+    {
+      bbox_max_world[axis_index_vertical] = bbox_min_world[axis_index_vertical] + min_grid_size;
+    }
+  }
+
+  // Bottom
+  if (scale_control_point_index == CONTROL_POINT_BOTTOM || scale_control_point_index == CONTROL_POINT_BOTTOM_LEFT ||
+      scale_control_point_index == CONTROL_POINT_BOTTOM_RIGHT)
+  {
+    bbox_min_world[axis_index_vertical] = mouse_pos_world[axis_index_vertical];
+
+    if (bbox_min_world[axis_index_vertical] > bbox_max_world[axis_index_vertical] - min_grid_size)
+    {
+      bbox_min_world[axis_index_vertical] = bbox_max_world[axis_index_vertical] - min_grid_size;
+    }
+  }
+
+  // Fix up the bounding box
+  for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
+  {
+    if (bbox_min_world[axis_index] > bbox_max_world[axis_index])
+    {
+      const float swap = bbox_min_world[axis_index];
+      bbox_min_world[axis_index] = bbox_max_world[axis_index];
+      bbox_max_world[axis_index] = swap;
+    }
+  }
+
+  map_scale_selection(bbox_min_world, bbox_max_world);
+  return true;
 }
 
 void scale_tool_draw_gizmo(const struct Viewport* viewport)

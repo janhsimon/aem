@@ -25,8 +25,9 @@ bool add_cube_tool_on_mouse_button_pressed(struct Viewport* viewport, enum Mouse
 {
   input_use_draw_cursor();
 
-  // Consume the event so we don't fallback to selection functionality
-  return true;
+  // Consume the event if we are actively adding a new cube
+  // Otherwise do not consume the event to enable camera behavior
+  return is_adding;
 }
 
 bool add_cube_tool_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)

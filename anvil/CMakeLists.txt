@@ -26,17 +26,20 @@ set(SOURCE
   source/tool/add_cube_tool.c
   source/tool/add_cube_tool.h
 
-  source/tool/box_select_tool.c
-  source/tool/box_select_tool.h
+  source/tool/camera_behavior.c
+  source/tool/camera_behavior.h
 
-  source/tool/camera_tool.c
-  source/tool/camera_tool.h
+  source/tool/move_behavior.c
+  source/tool/move_behavior.h
 
   source/tool/rotate_tool.c
   source/tool/rotate_tool.h
 
   source/tool/scale_tool.c
   source/tool/scale_tool.h
+
+  source/tool/select_behavior.c
+  source/tool/select_behavior.h
 
   source/tool/tool_state.c
   source/tool/tool_state.h
