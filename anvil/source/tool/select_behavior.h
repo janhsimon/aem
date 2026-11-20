@@ -13,5 +13,5 @@ bool select_behavior_on_mouse_moved(struct Viewport* viewport, vec2 mouse_positi
 bool select_behavior_on_mouse_dragged(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position);
 void select_behavior_on_mouse_drag_finished();
 
-// Draws the selection box gizmo
+// Draws the wireframe overlay and the selection box gizmo
 void select_behavior_draw_gizmo(const struct Viewport* viewport);

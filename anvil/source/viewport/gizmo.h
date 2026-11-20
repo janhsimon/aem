@@ -20,3 +20,4 @@ void viewport_gizmo_draw_line(vec2* points,
                               vec3 color);
 void viewport_gizmo_draw_rect(vec2* corners, vec2 viewport_size, enum LineDrawMode mode, vec3 color);
 void viewport_gizmo_draw_control_points(vec2* points, uint32_t point_count);
+void viewport_gizmo_draw_wireframe_cube(vec3 from, vec3 to, vec3 color, mat4 viewproj_matrix);

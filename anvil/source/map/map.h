@@ -14,6 +14,7 @@ uint32_t map_get_block_count();
 void* map_get_raw_vertex_data();
 
 void map_get_block_color(uint32_t block_index, vec3 color);
+void map_get_block_bbox(uint32_t block_index, vec3 min, vec3 max);
 void map_get_block_center(uint32_t block_index, vec3 center);
 
 void map_deselect_block(uint32_t block_index);
@@ -39,6 +40,9 @@ bool map_get_closest_block_to(struct Viewport* viewport,
                               enum MapGetClosestBlockAreaFilter area_filter,
                               uint32_t* out_block_index,
                               float* out_distance);
+
+bool map_pick_block_at(vec3 ray_origin, vec3 ray_direction, uint32_t* out_block_index, float* out_distance);
+
 bool map_is_block_selected(uint32_t block_index);
 void map_select_block(uint32_t block_index);
 void map_select_blocks_in_bbox(vec3 min, vec3 max);

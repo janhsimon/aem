@@ -82,6 +82,8 @@ void viewport_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButto
 {
   if (viewport->type == ViewportType_Perspective)
   {
+    select_behavior_on_mouse_button_pressed(viewport, button, mouse_position);
+
     if (button == MouseButton_Right)
     {
       // Start mouse look
@@ -456,6 +458,8 @@ void viewport_render(const struct Viewport* viewport)
     }
 
     glDepthMask(GL_TRUE);
+
+    select_behavior_draw_gizmo(viewport);
   }
   else
   {

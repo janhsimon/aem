@@ -67,6 +67,9 @@ set(SOURCE
   shaders/gizmo_point.vert.glsl
   shaders/gizmo_point.frag.glsl
 
+  shaders/gizmo_wireframe_cube.vert.glsl
+  shaders/gizmo_wireframe_cube.frag.glsl
+
   shaders/block.vert.glsl
   shaders/block_wireframe.frag.glsl
   shaders/block_lit.frag.glsl

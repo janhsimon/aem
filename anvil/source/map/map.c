@@ -49,25 +49,26 @@ void map_get_block_color(uint32_t block_index, vec3 color)
   glm_vec3_copy(block->color, color);
 }
 
-static void get_block_minmax(struct Vertex vertices[VERTEX_COUNT_PER_BLOCK], vec3 out_min, vec3 out_max)
+void map_get_block_bbox(uint32_t block_index, vec3 min, vec3 max)
 {
-  glm_vec3_copy(vertices[0].position, out_min);
-  glm_vec3_copy(vertices[0].position, out_max);
+  struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+  glm_vec3_copy(block_vertices->vertices[0].position, min);
+  glm_vec3_copy(block_vertices->vertices[0].position, max);
 
   for (uint32_t vertex_index = 1; vertex_index < VERTEX_COUNT_PER_BLOCK; ++vertex_index)
   {
     for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
     {
-      const float current_value = vertices[vertex_index].position[axis_index];
+      const float current_value = block_vertices->vertices[vertex_index].position[axis_index];
 
-      if (current_value < out_min[axis_index])
+      if (current_value < min[axis_index])
       {
-        out_min[axis_index] = current_value;
+        min[axis_index] = current_value;
       }
 
-      if (current_value > out_max[axis_index])
+      if (current_value > max[axis_index])
       {
-        out_max[axis_index] = current_value;
+        max[axis_index] = current_value;
       }
     }
   }
@@ -75,9 +76,9 @@ static void get_block_minmax(struct Vertex vertices[VERTEX_COUNT_PER_BLOCK], vec
 
 void map_get_block_center(uint32_t block_index, vec3 center)
 {
-  struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
   vec3 min, max;
-  get_block_minmax(block_vertices->vertices, min, max);
+  map_get_block_bbox(block_index, min, max);
+
   glm_vec3_add(min, max, center);
   glm_vec3_scale(center, 0.5f, center);
 }
@@ -218,6 +219,101 @@ bool map_get_closest_block_to(struct Viewport* viewport,
   return block_found;
 }
 
+static bool ray_intersects_aabb(vec3 origin, vec3 direction, float* distance)
+{
+  float tmin = 0.0f;
+  float tmax = FLT_MAX;
+
+  for (int i = 0; i < 3; i++)
+  {
+    if (fabsf(direction[i]) < 0.000001f)
+    {
+      if (origin[i] < 0.0f || origin[i] > 1.0f)
+      {
+        return false;
+      }
+    }
+    else
+    {
+      const float inv_d = 1.0f / direction[i];
+
+      float t1 = (0.0f - origin[i]) * inv_d;
+      float t2 = (1.0f - origin[i]) * inv_d;
+
+      if (t1 > t2)
+      {
+        float temp = t1;
+        t1 = t2;
+        t2 = temp;
+      }
+
+      tmin = fmaxf(tmin, t1);
+      tmax = fminf(tmax, t2);
+
+      if (tmin > tmax)
+      {
+        return false;
+      }
+    }
+  }
+
+  *distance = tmin;
+  return true;
+}
+
+bool map_pick_block_at(vec3 ray_origin, vec3 ray_direction, uint32_t* out_block_index, float* out_distance)
+{
+  const uint32_t block_count = util_get_vector_element_count(blocks);
+  bool block_found = false;
+  for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+  {
+    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+
+    // Find the axes of the block
+    vec3 axis_x, axis_y, axis_z;
+    glm_vec3_sub(block_vertices->vertices[3].position, block_vertices->vertices[0].position, axis_x);
+    glm_vec3_sub(block_vertices->vertices[1].position, block_vertices->vertices[0].position, axis_y);
+    glm_vec3_sub(block_vertices->vertices[7].position, block_vertices->vertices[0].position, axis_z);
+
+    // Transform the mouse ray into the local space of the block
+    vec3 local_origin, local_direction;
+    {
+      vec3 offset;
+      glm_vec3_sub(ray_origin, block_vertices->vertices[0].position, offset);
+
+      const float len_x = glm_vec3_dot(axis_x, axis_x);
+      const float len_y = glm_vec3_dot(axis_y, axis_y);
+      const float len_z = glm_vec3_dot(axis_z, axis_z);
+
+      local_origin[0] = glm_vec3_dot(offset, axis_x) / len_x;
+      local_origin[1] = glm_vec3_dot(offset, axis_y) / len_y;
+      local_origin[2] = glm_vec3_dot(offset, axis_z) / len_z;
+
+      local_direction[0] = glm_vec3_dot(ray_direction, axis_x) / len_x;
+      local_direction[1] = glm_vec3_dot(ray_direction, axis_y) / len_y;
+      local_direction[2] = glm_vec3_dot(ray_direction, axis_z) / len_z;
+    }
+
+    float distance;
+    if (ray_intersects_aabb(local_origin, local_direction, &distance))
+    {
+      if (!block_found)
+      {
+        block_found = true;
+        *out_distance = distance;
+        *out_block_index = block_index;
+      }
+      else if (distance < *out_distance)
+      {
+        *out_distance = distance;
+        *out_block_index = block_index;
+      }
+    }
+  }
+
+  return block_found;
+}
+
 bool map_is_block_selected(uint32_t block_index)
 {
   const struct Block* block = util_get_vector_element(blocks, block_index);
@@ -235,9 +331,8 @@ void map_select_blocks_in_bbox(vec3 min, vec3 max)
   const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
     vec3 block_min, block_max;
-    get_block_minmax(block_vertices->vertices, block_min, block_max);
+    map_get_block_bbox(block_index, block_min, block_max);
 
     bool block_inside = true;
     for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
@@ -322,16 +417,17 @@ void map_get_selection_bbox_world(vec3 min, vec3 max)
     const struct Block* block = util_get_vector_element(blocks, block_index);
     if (block->selected)
     {
-      struct BlockVertices* block_vertices = util_get_vector_element(vertices, block_index);
+      // Initialize output bbox
       if (first_selected_block)
       {
-        get_block_minmax(block_vertices->vertices, min, max);
+        map_get_block_bbox(block_index, min, max);
         first_selected_block = false;
       }
+      // Extend output bbox
       else
       {
         vec3 block_min, block_max;
-        get_block_minmax(block_vertices->vertices, block_min, block_max);
+        map_get_block_bbox(block_index, block_min, block_max);
 
         for (uint32_t axis_index = 0; axis_index < 3; ++axis_index)
         {
@@ -355,8 +451,7 @@ void map_get_selection_first_vertex(vec3 v)
   const uint32_t block_count = util_get_vector_element_count(blocks);
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
-    const struct Block* block = util_get_vector_element(blocks, block_index);
-    if (!block->selected)
+    if (!map_is_block_selected(block_index))
     {
       continue;
     }
@@ -823,9 +918,8 @@ void map_duplicate_selection()
     add_empty_block();
     const uint32_t duplicated_block_index = util_get_vector_element_count(blocks) - 1;
 
-    struct BlockVertices* original_block_vertices = util_get_vector_element(vertices, block_index);
     vec3 min, max;
-    get_block_minmax(original_block_vertices->vertices, min, max);
+    map_get_block_bbox(block_index, min, max);
 
     set_block(duplicated_block_index, min, max);
 

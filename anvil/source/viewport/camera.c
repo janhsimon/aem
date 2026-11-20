@@ -286,6 +286,51 @@ void camera_calc_proj_matrix(struct Camera* camera, mat4 proj_matrix)
   }
 }
 
+void camera_calc_pick_ray(struct Camera* camera, vec2 mouse_pos, vec3 ray_origin, vec3 ray_direction)
+{
+  vec2 viewport_pos, viewport_size;
+  {
+    uint32_t x, y, w, h;
+    viewport_get_position(camera->viewport, &x, &y);
+    viewport_get_resolution(camera->viewport, &w, &h);
+    glm_vec2_copy((vec2){ (float)x, (float)y }, viewport_pos);
+    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+  }
+
+  const float ndc_x = 2.0f * (mouse_pos[0] - viewport_pos[0]) / viewport_size[0] - 1.0f;
+  const float ndc_y = 1.0f - 2.0f * (mouse_pos[1] - viewport_pos[1]) / viewport_size[1];
+
+  // Calculate the view-projection matrix for the camera
+  mat4 viewproj;
+  {
+    mat4 view, proj;
+    camera_calc_view_matrix(camera, view);
+    camera_calc_proj_matrix(camera, proj);
+    glm_mat4_mul(proj, view, viewproj);
+  }
+
+  mat4 inv_viewproj;
+  glm_mat4_inv(viewproj, inv_viewproj);
+
+  vec4 near_clip = { ndc_x, ndc_y, -1.0f, 1.0f };
+  vec4 far_clip = { ndc_x, -ndc_y, 1.0f, 1.0f };
+
+  vec4 near_world;
+  vec4 far_world;
+
+  glm_mat4_mulv(inv_viewproj, near_clip, near_world);
+  glm_mat4_mulv(inv_viewproj, far_clip, far_world);
+
+  // Perspective divide
+  vec3 ray_end;
+  glm_vec3_scale(near_world, 1.0f / near_world[3], ray_origin);
+  glm_vec3_scale(far_world, 1.0f / far_world[3], ray_end);
+
+  // Ray direction
+  glm_vec3_sub(ray_end, ray_origin, ray_direction);
+  glm_vec3_normalize(ray_direction);
+}
+
 void camera_get_forward(struct Camera* camera, vec3 forward)
 {
   glm_vec3_copy(camera->transform[2], forward);

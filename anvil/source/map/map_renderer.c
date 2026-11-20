@@ -276,12 +276,15 @@ static void draw_lit(const mat4 viewproj_matrix, uint32_t block_count)
 
   glUniformMatrix4fv(lit_uniforms.viewproj, 1, GL_FALSE, (float*)viewproj_matrix);
 
-  vec3 color;
-  glm_vec3_copy((vec3){ 1.0f, 1.0f, 1.0f }, color);
-  glUniform3fv(lit_uniforms.color, 1, (float*)color);
+  vec3 unselected_color, selected_color;
+  glm_vec3_copy((vec3){ 1.0f, 1.0f, 1.0f }, unselected_color);
+  glm_vec3_copy((vec3){ 1.0f, 0.0f, 0.0f }, selected_color);
 
   for (uint32_t block_index = 0; block_index < block_count; ++block_index)
   {
+    glUniform3fv(lit_uniforms.color, 1,
+                 map_is_block_selected(block_index) ? (float*)selected_color : (float*)unselected_color);
+
     glDrawElementsBaseVertex(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL, block_index * VERTEX_COUNT_PER_BLOCK);
   }
 }

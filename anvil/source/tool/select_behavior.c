@@ -7,10 +7,12 @@
 #include "viewport/gizmo.h"
 #include "viewport/viewport.h"
 
+#include <cglm/mat4.h>
 #include <cglm/vec2.h>
 #include <cglm/vec3.h>
 
 #define SELECTION_RADIUS 10.0f
+
 #define NEAR_INFINITY 32768.0f
 
 static struct Viewport* box_selection_viewport = NULL; // The viewport of the active box selection, if any
@@ -23,8 +25,43 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
     return false;
   }
 
+  uint32_t closest_block_index;
   float distance;
-  uint32_t block_index;
+
+  if (viewport_get_type(viewport) == ViewportType_Perspective)
+  {
+    vec3 ray_origin, ray_direction;
+    camera_calc_pick_ray(viewport_get_camera(viewport), mouse_position, ray_origin, ray_direction);
+
+    if (map_pick_block_at(ray_origin, ray_direction, &closest_block_index, &distance))
+    {
+      if (!input_is_add_to_selection_key_down())
+      {
+        map_deselect_all_blocks();
+        map_select_block(closest_block_index);
+      }
+      else
+      {
+        if (map_is_block_selected(closest_block_index))
+        {
+          map_deselect_block(closest_block_index);
+        }
+        else
+        {
+          map_select_block(closest_block_index);
+        }
+      }
+    }
+    else
+    {
+      if (!input_is_add_to_selection_key_down())
+      {
+        map_deselect_all_blocks();
+      }
+    }
+
+    return true;
+  }
 
   // Check if the mouse was clicked inside the selection bbox
   if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
@@ -32,13 +69,14 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
     // Check if an unselected block is close
     if (input_is_add_to_selection_key_down())
     {
-      const bool block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
-                                                        MapGetClosestBlockAreaFilter_All, &block_index, &distance);
+      const bool block_found =
+        map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
+                                 MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
       if (block_found && distance <= SELECTION_RADIUS)
       {
-        if (map_is_block_selected(block_index))
+        if (map_is_block_selected(closest_block_index))
         {
-          map_deselect_block(block_index);
+          map_deselect_block(closest_block_index);
           if (!map_has_selection())
           {
             // Consume the event if the last selected block was just deselected
@@ -47,7 +85,7 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
         }
         else
         {
-          map_select_block(block_index);
+          map_select_block(closest_block_index);
         }
       }
     }
@@ -60,15 +98,15 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
   // Now find out if the mouse was clicked close to a block
   // Prioritize selected blocks, then center crosses of unselected, and then edges of unselected blocks
   bool block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
-                                              MapGetClosestBlockAreaFilter_All, &block_index, &distance);
+                                              MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
   if (!block_found || distance > SELECTION_RADIUS)
   {
     block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                           MapGetClosestBlockAreaFilter_OnlyCenter, &block_index, &distance);
+                                           MapGetClosestBlockAreaFilter_OnlyCenter, &closest_block_index, &distance);
     if (!block_found || distance > SELECTION_RADIUS)
     {
       block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                             MapGetClosestBlockAreaFilter_OnlyEdges, &block_index, &distance);
+                                             MapGetClosestBlockAreaFilter_OnlyEdges, &closest_block_index, &distance);
     }
   }
 
@@ -76,18 +114,19 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
   if (block_found && distance <= SELECTION_RADIUS)
   {
     // Select the close block if it was not already selected
-    if (!map_is_block_selected(block_index))
+    if (!map_is_block_selected(closest_block_index))
     {
       if (!input_is_add_to_selection_key_down())
       {
         map_deselect_all_blocks();
       }
 
-      map_select_block(block_index);
+      map_select_block(closest_block_index);
 
       // Do not consume the event to allow the move behavior to initiate a move right away
       return false;
     }
+
     // The close block was already selected
     // Note that this only happens if the close block is on the edge of the selection bbox and the user clicks just
     // outside of that box but close enough to the block
@@ -95,7 +134,7 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
     {
       if (input_is_add_to_selection_key_down())
       {
-        map_deselect_block(block_index);
+        map_deselect_block(closest_block_index);
 
         // Consume the event to not allow a move to be initiated right away
         return true;
@@ -234,34 +273,60 @@ void select_behavior_on_mouse_drag_finished()
 
 void select_behavior_draw_gizmo(const struct Viewport* viewport)
 {
-  if (box_selection_viewport != viewport)
+  // Draw the wireframe overlay in perspective (ie. 3D) viewports
+  if (viewport_get_type(viewport) == ViewportType_Perspective)
   {
-    return;
-  }
+    if (map_has_selection())
+    {
+      struct Camera* camera = viewport_get_camera(viewport);
 
-  // Get the selection corners in clip space
-  vec2 corners[4];
+      mat4 view, proj, viewproj;
+      camera_calc_view_matrix(camera, view);
+      camera_calc_proj_matrix(camera, proj);
+      glm_mat4_mul(proj, view, viewproj);
+
+      const uint32_t block_count = map_get_block_count();
+      for (uint32_t block_index = 0; block_index < block_count; ++block_index)
+      {
+        if (!map_is_block_selected(block_index))
+        {
+          continue;
+        }
+
+        vec3 from, to;
+        map_get_block_bbox(block_index, from, to);
+
+        viewport_gizmo_draw_wireframe_cube(from, to, (vec3){ 1.0f, 1.0f, 0.0f }, viewproj);
+      }
+    }
+  }
+  // Draw the selection rectangle in non-perspective (ie. 2D) viewports
+  else if (box_selection_viewport == viewport)
   {
-    struct Camera* camera = viewport_get_camera(viewport);
+    // Get the selection corners in clip space
+    vec2 corners[4];
+    {
+      struct Camera* camera = viewport_get_camera(viewport);
 
-    vec2 bbox_from_clip, bbox_to_clip;
-    camera_world_to_clip(camera, box_selection_from, bbox_from_clip);
-    camera_world_to_clip(camera, box_selection_to, bbox_to_clip);
+      vec2 bbox_from_clip, bbox_to_clip;
+      camera_world_to_clip(camera, box_selection_from, bbox_from_clip);
+      camera_world_to_clip(camera, box_selection_to, bbox_to_clip);
 
-    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
-    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
-    glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
-    glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
+      glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_from_clip[1] }, corners[0]);
+      glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_from_clip[1] }, corners[1]);
+      glm_vec2_copy((vec2){ bbox_to_clip[0], bbox_to_clip[1] }, corners[2]);
+      glm_vec2_copy((vec2){ bbox_from_clip[0], bbox_to_clip[1] }, corners[3]);
+    }
+
+    // Get the viewport size
+    vec2 viewport_size;
+    {
+      uint32_t w, h;
+      viewport_get_resolution(viewport, &w, &h);
+      glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
+    }
+
+    // Draw a dashed selection rectangle
+    viewport_gizmo_draw_rect(corners, viewport_size, LineDrawMode_Dashed, (vec3){ 1.0f, 1.0f, 0.0f });
   }
-
-  // Get the viewport size
-  vec2 viewport_size;
-  {
-    uint32_t w, h;
-    viewport_get_resolution(viewport, &w, &h);
-    glm_vec2_copy((vec2){ (float)w, (float)h }, viewport_size);
-  }
-
-  // Draw a dashed selection rectangle
-  viewport_gizmo_draw_rect(corners, viewport_size, LineDrawMode_Dashed, (vec3){ 1.0f, 1.0f, 0.0f });
 }
