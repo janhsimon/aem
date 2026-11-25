@@ -1,7 +1,7 @@
-set(TARGET_NAME anvil)
+set(TARGET_NAME amp-machine)
 
 set(SOURCE
-  source/anvil.c
+  source/amp-machine.c
 
   source/grid.c
   source/grid.h

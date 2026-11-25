@@ -1,6 +1,8 @@
-set(TARGET_NAME showcase)
+set(TARGET_NAME alpha-zero)
 
 set(SOURCE
+  source/alpha-zero.c
+
   source/camera.c
   source/camera.h
 
@@ -27,8 +29,6 @@ set(SOURCE
 
   source/preferences.c
   source/preferences.h
-
-  source/showcase.c
 
   source/sound.c
   source/sound.h

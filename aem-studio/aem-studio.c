@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char window_title[] = "AEM Viewer";
+static const char window_title[] = "AEM Studio";
 static int window_width = 1280;
 static int window_height = 800;
 

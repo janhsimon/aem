@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char window_title[] = "Anvil";
+static const char window_title[] = "AMP Machine";
 static int window_width = 1280;
 static int window_height = 800;
 

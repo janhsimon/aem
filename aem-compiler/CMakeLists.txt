@@ -1,8 +1,6 @@
-set(TARGET_NAME converter)
+set(TARGET_NAME aem-compiler)
 
 set(SOURCE
-  converter.c
-
   animation_module/analyzer_node.c
   animation_module/analyzer_node.h
 
@@ -65,6 +63,8 @@ set(SOURCE
 
   material_module/texture_transform.c
   material_module/texture_transform.h
+
+  aem-compiler.c
 
   config.h
 

@@ -1,6 +1,8 @@
-set(TARGET_NAME viewer)
+set(TARGET_NAME aem-studio)
 
 set(SOURCE
+  aem-studio.c
+
   camera.c
   camera.h
 
@@ -27,8 +29,6 @@ set(SOURCE
 
   skeleton_tool.c
   skeleton_tool.h
-
-  viewer.c
 
   gui/animation_mixer.c
   gui/animation_mixer.h

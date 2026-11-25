@@ -10,7 +10,7 @@
 static struct GLFWwindow* window = NULL;
 static uint32_t width, height;
 
-#define WINDOW_TITLE "AEM Showcase"
+#define WINDOW_TITLE "Alpha Zero"
 
 static void framebuffer_size_callback(GLFWwindow* window, int width_, int height_)
 {
