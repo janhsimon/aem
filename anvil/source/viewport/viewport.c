@@ -146,10 +146,13 @@ void viewport_on_mouse_button_clicked(struct Viewport* viewport, enum MouseButto
 
     move_behavior_on_mouse_button_clicked();
   }
-  else if (viewport->is_mouse_looking)
+  else
   {
-    viewport->is_mouse_looking = false;
-    input_use_default_cursor();
+    if (viewport->is_mouse_looking)
+    {
+      viewport->is_mouse_looking = false;
+      input_use_default_cursor();
+    }
   }
 }
 

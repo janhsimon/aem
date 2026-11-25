@@ -18,6 +18,38 @@
 static struct Viewport* box_selection_viewport = NULL; // The viewport of the active box selection, if any
 static vec3 box_selection_from, box_selection_to;      // Bounding box of selection rectangle in world space
 
+static bool find_closest_block(struct Viewport* viewport, vec2 mouse_position, uint32_t* block_index)
+{
+  float distance;
+
+  // Prioritize finding selected blocks first
+  if (map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
+                               MapGetClosestBlockAreaFilter_All, block_index, &distance) &&
+      distance <= SELECTION_RADIUS)
+  {
+    return true;
+  }
+
+  // Then find unselected blocks by their center
+  if (map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
+                               MapGetClosestBlockAreaFilter_OnlyCenter, block_index, &distance) &&
+      distance <= SELECTION_RADIUS)
+  {
+    return true;
+  }
+
+  // Then find unselected blocks by their edges
+  if (map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
+                               MapGetClosestBlockAreaFilter_OnlyEdges, block_index, &distance) &&
+      distance <= SELECTION_RADIUS)
+  {
+    return true;
+  }
+
+  // No block found
+  return false;
+}
+
 bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum MouseButton button, vec2 mouse_position)
 {
   if (button != MouseButton_Left)
@@ -26,13 +58,14 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
   }
 
   uint32_t closest_block_index;
-  float distance;
 
+  // Handle perspective viewports first
   if (viewport_get_type(viewport) == ViewportType_Perspective)
   {
     vec3 ray_origin, ray_direction;
     camera_calc_pick_ray(viewport_get_camera(viewport), mouse_position, ray_origin, ray_direction);
 
+    float distance;
     if (map_pick_block_at(ray_origin, ray_direction, &closest_block_index, &distance))
     {
       if (!input_is_add_to_selection_key_down())
@@ -54,6 +87,7 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
     }
     else
     {
+      // Enables clicks into empty space to deselect everything
       if (!input_is_add_to_selection_key_down())
       {
         map_deselect_all_blocks();
@@ -63,122 +97,70 @@ bool select_behavior_on_mouse_button_pressed(struct Viewport* viewport, enum Mou
     return true;
   }
 
-  // Check if the mouse was clicked inside the selection bbox
-  if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
+  // For non-perspective viewports
   {
-    // Check if an unselected block is close
-    if (input_is_add_to_selection_key_down())
+    // If the mouse is close to a block
+    if (find_closest_block(viewport, mouse_position, &closest_block_index))
     {
-      const bool block_found =
-        map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_All,
-                                 MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
-      if (block_found && distance <= SELECTION_RADIUS)
+      if (!map_is_block_selected(closest_block_index))
       {
-        if (map_is_block_selected(closest_block_index))
+        if (!input_is_add_to_selection_key_down())
+        {
+          map_deselect_all_blocks();
+        }
+        map_select_block(closest_block_index);
+      }
+      else
+      {
+        if (input_is_add_to_selection_key_down())
         {
           map_deselect_block(closest_block_index);
-          if (!map_has_selection())
-          {
-            // Consume the event if the last selected block was just deselected
-            return true;
-          }
-        }
-        else
-        {
-          map_select_block(closest_block_index);
+          return true; // Consume the event, prevent immediate moving/duplication
         }
       }
+
+      return false; // Don't consume the event, enable immediate moving/duplication
     }
 
-    // Do not consume the event to allow the move behavior to initiate a move right away
-    return false;
-  }
-
-  // The mouse was clicked outside the selection bbox (if one exists)
-  // Now find out if the mouse was clicked close to a block
-  // Prioritize selected blocks, then center crosses of unselected, and then edges of unselected blocks
-  bool block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlySelected,
-                                              MapGetClosestBlockAreaFilter_All, &closest_block_index, &distance);
-  if (!block_found || distance > SELECTION_RADIUS)
-  {
-    block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                           MapGetClosestBlockAreaFilter_OnlyCenter, &closest_block_index, &distance);
-    if (!block_found || distance > SELECTION_RADIUS)
+    // Or if the mouse is inside a selection rectangle
+    if (map_is_mouse_in_selection_bbox(viewport, mouse_position))
     {
-      block_found = map_get_closest_block_to(viewport, mouse_position, MapGetClosestBlockSelectionFilter_OnlyUnselected,
-                                             MapGetClosestBlockAreaFilter_OnlyEdges, &closest_block_index, &distance);
+      return false; // Don't consume the event, enable immediate moving/duplication
     }
-  }
 
-  // If a block was found that close to the mouse click
-  if (block_found && distance <= SELECTION_RADIUS)
-  {
-    // Select the close block if it was not already selected
-    if (!map_is_block_selected(closest_block_index))
+    // The mouse is not near anything
     {
       if (!input_is_add_to_selection_key_down())
       {
         map_deselect_all_blocks();
       }
 
-      map_select_block(closest_block_index);
-
-      // Do not consume the event to allow the move behavior to initiate a move right away
-      return false;
-    }
-
-    // The close block was already selected
-    // Note that this only happens if the close block is on the edge of the selection bbox and the user clicks just
-    // outside of that box but close enough to the block
-    else
-    {
-      if (input_is_add_to_selection_key_down())
+      // Initiate a bounding box selection
       {
-        map_deselect_block(closest_block_index);
+        // Make initial selection bbox
+        struct Camera* camera = viewport_get_camera(viewport);
 
-        // Consume the event to not allow a move to be initiated right away
-        return true;
-      }
-      else
-      {
-        // Do not consume the event to allow the move behavior to initiate a move right away
-        return false;
-      }
-    }
-  }
+        camera_screen_to_world_2d(camera, mouse_position, box_selection_from);
+        grid_snap(box_selection_from, box_selection_from); // Snap to grid
+        glm_vec3_copy(box_selection_from, box_selection_to);
 
-  // If the mouse click was not close to anything
-
-  // Deselect everything
-  if (!input_is_add_to_selection_key_down())
-  {
-    map_deselect_all_blocks();
-  }
-
-  // Initiate a bounding box selection
-  {
-    // Make initial selection bbox
-    struct Camera* camera = viewport_get_camera(viewport);
-
-    camera_screen_to_world_2d(camera, mouse_position, box_selection_from);
-    grid_snap(box_selection_from, box_selection_from); // Snap to grid
-    glm_vec3_copy(box_selection_from, box_selection_to);
-
-    // Extend depth-component of volume to near-infinity
-    {
-      vec3 camera_forward;
-      camera_get_forward(camera, camera_forward);
-      for (int i = 0; i < 3; ++i)
-      {
-        if (camera_forward[i] != 0.0f)
+        // Extend depth-component of volume to near-infinity
         {
-          box_selection_from[i] = -NEAR_INFINITY;
-          box_selection_to[i] = NEAR_INFINITY;
+          vec3 camera_forward;
+          camera_get_forward(camera, camera_forward);
+          for (int i = 0; i < 3; ++i)
+          {
+            if (camera_forward[i] != 0.0f)
+            {
+              box_selection_from[i] = -NEAR_INFINITY;
+              box_selection_to[i] = NEAR_INFINITY;
+            }
+          }
         }
+
+        box_selection_viewport = viewport;
       }
     }
-
-    box_selection_viewport = viewport;
   }
 
   // Consume the event
